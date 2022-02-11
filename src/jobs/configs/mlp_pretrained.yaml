@@ -1,0 +1,10 @@
+model:
+  pretrained_embedding_path: '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pkl'
+  embedding_dim: 32
+trainer:
+  logger:
+    - class_path: pytorch_lightning.loggers.TensorBoardLogger
+      init_args:
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/tensorboard/
+        name: mlp
+

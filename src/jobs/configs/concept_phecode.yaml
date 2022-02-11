@@ -1,0 +1,5 @@
+data:
+  token_col: concept_id
+  label_col: phecode
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab.pkl
