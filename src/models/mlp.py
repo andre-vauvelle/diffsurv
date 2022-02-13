@@ -87,7 +87,7 @@ class MultilayerMLM(pl.LightningModule):
         return result
 
     def _shared_eval_step(self, batch, batch_idx):
-        token_idx, age_idx, position, segment, mask_labels, noise_labels = batch
+        token_idx, age_idx, position, segment, mask_labels, noise_labels, mask = batch
         if not self.count:
             token_idx = self._row_unique(token_idx)
 

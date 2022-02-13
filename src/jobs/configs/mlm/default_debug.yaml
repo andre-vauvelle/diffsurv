@@ -20,5 +20,4 @@ data:
 model:
   input_dim: 105
   output_dim: 105
-  count: False
 

@@ -173,6 +173,7 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
             tokens[0] = 'CLS'
             labels[0] = 'CLS'
 
+
         # pad age_col sequence and code_col sequence
         age = pad_sequence(age, self.max_len)
         tokens = pad_sequence(tokens, self.max_len)
@@ -184,7 +185,7 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         position = position_idx(tokens)
         segment = index_seg(tokens)
 
-        token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
+        # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
 
         return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask_labels, noise_labels]),
 
@@ -223,6 +224,9 @@ class DatasetMLM(AbstractDataset):
             tokens[0] = 'CLS'
             labels[0] = 'CLS'
 
+        mask = np.ones(self.max_len)
+        mask[len(tokens):] = 0
+
         # pad age_col sequence and code_col sequence
         age = pad_sequence(age, self.max_len)
         tokens = pad_sequence(tokens, self.max_len)
@@ -236,7 +240,7 @@ class DatasetMLM(AbstractDataset):
 
         token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
 
-        return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask_labels, noise_labels]),
+        return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask_labels, noise_labels, mask]),
 
     def __len__(self):
         return len(self.tokens)
