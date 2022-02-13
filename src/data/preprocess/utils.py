@@ -8,6 +8,15 @@ import numpy as np
 from tqdm import tqdm
 from definitions import EXTERNAL_DATA_DIR
 
+SYMBOL_IDX = {
+    "PAD": 0,
+    "SEP": 1,
+    "UNK": 2,
+    "MASK": 3,
+    "CLS": 4,
+    'None': 5
+}
+
 
 def get_icd_omop():
     """
@@ -267,8 +276,8 @@ def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, paddi
     :return:
     """
     counts = pd.Series(data).value_counts()
-    symbol_tokens = {padding_token, separator_token, unknown_token, mask_token, cls_token, 'None'}
-    counts.drop(list(symbol_tokens), inplace=True,
+    # symbol_tokens = {padding_token, separator_token, unknown_token, mask_token, cls_token, 'None'}
+    counts.drop(list(SYMBOL_IDX.values()), inplace=True,
                 errors='ignore')
     proportions = counts / counts.sum()
     if min_count is not None:
@@ -281,11 +290,11 @@ def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, paddi
         excluded_tokens = set()
 
     data_tokens = set(data)
-    data_tokens = data_tokens - symbol_tokens - excluded_tokens
+    data_tokens = data_tokens - {*SYMBOL_IDX.keys()} - excluded_tokens
     if label:
         unique_tokens = list(data_tokens)
     else:
-        unique_tokens = list(symbol_tokens) + list(data_tokens)
+        unique_tokens = list(SYMBOL_IDX.keys()) + list(data_tokens)
     idx2token = dict(enumerate(unique_tokens))
     token2idx = dict([(v, k) for k, v in idx2token.items()])
     vocab = {'idx2token': idx2token,

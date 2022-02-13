@@ -1,0 +1,18 @@
+trainer:
+  logger:
+    - class_path: pytorch_lightning.loggers.TensorBoardLogger
+      init_args:
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/tensorboard/
+        name: mlp
+data:
+  debug: False
+  #  pretrained_embedding_path: '/home/vauvelle/pycharm-sftp/ehrgnn/data/graph_full_211122_prone_32_edge_weights_2021-12-13.feather'
+  token_col: phecode
+  label_col: phecode
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top100_105.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top100_105.pkl
+model:
+  input_dim: 105
+  output_dim: 105
+  count: False
+

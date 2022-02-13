@@ -6,12 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
 
-SYMBOLS = ['PAD',
-           'MASK',
-           'SEP',
-           'CLS',
-           'UNK', ]
-PADDING_IDX = 0
+from data.preprocess.utils import SYMBOL_IDX
 
 
 def drop_mask(tokens, symbol='MASK'):
@@ -94,11 +89,11 @@ def flip(p):
 
 
 class AbstractDataset(Dataset):
-    def __init__(self, dataframe, token2idx, label2idx, age2idx, max_len,
-                 token_col='concept_id', label_col='phecode', age_col='age'):
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len,
+                 token_col='concept_id', label_col='phecode', age_col='age', covariates=None):
         """
 
-        :param dataframe:
+        :param records:
         :param token2idx:
         :param age2idx:
         :param max_len:
@@ -106,13 +101,15 @@ class AbstractDataset(Dataset):
         :param age_col:
         """
         self.max_len = max_len
-        self.eid = dataframe['eid'].copy()
-        self.tokens = dataframe[token_col].copy()
-        self.labels = dataframe[label_col].copy()
-        self.age = dataframe[age_col].copy()
+        self.eid = records['eid'].copy()
+        self.tokens = records[token_col].copy()
+        self.labels = records[label_col].copy()
+        self.date = pd.to_datetime(records['date'].copy())
+        self.age = records[age_col].copy()
         self.token2idx = token2idx
         self.label2idx = label2idx
         self.age2idx = age2idx
+        self.covariates = covariates
 
     def __getitem__(self, index):
         """
@@ -124,16 +121,87 @@ class AbstractDataset(Dataset):
         return len(self.tokens)
 
 
-class DatasetMLM(AbstractDataset):
-    def __init__(self, dataframe, token2idx, label2idx, age2idx, max_len, mask_prob=0.2, **kwargs):
+class DatasetAssessmentRiskPredict(AbstractDataset):
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, **kwargs):
         """
 
-        :param dataframe:
+        :param records:
         :param token2idx:
         :param age2idx:
         :param max_len:
         """
-        super().__init__(dataframe, token2idx, label2idx, age2idx, max_len, **kwargs)
+        super().__init__(records, token2idx, label2idx, age2idx, max_len, **kwargs)
+        self.covariates = covariates
+
+    def __getitem__(self, index):
+        """
+        return: age_col, code_col, position, segmentation, mask, label
+        """
+
+        eid = self.eid.iloc[index]
+        cov = self.covariates.query("eid == @eid")
+        # eid
+        # sex
+        # yob
+        # mob
+        # dob
+        # center_ass
+        # year_ass
+        # age_ass
+
+        year_ass = cov.year_ass
+        age = self.age.iloc[index]
+
+        # Add Buffer
+        history_idx = (self.date.dt.year < year_ass)
+        future_idx = ~history_idx
+
+        tokens = self.tokens.iloc[index]
+        labels = self.labels.iloc[index]
+
+        # extract data
+        age = self.age.iloc[index][(-self.max_len + 1):]
+        tokens = self.tokens.iloc[index][(-self.max_len + 1):]
+        labels = self.labels.iloc[index][(-self.max_len + 1):]
+
+        # avoid data cut with first element to be 'SEP'
+        if tokens[0] != 'SEP':
+            tokens = np.append(np.array(['CLS']), tokens)
+            labels = np.append(np.array(['CLS']), labels)
+            age = np.append(np.array(age[0]), age)
+        else:
+            tokens[0] = 'CLS'
+            labels[0] = 'CLS'
+
+        # pad age_col sequence and code_col sequence
+        age = pad_sequence(age, self.max_len)
+        tokens = pad_sequence(tokens, self.max_len)
+        labels = pad_sequence(labels, self.max_len)
+        age_idx = get_token2idx(age, self.age2idx)
+        token_idx = get_token2idx(tokens, self.token2idx)
+        label_idx = get_token2idx(labels, self.label2idx)
+
+        position = position_idx(tokens)
+        segment = index_seg(tokens)
+
+        token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
+
+        return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask_labels, noise_labels]),
+
+    def __len__(self):
+        return len(self.tokens)
+
+
+class DatasetMLM(AbstractDataset):
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len, mask_prob=0.2, **kwargs):
+        """
+
+        :param records:
+        :param token2idx:
+        :param age2idx:
+        :param max_len:
+        """
+        super().__init__(records, token2idx, label2idx, age2idx, max_len, **kwargs)
         self.mask_prob = mask_prob
 
     def __getitem__(self, index):
@@ -170,11 +238,6 @@ class DatasetMLM(AbstractDataset):
 
         return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask_labels, noise_labels]),
 
-        # return torch.LongTensor(token_idx), torch.LongTensor(age_idx), torch.LongTensor(
-        #     position), torch.LongTensor(
-        #     segment), torch.LongTensor(phecode_idx), torch.LongTensor(mask), torch.LongTensor(
-        #     mask_labels), torch.LongTensor(noise_labels)
-
     def __len__(self):
         return len(self.tokens)
 
@@ -193,7 +256,15 @@ class DatasetMLM(AbstractDataset):
         output_mask_label_idx = []
         output_noised_label = []
         output_token_idx = []
-        symbols_idx = (0, 1, 2, 3, 4) # PAD: 0, MASK: 1, SEP: 2 CS
+        # SYMBOL_IDX = {
+        #     "PAD": 0,
+        #     "SEP": 1,
+        #     "UNK": 2,
+        #     "MASK": 3,
+        #     "CLS": 4,
+        #     'None': 5
+        # }
+        symbols_idx = SYMBOL_IDX.values()
 
         for i, (t_idx, l_idx) in enumerate(zip(token_idx, label_idx)):
             # exclude special symbols from masking
@@ -223,12 +294,13 @@ class DatasetMLM(AbstractDataset):
                     #     output_noised_label.append(noised_label)
                     # else:
                     output_mask_label_idx.append(l_idx)  # add label for loss calc
+                    # output_mask_label_idx.append(20)  # cheat!
                     output_noised_label.append(0)
-
-                    output_token_idx.append(1)  # change token to mask token
+                    output_token_idx.append(SYMBOL_IDX['PAD'])  # mask by using pad token, excludes from embedding bag
+                    # output_token_idx.append(l_idx)  # cheat!
                 else:
                     # output_mask.append(1)  # attend this value
-                    output_mask_label_idx.append(-1)  # exclude form loss func
+                    output_mask_label_idx.append(-1)  # exclude from loss func
                     output_noised_label.append(-1)  # not a label
                     output_token_idx.append(t_idx)  # keep original token if not masked
         return output_token_idx, output_mask_label_idx, output_noised_label
