@@ -533,11 +533,11 @@ def main(
     save_pickle(phecode_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_{}.pkl'.format(phecode_vocab_len)))
     save_pickle(phecode_vocab_top100, os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_top100_{}.pkl'.format(phecode_vocab_top100_len)))
     save_pickle(concept_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab_{}.pkl'.format(concept_vocab_len)))
-    # age_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'age_vocab.pkl'))
-    # code_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'code_vocab.pkl'))
-    # phecode_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab.pkl'))
-    # concept_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab.pkl'))
-    # print(len(list(vocab['token2idx'].keys())))
+    age_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'age_vocab.pkl'))
+    code_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'code_vocab.pkl'))
+    phecode_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_top100_.pkl'))
+    concept_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab.pkl'))
+    print(len(list(vocab['token2idx'].keys())))
 
     for df, name in zip([phe_train, phe_val, phe_test], ['phe_train.parquet', 'phe_val.parquet', 'phe_test.parquet']):
         # df = pd.read_parquet(os.path.join(DATA_DIR, 'processed', with_codes, name))

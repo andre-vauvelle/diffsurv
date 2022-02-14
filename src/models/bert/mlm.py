@@ -18,9 +18,9 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
     def __init__(self,
                  input_dim=1390,
                  output_dim=1390,
-                 embedding_dim=128,
+                 embedding_dim=120,
                  num_hidden_layers=8,
-                 hidden_dropout_prob=0.2, lr=1e-4,
+                 hidden_dropout_prob=0.2, lr=1e-4, warmup_proportion=0.1,
                  temperature_scaling=False,
                  feature_dict=None, num_attention_heads=12, intermediate_size=256, hidden_act="gelu",
                  attention_probs_dropout_prob=0.22, max_position_embeddings=256, initializer_range=0.02,
@@ -31,7 +31,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
             feature_dict = {
                 'word': True,
                 'seg': True,
-                'age': True,
+                'age': False,
                 'position': True}
 
         config = BertConfig(vocab_size=input_dim, hidden_size=embedding_dim,
@@ -45,8 +45,9 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                             age_vocab_size=age_vocab_size)
         super(BERTMLM, self).__init__(config)
 
-        self.n_labels = output_dim
+        self.output_dim = output_dim
         self.lr = lr
+        self.warmup_proportion = warmup_proportion
         self.temperature_scaling = temperature_scaling
 
         self.bert = BertModel(config, feature_dict)
@@ -57,10 +58,10 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
 
         metrics = MetricCollection(
             [
-                AveragePrecision(num_classes=self.n_labels, compute_on_step=False, average='weighted'),
+                AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
                 Precision(compute_on_step=False, average='micro'),
                 Accuracy(compute_on_step=False, average='micro'),
-                AUROC(num_classes=self.n_labels, compute_on_step=False)
+                # AUROC(num_classes=self.output_dim, compute_on_step=False)
             ]
         )
 
@@ -76,8 +77,8 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         logits = self(batch)
 
         # predictions = self.sigmoid(logits)
-        logits_expanded = logits.view(-1, self.n_labels)
-        mask_labels_expanded = mask_labels.view(-1, self.n_)
+        logits_expanded = logits.view(-1, self.output_dim)
+        mask_labels_expanded = mask_labels.view(-1)
         loss = self.loss_func(logits_expanded, mask_labels_expanded)
 
         return loss, logits_expanded, mask_labels_expanded
@@ -91,7 +92,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         logits = self.cls(unpooled_output)
         return logits
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx):
         loss, logits_expanded, mask_labels_expanded = self._shared_eval_step(batch, batch_idx)
         self.log('train_loss', loss)
         return loss
@@ -123,6 +124,6 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         ]
 
         optimizer = Bert.optimization.BertAdam(optimizer_grouped_parameters,
-                                               lr=self.optim_config['lr'],
-                                               warmup=self.optim_config['warmup_proportion'])
+                                               lr=self.lr,
+                                               warmup=self.warmup_proportion)
         return optimizer

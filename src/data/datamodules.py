@@ -77,8 +77,10 @@ class DataModuleMLM(AbstractDataModule):
                  num_workers=1,
                  debug=False,
                  mask_prob=0.2):
-        super().__init__(token_col, label_col, token_vocab_path, label_vocab_path, age_vocab_path,
-                         train_data_path, val_data_path, test_data_path, batch_size, max_len_seq, num_workers, debug)
+        super().__init__(token_col=token_col, label_col=label_col, token_vocab_path=token_vocab_path,
+                         label_vocab_path=label_vocab_path, age_vocab_path=age_vocab_path,
+                         train_data_path=train_data_path, val_data_path=val_data_path, test_data_path=test_data_path,
+                         batch_size=batch_size, max_len_seq=max_len_seq, num_workers=num_workers, debug=debug)
         self.mask_prob = mask_prob
 
     def train_dataloader(self):

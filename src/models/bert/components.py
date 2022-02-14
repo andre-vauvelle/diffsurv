@@ -21,7 +21,7 @@ class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, segment, age
     """
 
-    def __init__(self, config, feature_dict=None):
+    def __init__(self, config, feature_dict=None, pretrained=None):
         super(BertEmbeddings, self).__init__()
 
         if feature_dict is None:
@@ -35,7 +35,11 @@ class BertEmbeddings(nn.Module):
             self.feature_dict = feature_dict
 
         if feature_dict['word']:
-            self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
+            if pretrained is None:
+                self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
+            # else:
+            #     self.word_embeddings = nn.Embedding()
+
 
         if feature_dict['seg']:
             self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0)

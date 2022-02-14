@@ -104,7 +104,7 @@ class AbstractDataset(Dataset):
         self.eid = records['eid'].copy()
         self.tokens = records[token_col].copy()
         self.labels = records[label_col].copy()
-        self.date = pd.to_datetime(records['date'].copy())
+        self.date = records['date'].copy()
         self.age = records[age_col].copy()
         self.token2idx = token2idx
         self.label2idx = label2idx
