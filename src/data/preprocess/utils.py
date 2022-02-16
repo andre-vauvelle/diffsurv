@@ -14,7 +14,7 @@ SYMBOL_IDX = {
     "UNK": 2,
     "MASK": 3,
     "CLS": 4,
-    'None': 5
+    # 'None': 5
 }
 
 
@@ -191,6 +191,22 @@ def get_read_omop():
     rc3_map.loc[:, 'code_type_match'] = 'read_3'
 
     rc_map = pd.concat([rc2_map, rc3_map], axis=0)
+
+    # concept id to omop id...
+    mapping_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/'
+    vocab_dir = f"{mapping_path}/athena"
+    vocab_concept = pd.read_csv(f"{vocab_dir}/CONCEPT.csv", sep='\t')
+
+    vocab_concept = vocab_concept.query("vocabulary_id == 'SNOMED'")
+    vocab_concept.loc[:, 'concept_code'] = vocab_concept.concept_code.astype(int)
+
+    rc_map = rc_map[rc_map.concept_id != '_DRUG']
+    rc_map.concept_id = rc_map.concept_id.astype(int)
+    rc_map = rc_map.merge(vocab_concept, left_on='concept_id', right_on='concept_code', how='left')
+
+    rc_map = rc_map.loc[:, ['code', 'concept_id_y', 'code_type_match']]
+    rc_map.columns = ['code', 'concept_id', 'code_type_match']
+
     return rc_map
 
 
@@ -213,6 +229,31 @@ def reformat_gnn_embedding(embedding):
     embedding.columns = ['concept_id', 'embedding']
     embedding.concept_id = embedding.concept_id.str.split('_').str[1]
     return embedding
+
+
+def align_pretrained_embedding(embedding, token2idx, save_path):
+    token2idx_df = pd.DataFrame.from_records(list(token2idx.items()), columns=['concept_id', 'idx'])
+
+    embedding_df = token2idx_df.merge(embedding, on='concept_id', how='left', validate='one_to_one')
+
+    found_embeddings = embedding_df.dropna()
+    # check
+    # missing = embedding_df[embedding_df.embedding.isna()]
+    # omop_map = get_omop_map()
+    # omop_map.query("concept_id in @missing.concept_id").code_type_match.value_counts()
+    # missing = missing.loc[6:, :] # remove symbols
+    # missing = missing[missing.concept_id != '_DRUG'] #
+    # missing.concept_id = missing.concept_id.astype(int)
+
+    # Init array of correct size with random 0-1
+    rand_embeddings = np.random.rand(token2idx_df.shape[0], found_embeddings.embedding.iloc[0].shape[0])
+
+    # Fill in found values
+    rand_embeddings[found_embeddings.index] = np.concatenate(found_embeddings.embedding.values, axis=0).reshape(
+        found_embeddings.shape[0], -1)
+
+    embedding_tensor = torch.from_numpy(rand_embeddings)
+    torch.save(embedding_tensor, save_path)
 
 
 def vocab_omop_embedding(embedding, token2idx,
@@ -260,19 +301,14 @@ def vocab_omop_embedding(embedding, token2idx,
     return embedding_tensor
 
 
-def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, padding_token='PAD',
-              separator_token='SEP', unknown_token='UNK', mask_token='MASK', cls_token='CLS', label=False) -> Dict:
+def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, label=False) -> Dict:
     """
     Fits a vocabulary to some data, returns as a dict
+    :param label:
     :param top_n:
     :param data:
     :param min_count:
     :param min_proportion:
-    :param padding_token:
-    :param separator_token:
-    :param unknown_token:
-    :param mask_token:
-    :param cls_token:
     :return:
     """
     counts = pd.Series(data).value_counts()

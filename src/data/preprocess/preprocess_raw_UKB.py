@@ -14,7 +14,7 @@ from ast import literal_eval
 import pyarrow
 from tqdm import tqdm
 
-from data.preprocess.utils import fit_vocab, get_phecode_map, get_omop_map
+from data.preprocess.utils import fit_vocab, get_phecode_map, get_omop_map, SYMBOL_IDX
 from definitions import DATA_DIR, EXTERNAL_DATA_DIR
 from src.omni.common import save_pickle, load_pickle
 
@@ -208,7 +208,8 @@ class BiobankDataset:
             d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code_type_match': str, 'code': str,
                        'yob': 'Int16', 'age': str}
             ped = pd.read_csv(patient_event_data_path, chunksize=chunksize, iterator=True)
-            patient_event_data = pd.concat([merge_process(chunk) for chunk in tqdm(ped)], axis=0, total=1_500)
+            patient_event_data = pd.concat(
+                [merge_process(chunk) for chunk in tqdm(ped, total=14_000, desc='merging omop id')], axis=0, )
             del ped
         else:
             patient_event_data.loc[:, 'code_type_match'] = patient_event_data.code_type.str.split('_').str[0]
@@ -228,7 +229,6 @@ class BiobankDataset:
         patient_event_data = patient_event_data.drop(columns='code_type_match')
 
         return patient_event_data
-
 
     @staticmethod
     def get_sequences_df(df, code_col='code', phe_col='phecode', concept_col='concept_id', order_by='date',
@@ -269,6 +269,12 @@ class BiobankDataset:
         """
         patient_event_data.loc[:, 'sorting_var'] = 0  # used to ensure token at the end of every date
         patient_event_data.sorting_var = patient_event_data.sorting_var.astype(bool)
+
+        patient_event_data.code_type = patient_event_data.code_type.astype('category')
+        patient_event_data.code = patient_event_data.code.astype('category')
+        patient_event_data.phecode = patient_event_data.phecode.astype('category')
+        patient_event_data.concept_id = patient_event_data.concept_id.astype('category')
+
         patient_event_data.code_type = patient_event_data.code_type.cat.add_categories(['token'])
         patient_event_data.code = patient_event_data.code.cat.add_categories([separator_token])
         patient_event_data.phecode = patient_event_data.phecode.cat.add_categories([separator_token])
@@ -280,6 +286,9 @@ class BiobankDataset:
         sep_rows.loc[:, 'code_type'] = 'token'
         sep_rows.loc[:, 'sorting_var'] = 1
         sep_rows = sep_rows.astype({'code_type': patient_event_data.code_type.dtype})
+        sep_rows = sep_rows.astype({'phecode': patient_event_data.phecode.dtype})
+        sep_rows = sep_rows.astype({'code': patient_event_data.code.dtype})
+        sep_rows = sep_rows.astype({'concept_id': patient_event_data.concept_id.dtype})
         assert sep_rows.phecode.cat.categories is patient_event_data.phecode.cat.categories
         assert sep_rows.code_type.cat.categories is patient_event_data.code_type.cat.categories
         assert sep_rows.code.cat.categories is patient_event_data.code.cat.categories
@@ -448,25 +457,27 @@ def main(
     # raw_patient_table = b.get_patient_base()
     # raw_patient_table.to_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
     # print('Raw. Total patients: {}'.format(raw_patient_table.eid.unique().shape[0]))
-
-    # d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str}
-    # patient_event_data_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data.csv')
-    # patient_event_data = None
-    # # patient_event_data = pd.read_csv(patient_event_data_path,
-    # #                                  dtype=d_types, parse_dates=['date'])
-    # # print('Within HES or primary care data. Total patients: {}, Total events: {}'.format(
-    # #     patient_event_data.eid.unique().shape[0],
-    # #     patient_event_data.shape[0]))
     #
+    # patient_event_data = b.get_patient_events(raw_patient_table)
+    d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str}
+    # patient_event_data_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data.csv')
+    # patient_event_data.to_csv(patient_event_data_path)
+    # patient_event_data = None
+    # patient_event_data = pd.read_csv(patient_event_data_path,
+    #                                  dtype=d_types, parse_dates=['date'])
+    # print('Within HES or primary care data. Total patients: {}, Total events: {}'.format(
+    #     patient_event_data.eid.unique().shape[0],
+    #     patient_event_data.shape[0]))
+
     # if patient_event_data is None:
     #     patient_event_data = b.omop_covert(patient_event_data_path=patient_event_data_path, chunksize=10_000)
     # else:
     #     patient_event_data = b.omop_covert(patient_event_data=patient_event_data)
     # print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
     #                                                                         patient_event_data.shape[0]))
-    #
+
     # patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.parquet')
-    # # # patient_event_data.to_parquet(patient_event_data_mapped_path, index=False)
+    # # patient_event_data.to_parquet(patient_event_data_mapped_path, index=False)
     # patient_event_data = pd.read_parquet(patient_event_data_mapped_path)
     # patient_event_data = b.phecode_convert(patient_event_data)
     # d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
@@ -474,37 +485,30 @@ def main(
     # patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
     # patient_event_data.date = pd.to_datetime(patient_event_data.date)
     #
-    # # print('After phecode convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-    # #                                                                          patient_event_data.shape[0]))
+    # print('After phecode convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+    #                                                                          patient_event_data.shape[0]))
     #
     # patient_event_data = patient_event_data[(patient_event_data.date.dt.year > 1950) &
     #                                         (patient_event_data.date.dt.year < 2021)]
     # print('Within Study period. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
     #                                                                          patient_event_data.shape[0]))
     #
-    # if with_codes == 'all':
-    #     phe_data = patient_event_data
-    #     phe_data.phecode = phe_data.phecode.astype(str).fillna(UNKNOWN_TOKEN).astype('category')
-    # elif with_codes == 'phecode':
-    #     phe_data = patient_event_data[patient_event_data.phecode.notna()]
-    # elif with_codes == 'omop':
-    #     phe_data = patient_event_data[patient_event_data.concept_id.notna()]
-    # else:
-    #     raise Exception("with_codes must be either  'all','phecode','omop'")
-    # del patient_event_data
     #
-    # print('Post Phecode mapping. Total patients: {}, Total events: {}'.format(phe_data.eid.unique().shape[0],
-    #                                                                           phe_data.shape[0]))
-    # phe_data = b.add_separator(phe_data)
-    # phe_data_dir = os.path.join(DATA_DIR, 'processed', with_codes)
-    # os.makedirs(phe_data_dir, exist_ok=True)
-    # phe_data_path = os.path.join(phe_data_dir, 'phe_data.csv')
+    # phe_data = b.add_separator(patient_event_data)
+    # del patient_event_data
+    phe_data_dir = os.path.join(DATA_DIR, 'processed', with_codes)
+    os.makedirs(phe_data_dir, exist_ok=True)
+    phe_data_path = os.path.join(phe_data_dir, 'phe_data.csv')
     # phe_data.to_csv(phe_data_path, index=False)
-    phe_data = pd.read_csv(os.path.join(DATA_DIR, 'processed', with_codes, 'phe_data.csv'), parse_dates=['date'],
+    phe_data = pd.read_csv(phe_data_path, parse_dates=['date'],
                            dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
                                   "age": 'str',
-                                  'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"})
-
+                                  'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
+    phe_data.concept_id = phe_data.concept_id.str.replace('\.0', '', regex=True)
+    phe_data.phecode = phe_data.phecode.fillna(UNKNOWN_TOKEN)
+    phe_data.concept_id = phe_data.concept_id.fillna(UNKNOWN_TOKEN)
+    phe_data.code = phe_data.code.fillna(UNKNOWN_TOKEN)
+    phe_data = phe_data.loc[:, ['eid', 'date', 'code', 'age', 'concept_id', 'phecode']]
     phe_lists = b.get_sequences_df(phe_data)
     phe_lists['length'] = phe_lists['phecode'].apply(
         lambda x: len([i for i in range(len(x)) if x[i] == SEPARATOR_TOKEN]))
@@ -519,25 +523,28 @@ def main(
     age_vocab = fit_vocab(phe_train.age.explode().astype(str))
     code_vocab = fit_vocab(phe_train.code.explode().astype(str), min_count=1000)
     phecode_vocab = fit_vocab(phe_train.phecode.explode().astype(str), min_proportion=0.00001)
-    phecode_vocab_top100 = fit_vocab(phe_train.phecode.explode().astype(str), top_n=100,)
+    phecode_vocab_top100 = fit_vocab(phe_train.phecode.explode().astype(str), top_n=100, )
     concept_vocab = fit_vocab(phe_train.concept_id.explode().astype(str), min_count=1000)
 
     age_vocab_len = len(list(age_vocab['token2idx'].keys()))
-    code_vocab_len =len(list(code_vocab['token2idx'].keys()))
+    code_vocab_len = len(list(code_vocab['token2idx'].keys()))
     phecode_vocab_len = len(list(phecode_vocab['token2idx'].keys()))
     phecode_vocab_top100_len = len(list(phecode_vocab_top100['token2idx'].keys()))
-    concept_vocab_len =len(list(concept_vocab['token2idx'].keys()))
+    concept_vocab_len = len(list(concept_vocab['token2idx'].keys()))
 
     save_pickle(age_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'age_vocab_{}.pkl'.format(age_vocab_len)))
     save_pickle(code_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'code_vocab_{}.pkl'.format(code_vocab_len)))
-    save_pickle(phecode_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_{}.pkl'.format(phecode_vocab_len)))
-    save_pickle(phecode_vocab_top100, os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_top100_{}.pkl'.format(phecode_vocab_top100_len)))
-    save_pickle(concept_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab_{}.pkl'.format(concept_vocab_len)))
-    age_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'age_vocab.pkl'))
-    code_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'code_vocab.pkl'))
-    phecode_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_top100_.pkl'))
-    concept_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab.pkl'))
-    print(len(list(vocab['token2idx'].keys())))
+    save_pickle(phecode_vocab,
+                os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_{}.pkl'.format(phecode_vocab_len)))
+    save_pickle(phecode_vocab_top100, os.path.join(DATA_DIR, 'processed', with_codes,
+                                                   'phecode_vocab_top100_{}.pkl'.format(phecode_vocab_top100_len)))
+    save_pickle(concept_vocab,
+                os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab_{}.pkl'.format(concept_vocab_len)))
+    # age_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'age_vocab.pkl'))
+    # code_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'code_vocab.pkl'))
+    # phecode_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_top100_.pkl'))
+    # concept_vocab = load_pickle(os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab.pkl'))
+    # print(len(list(phecode_vocab['token2idx'].keys())))
 
     for df, name in zip([phe_train, phe_val, phe_test], ['phe_train.parquet', 'phe_val.parquet', 'phe_test.parquet']):
         # df = pd.read_parquet(os.path.join(DATA_DIR, 'processed', with_codes, name))
