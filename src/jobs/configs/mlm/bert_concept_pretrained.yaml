@@ -2,22 +2,22 @@ trainer:
   logger:
     - class_path: pytorch_lightning.loggers.TensorBoardLogger
       init_args:
-        name: bert_concept
+        name: bert_concept_pretrained
         save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/tensorboard/
-  callbacks:
-    - class_path: pytorch_lightning.callbacks.EarlyStopping
-      init_args:
-        patience: 8
-        monitor: hp_metric
+#  callbacks:
+#    - class_path: pytorch_lightning.callbacks.EarlyStopping
+#      init_args:
+#        patience: 25
+#        monitor: hp_metric
+#        min_delta: 0
   max_epochs: 100
   check_val_every_n_epoch: 1
-  val_check_interval: 0.5
+  val_check_interval: 0.2
   enable_checkpointing: True
   num_sanity_val_steps: 2
   accumulate_grad_batches: 4
 data:
   debug: False
-#  pretrained_embedding_path: '/home/vauvelle/pycharm-sftp/ehrgnn/data/graph_full_211122_prone_32_edge_weights_2021-12-13.feather'
   token_col: concept_id
   label_col: phecode
   token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_4697.pkl
@@ -29,7 +29,7 @@ model:
   input_dim: 4697
 #  output_dim: 105
   output_dim: 794
-#  pretrained_embedding_path: '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pt'
+  pretrained_embedding_path: '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pt'
   embedding_dim: 32
   num_attention_heads: 2
   lr: 0.0001 # from auto lr find

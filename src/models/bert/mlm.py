@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as f
 import pytorch_pretrained_bert as Bert
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_pretrained_bert.modeling import BertPredictionHeadTransform
 from torchmetrics import AveragePrecision, MetricCollection, AUROC, Precision, Accuracy
-from src.models.bert.components import BertModel
+from src.models.bert.components import BertModel, CustomBertLMPredictionHead
 from src.models.bert.config import BertConfig
 
 import pytorch_lightning as pl
@@ -34,7 +35,9 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                 'age': False,
                 'position': True}
 
-        config = BertConfig(vocab_size=input_dim, hidden_size=embedding_dim,
+        shared_lm_input_output_weights = True if input_dim == output_dim else False
+
+        config = BertConfig(input_dim=input_dim, output_dim=output_dim, hidden_size=embedding_dim,
                             num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads,
                             intermediate_size=intermediate_size, hidden_act=hidden_act,
                             hidden_dropout_prob=hidden_dropout_prob,
@@ -42,7 +45,9 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                             max_position_embeddings=max_position_embeddings,
                             initializer_range=initializer_range,
                             seg_vocab_size=seg_vocab_size,
-                            age_vocab_size=age_vocab_size)
+                            age_vocab_size=age_vocab_size,
+                            shared_lm_input_output_weights=shared_lm_input_output_weights,
+                            pretrained_embedding_path=pretrained_embedding_path)
         super(BERTMLM, self).__init__(config)
 
         self.output_dim = output_dim
@@ -51,7 +56,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         self.temperature_scaling = temperature_scaling
 
         self.bert = BertModel(config, feature_dict)
-        self.cls = Bert.modeling.BertOnlyMLMHead(config, self.bert.embeddings.word_embeddings.weight)
+        self.cls = CustomBertLMPredictionHead(config, self.bert.embeddings.word_embeddings.weight)
         self.apply(self.init_bert_weights)
 
         self.loss_func = nn.CrossEntropyLoss(ignore_index=-1)
@@ -69,7 +74,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         self.valid_metrics = metrics.clone(prefix='val_')
         self.test_metrics = metrics.clone(prefix='test_')
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(config)
 
     def _shared_eval_step(self, batch, batch_idx):
         token_idx, age_idx, position, segment, mask_labels, noise_labels, mask = batch

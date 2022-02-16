@@ -15,13 +15,14 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 import re
 from tqdm import tqdm
+import pandas as pd
 
 
 class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, segment, age
     """
 
-    def __init__(self, config, feature_dict=None, pretrained=None):
+    def __init__(self, config, feature_dict=None):
         super(BertEmbeddings, self).__init__()
 
         if feature_dict is None:
@@ -35,11 +36,11 @@ class BertEmbeddings(nn.Module):
             self.feature_dict = feature_dict
 
         if feature_dict['word']:
-            if pretrained is None:
+            if config.pretrained_embedding_path is None:
                 self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
-            # else:
-            #     self.word_embeddings = nn.Embedding()
-
+            else:
+                self.word_embeddings = nn.Embedding.from_pretrained(
+                    embeddings=self._init_pretrained_graph_embedding(config.pretrained_embedding_path))
 
         if feature_dict['seg']:
             self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0)
@@ -48,7 +49,8 @@ class BertEmbeddings(nn.Module):
             self.age_embeddings = nn.Embedding(config.age_vocab_size, config.hidden_size, padding_idx=0)
 
         if feature_dict['position']:
-            self.posi_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size, padding_idx=0). \
+            self.posi_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size,
+                                                padding_idx=0). \
                 from_pretrained(
                 embeddings=self._init_posi_embedding(config.max_position_embeddings, config.hidden_size))
 
@@ -74,7 +76,6 @@ class BertEmbeddings(nn.Module):
         embeddings = self.dropout(embeddings)
         return embeddings
 
-
     def _init_posi_embedding(self, max_position_embedding, hidden_size):
         def even_code(pos, idx):
             return np.sin(pos / (10000 ** (2 * idx / hidden_size)))
@@ -96,6 +97,10 @@ class BertEmbeddings(nn.Module):
                 lookup_table[pos, idx] = odd_code(pos, idx)
 
         return torch.tensor(lookup_table)
+
+    def _init_pretrained_graph_embedding(self, pretrained_embedding_path) -> torch.Tensor:
+        pretrained_embedding = torch.load(pretrained_embedding_path).float()
+        return pretrained_embedding
 
 
 class BertModel(Bert.modeling.BertPreTrainedModel):
@@ -156,3 +161,32 @@ class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
         prediction_scores = self.cls(sequence_output)
 
         return prediction_scores
+
+
+class CustomBertLMPredictionHead(nn.Module):
+    """
+    Allows for different vocab for input and output
+    """
+
+    def __init__(self, config, bert_model_embedding_weights):
+        super(CustomBertLMPredictionHead, self).__init__()
+        self.transform = BertPredictionHeadTransform(config)
+
+        if config.shared_lm_input_output_weights:
+            # The output weights are the same as the input embeddings, but there is
+            # an output-only bias for each token.
+            self.decoder = nn.Linear(bert_model_embedding_weights.size(1),
+                                     bert_model_embedding_weights.size(0),
+                                     bias=False)
+            self.decoder.weight = bert_model_embedding_weights
+            self.bias = nn.Parameter(torch.zeros(bert_model_embedding_weights.size(0)))
+        else:
+            self.decoder = nn.Linear(bert_model_embedding_weights.size(1),
+                                     config.output_dim,
+                                     bias=False)
+            self.bias = nn.Parameter(torch.zeros(config.output_dim))
+
+    def forward(self, hidden_states):
+        hidden_states = self.transform(hidden_states)
+        hidden_states = self.decoder(hidden_states) + self.bias
+        return hidden_states

@@ -13,13 +13,15 @@ trainer:
 data:
   debug: False
 #  pretrained_embedding_path: '/home/vauvelle/pycharm-sftp/ehrgnn/data/graph_full_211122_prone_32_edge_weights_2021-12-13.feather'
-  token_col: phecode
+  token_col: concept_id
   label_col: phecode
-  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top100_105.pkl
+#  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top100_105.pkl
+#  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top100_105.pkl
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_4847.pkl
   label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top100_105.pkl
   batch_size: 64
   num_workers: 8
 model:
-  input_dim: 105
+  input_dim: 4847
   output_dim: 105
 
