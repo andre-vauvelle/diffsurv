@@ -7,6 +7,7 @@ from pytorch_pretrained_bert.modeling import BertPredictionHeadTransform
 from torchmetrics import AveragePrecision, MetricCollection, AUROC, Precision, Accuracy
 from src.models.bert.components import BertModel, CustomBertLMPredictionHead
 from src.models.bert.config import BertConfig
+from argparse import Namespace
 
 import pytorch_lightning as pl
 
@@ -37,6 +38,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
 
         shared_lm_input_output_weights = True if input_dim == output_dim else False
 
+        # TODO refactor
         config = BertConfig(input_dim=input_dim, output_dim=output_dim, hidden_size=embedding_dim,
                             num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads,
                             intermediate_size=intermediate_size, hidden_act=hidden_act,
@@ -54,6 +56,12 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         self.lr = lr
         self.warmup_proportion = warmup_proportion
         self.temperature_scaling = temperature_scaling
+        self.save_hyperparameters(
+            "embedding_dim",
+            "lr",
+            "num_attention_heads",
+            "pretrained_embedding_path",
+            "freeze_pretrained")
 
         self.bert = BertModel(config, feature_dict)
         self.cls = CustomBertLMPredictionHead(config, self.bert.embeddings.word_embeddings.weight)
@@ -70,11 +78,9 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
             ]
         )
 
-        self.train_metrics = metrics.clone(prefix='train_')
-        self.valid_metrics = metrics.clone(prefix='val_')
-        self.test_metrics = metrics.clone(prefix='test_')
-
-        self.save_hyperparameters(config)
+        self.train_metrics = metrics.clone(prefix='train/')
+        self.valid_metrics = metrics.clone(prefix='val/')
+        self.test_metrics = metrics.clone(prefix='test/')
 
     def _shared_eval_step(self, batch, batch_idx):
         token_idx, age_idx, position, segment, mask_labels, noise_labels, mask = batch
@@ -99,12 +105,12 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, logits_expanded, mask_labels_expanded = self._shared_eval_step(batch, batch_idx)
-        self.log('train_loss', loss)
+        self.log('train/loss', loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, logits_expanded, mask_labels_expanded = self._shared_eval_step(batch, batch_idx)
-        self.log('val_loss', loss, prog_bar=True)
+        self.log('val/loss', loss, prog_bar=True)
 
         predictions = f.softmax(logits_expanded.view(-1, self.output_dim), dim=1)
         keep = mask_labels_expanded.view(-1) != -1
@@ -116,7 +122,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         output = self.valid_metrics.compute()
         self.valid_metrics.reset()
         self.log_dict(output, prog_bar=True)
-        self.log('hp_metric', output['val_AveragePrecision'])
+        self.log('hp_metric', output['val/AveragePrecision'])
 
     def configure_optimizers(self):
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']

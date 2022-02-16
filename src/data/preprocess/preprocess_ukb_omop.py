@@ -7,9 +7,12 @@ from omni.common import load_pickle
 
 if __name__ == '__main__':
     save_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pt'
-    embeddings_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/graph_full_211122_prone_32_edge_weights_2021-12-13.feather'
+    embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.feather'
+
+    # save_path= '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt'
+    # embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.feather'
     concept_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/athena/CONCEPT.csv'
-    code_vocab_path = os.path.join(DATA_DIR, 'processed', 'omop', 'concept_vocab_4847.pkl')
+    code_vocab_path = os.path.join(DATA_DIR, 'processed', 'omop', 'concept_vocab_4697.pkl')
 
     embedding = pd.read_feather(embeddings_path)
     # concept = pd.read_csv(concept_path, sep='\t')
