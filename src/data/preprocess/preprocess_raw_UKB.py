@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import os
 
 import random
@@ -14,7 +12,7 @@ from ast import literal_eval
 import pyarrow
 from tqdm import tqdm
 
-from data.preprocess.utils import fit_vocab, get_phecode_map, get_omop_map, SYMBOL_IDX
+from data.preprocess.utils import fit_vocab, get_phecode_map, get_omop_map, SYMBOL_IDX, get_rxnorm_omop
 from definitions import DATA_DIR, EXTERNAL_DATA_DIR
 from src.omni.common import save_pickle, load_pickle
 
@@ -40,6 +38,7 @@ def config():
     diag_event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_diag.tsv'),
     opcs_event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_oper.tsv'),
     gp_event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'gp_clinical.tsv'),
+    gp_prescriptions_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'gp_scripts.tsv'),
     # External data (None patient sensitive)
     caliber_secondary_care_dict_path = os.path.join(EXTERNAL_DATA_DIR, 'caliber_secondary_care_dict.csv'),
     icd10_phecode = os.path.join(EXTERNAL_DATA_DIR, 'phecode_icd10.csv'),
@@ -56,6 +55,7 @@ class BiobankDataset:
                  diag_event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_diag.tsv'),
                  opcs_event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_oper.tsv'),
                  gp_event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'gp_clinical.tsv'),
+                 gp_prescriptions_data_path=os.path.join(DATA_DIR, 'interim', 'codes_gp_prescription_211124.feather'),
                  # External data (None patient sensitive)
                  caliber_secondary_care_dict_path=os.path.join(EXTERNAL_DATA_DIR, 'caliber_secondary_care_dict.csv'),
                  icd10_phecode=os.path.join(EXTERNAL_DATA_DIR, 'phecode_icd10.csv'),
@@ -69,6 +69,7 @@ class BiobankDataset:
         self.diag_event_data_path = diag_event_data_path
         self.opcs_event_data_path = opcs_event_data_path
         self.gp_event_data_path = gp_event_data_path
+        self.gp_prescriptions_data_path = gp_prescriptions_data_path
         self.caliber_secondary_care_dict_path = caliber_secondary_care_dict_path
         self.icd10_phecode = icd10_phecode
         self.read2_phecode = read2_phecode
@@ -114,6 +115,7 @@ class BiobankDataset:
         diag_data = pd.read_csv(self.diag_event_data_path, delimiter='\t')
         opcs_data = pd.read_csv(self.opcs_event_data_path, delimiter='\t', encoding='latin')
         gp_clinical = pd.read_csv(self.gp_event_data_path, delimiter='\t', encoding='latin')
+        gp_scripts = pd.read_feather(self.gp_prescriptions_data_path)
         gp_clinical.drop(columns=['data_provider', 'value1', 'value2', 'value3'], inplace=True)
 
         diag_data = pd.merge(diag_data, event_data, on=id_vars)  # diag_data = diag_data[diag_data.level != 3]
@@ -125,21 +127,25 @@ class BiobankDataset:
         opcs_data.loc[:, 'code'] = opcs_data.oper4
         gp_clinical.loc[:, 'code'] = gp_clinical.read_3.copy()
         gp_clinical.code.fillna(gp_clinical.read_2, inplace=True)
+        gp_scripts.loc[:, 'code'] = gp_scripts.concept_code  # RxNorm
 
         diag_data.loc[:, 'code_type'] = diag_data.level.map({1: 'diag_primary', 2: 'diag_secondary'})
         opcs_data.loc[:, 'code_type'] = opcs_data.level.map({1: 'oper_primary', 2: 'oper_secondary'})
         gp_clinical.loc[:, 'code_type'] = 'read_3'
         gp_clinical.loc[gp_clinical[gp_clinical.read_2.notna()].index, 'code_type'] = 'read_2'
+        gp_scripts.loc[:, 'code_type'] = 'gp_scripts'
 
         diag_data.loc[:, 'date'] = diag_data.epistart
         opcs_data.loc[:, 'date'] = opcs_data.opdate
         gp_clinical.loc[:, 'date'] = gp_clinical.event_dt
+        gp_scripts.loc[:, 'date'] = gp_scripts.date
 
         diag_data = diag_data.loc[:, desired_columns]
         opcs_data = opcs_data.loc[:, desired_columns]
         gp_clinical = gp_clinical.loc[:, desired_columns]
+        gp_scripts = gp_scripts.loc[:, desired_columns]
 
-        patient_event_data = pd.concat([diag_data, opcs_data, gp_clinical], axis=0)
+        patient_event_data = pd.concat([diag_data, opcs_data, gp_clinical, gp_scripts], axis=0)
 
         patient_event_data = pd.merge(patient_event_data, patient_base.loc[:, ['eid', 'yob']], how='inner',
                                       on='eid')
@@ -147,7 +153,7 @@ class BiobankDataset:
         patient_event_data.date = pd.to_datetime(patient_event_data.date)
         patient_event_data.loc[:, 'age'] = patient_event_data.date.dt.year - patient_event_data.yob
 
-        return patient_event_data
+        return patient_event_data.reset_index()
 
     def caliber_convert(self, patient_event_data):
         secondary_caliber = pd.read_csv(self.caliber_secondary_care_dict_path)
@@ -190,14 +196,16 @@ class BiobankDataset:
         """
 
         omop_map = get_omop_map()
+        omop_map = omop_map.drop(columns='concept_name')
 
         def merge_process(chunk):
             chunk.loc[:, 'code_type_match'] = chunk.code_type.str.split('_').str[0]
             a = chunk.query(
-                "code_type_match == 'read'")
+                "code_type_match == 'read' or code_type_match == 'gp'")  # HACK to fix above
             idx = a.index
             values = a.code_type
             chunk.loc[idx, 'code_type_match'] = values
+            chunk.code = chunk.code.astype(str)
 
             chunk = chunk.merge(omop_map, on=['code', 'code_type_match'], how='left')
             return chunk
@@ -209,7 +217,8 @@ class BiobankDataset:
                        'yob': 'Int16', 'age': str}
             ped = pd.read_csv(patient_event_data_path, chunksize=chunksize, iterator=True)
             patient_event_data = pd.concat(
-                [merge_process(chunk) for chunk in tqdm(ped, total=14_000, desc='merging omop id')], axis=0, )
+                [merge_process(chunk) for chunk in tqdm(ped, total=int(206766864 / chunksize), desc='merging omop id')],
+                axis=0, )
             del ped
         else:
             patient_event_data.loc[:, 'code_type_match'] = patient_event_data.code_type.str.split('_').str[0]
@@ -412,6 +421,19 @@ def train_val_test(df_input, stratify_colname=None, frac_train=0.6, frac_val=0.2
     return df_train, df_val, df_test
 
 
+# b = BiobankDataset(
+#     patient_base_raw_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'patient_base.csv'),
+#     event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin.tsv'),
+#     diag_event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_diag.tsv'),
+#     opcs_event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_oper.tsv'),
+#     gp_event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'gp_clinical.tsv'),
+#     # External data (None patient sensitive)
+#     caliber_secondary_care_dict_path=os.path.join(EXTERNAL_DATA_DIR, 'caliber_secondary_care_dict.csv'),
+#     icd10_phecode=os.path.join(EXTERNAL_DATA_DIR, 'phecode_icd10.csv'),
+#     read2_phecode=os.path.join(EXTERNAL_DATA_DIR, 'read2_to_phecode.csv'),
+#     readctv3_phecode=os.path.join(EXTERNAL_DATA_DIR, 'readctv3_to_phecode.csv'),
+#     verbose=True
+#     )
 @ex.automain
 def main(
         patient_base_raw_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'patient_base.csv'),
@@ -428,82 +450,62 @@ def main(
     from src.omni.common import save_pickle
     from ast import literal_eval
 
-    # patient_base_raw_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'patient_base.csv')
-    # event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin.tsv')
-    # diag_event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_diag.tsv')
-    # opcs_event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin_oper.tsv')
-    # gp_event_data_path = os.path.join(DATA_DIR, 'raw', 'application58356', 'gp_clinical.tsv')
-    # # External data (None patient sensitive)
-    # caliber_secondary_care_dict_path = os.path.join(EXTERNAL_DATA_DIR, 'caliber_secondary_care_dict.csv')
-    # icd10_phecode = os.path.join(EXTERNAL_DATA_DIR, 'phecode_icd10.csv')
-    # read2_phecode = os.path.join(EXTERNAL_DATA_DIR, 'read2_to_phecode.csv')
-    # readctv3_phecode = os.path.join(EXTERNAL_DATA_DIR, 'readctv3_to_phecode.csv')
-    # verbose = True
     # TODO: add argparse support
     with_codes = "omop"  # 'phecode'  # 'phecode'
 
-    b = BiobankDataset(
-        patient_base_raw_path,
-        event_data_path,
-        diag_event_data_path,
-        opcs_event_data_path,
-        gp_event_data_path,
-        caliber_secondary_care_dict_path,
-        icd10_phecode,
-        read2_phecode,
-        readctv3_phecode,
-        verbose
-    )
+    b = BiobankDataset()
     # raw_patient_table = b.get_patient_base()
     # raw_patient_table.to_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
+    # raw_patient_table = pd.read_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
+
     # print('Raw. Total patients: {}'.format(raw_patient_table.eid.unique().shape[0]))
-    #
+
     # patient_event_data = b.get_patient_events(raw_patient_table)
-    d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str}
-    # patient_event_data_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data.csv')
+    # d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str}
+    patient_event_data_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data.csv')
     # patient_event_data.to_csv(patient_event_data_path)
-    # patient_event_data = None
+    patient_event_data = None
     # patient_event_data = pd.read_csv(patient_event_data_path,
     #                                  dtype=d_types, parse_dates=['date'])
-    # print('Within HES or primary care data. Total patients: {}, Total events: {}'.format(
-    #     patient_event_data.eid.unique().shape[0],
-    #     patient_event_data.shape[0]))
 
-    # if patient_event_data is None:
-    #     patient_event_data = b.omop_covert(patient_event_data_path=patient_event_data_path, chunksize=10_000)
-    # else:
-    #     patient_event_data = b.omop_covert(patient_event_data=patient_event_data)
-    # print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-    #                                                                         patient_event_data.shape[0]))
+    if patient_event_data is None:
+        patient_event_data = b.omop_covert(patient_event_data_path=patient_event_data_path, chunksize=10_000)
+    else:
+        print('Within HES or primary care data. Total patients: {}, Total events: {}'.format(
+            patient_event_data.eid.unique().shape[0],
+            patient_event_data.shape[0]))
+        patient_event_data = b.omop_covert(patient_event_data=patient_event_data)
 
-    # patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.parquet')
-    # # patient_event_data.to_parquet(patient_event_data_mapped_path, index=False)
+    print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+                                                                            patient_event_data.shape[0]))
+
+    patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.parquet')
+    patient_event_data.to_parquet(patient_event_data_mapped_path, index=False)
     # patient_event_data = pd.read_parquet(patient_event_data_mapped_path)
-    # patient_event_data = b.phecode_convert(patient_event_data)
-    # d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
-    #            'concept_id': 'category', 'phecode': 'category'}
-    # patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
-    # patient_event_data.date = pd.to_datetime(patient_event_data.date)
-    #
-    # print('After phecode convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-    #                                                                          patient_event_data.shape[0]))
-    #
-    # patient_event_data = patient_event_data[(patient_event_data.date.dt.year > 1950) &
-    #                                         (patient_event_data.date.dt.year < 2021)]
-    # print('Within Study period. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-    #                                                                          patient_event_data.shape[0]))
-    #
-    #
-    # phe_data = b.add_separator(patient_event_data)
-    # del patient_event_data
+    patient_event_data = b.phecode_convert(patient_event_data)
+    d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
+               'concept_id': 'category', 'phecode': 'category'}
+    patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
+    patient_event_data.date = pd.to_datetime(patient_event_data.date)
+
+    print('After phecode convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+                                                                               patient_event_data.shape[0]))
+
+    patient_event_data = patient_event_data[(patient_event_data.date.dt.year > 1950) &
+                                            (patient_event_data.date.dt.year < 2021)]
+    print('Within Study period. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+                                                                             patient_event_data.shape[0]))
+
+    phe_data = b.add_separator(patient_event_data)
+    del patient_event_data
     phe_data_dir = os.path.join(DATA_DIR, 'processed', with_codes)
     os.makedirs(phe_data_dir, exist_ok=True)
     phe_data_path = os.path.join(phe_data_dir, 'phe_data.csv')
-    # phe_data.to_csv(phe_data_path, index=False)
-    phe_data = pd.read_csv(phe_data_path, parse_dates=['date'],
-                           dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
-                                  "age": 'str',
-                                  'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
+    phe_data.to_csv(phe_data_path, index=False)
+    # phe_data = pd.read_csv(phe_data_path, parse_dates=['date'],
+    #                        dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
+    #                               "age": 'str',
+    #                               'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
     phe_data.concept_id = phe_data.concept_id.str.replace('\.0', '', regex=True)
     phe_data.phecode = phe_data.phecode.fillna(UNKNOWN_TOKEN)
     phe_data.concept_id = phe_data.concept_id.fillna(UNKNOWN_TOKEN)

@@ -187,7 +187,7 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
 
         # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
 
-        return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask_labels, noise_labels]),
+        return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, future_idx]),
 
     def __len__(self):
         return len(self.tokens)

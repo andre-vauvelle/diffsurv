@@ -29,7 +29,7 @@ class BertEmbeddings(nn.Module):
             self.feature_dict = {
                 'word': True,
                 'seg': True,
-                'age': True,
+                'age': False,
                 'position': True
             }
         else:
@@ -40,7 +40,8 @@ class BertEmbeddings(nn.Module):
                 self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
             else:
                 self.word_embeddings = nn.Embedding.from_pretrained(
-                    embeddings=self._init_pretrained_graph_embedding(config.pretrained_embedding_path))
+                    embeddings=self._init_pretrained_graph_embedding(config.pretrained_embedding_path),
+                    freeze=config.freeze_pretrained, padding_idx=0)
 
         if feature_dict['seg']:
             self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0)
@@ -109,7 +110,6 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         self.embeddings = BertEmbeddings(config=config, feature_dict=feature_dict)
         self.encoder = Bert.modeling.BertEncoder(config=config)
         self.pooler = Bert.modeling.BertPooler(config)
-        self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None,
                 output_all_encoded_layers=True):
@@ -153,7 +153,7 @@ class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
         super(BertForMaskedLM, self).__init__(config, feature_dict)
         self.bert = BertModel(config, feature_dict)
         self.cls = Bert.modeling.BertOnlyMLMHead(config, self.bert.embeddings.word_embeddings.weight)
-        self.apply(self.init_bert_weights)
+        # self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None):
         sequence_output, _ = self.bert(input_ids, age_ids, seg_ids, posi_ids, attention_mask,

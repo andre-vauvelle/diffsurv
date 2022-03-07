@@ -2,8 +2,8 @@ model:
   input_dim: 4697
   output_dim: 794
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pt
-  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt
-  freeze_pretrained: False
+#  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt
+#  freeze_pretrained: False
   embedding_dim: 256
   num_attention_heads: 2
   lr: 0.0001 # from auto lr find
@@ -11,8 +11,8 @@ data:
   debug: False
   token_col: concept_id
   label_col: phecode
-  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_4697.pkl
-  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_794.pkl
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/concept_vocab_1472.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phecode_vocab_1096.pkl
   batch_size: 64
   num_workers: 8
 trainer:
@@ -27,6 +27,7 @@ trainer:
           - concept_id
           - mlm
           - pretrained
+          - in_gnn
         log_model: True
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping

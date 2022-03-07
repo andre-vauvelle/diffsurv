@@ -6,7 +6,8 @@ import torch
 import numpy as np
 
 from tqdm import tqdm
-from definitions import EXTERNAL_DATA_DIR
+from definitions import EXTERNAL_DATA_DIR, DATA_DIR
+from tqdm.auto import tqdm
 
 SYMBOL_IDX = {
     "PAD": 0,
@@ -76,9 +77,39 @@ def get_icd_omop():
     icd10_omop = icd10_omop.sort_values(by='concept_class_id').drop_duplicates(subset=['code'],
                                                                                keep='last')  # 19109 -> 15776 shapes
 
-    icd10_omop = icd10_omop.loc[:, ['code', 'concept_id']]
+    icd10_omop.rename(columns={'concept_name_y': 'concept_name'}, inplace=True)
+    icd10_omop = icd10_omop.loc[:, ['code', 'concept_id', 'concept_name']]
     icd10_omop.loc[:, 'code_type_match'] = 'diag'
     return icd10_omop
+
+
+def get_rxnorm_omop():
+    """
+    Maps ICD to ICD OMOP IDs. Then, ICD OMOP IDs to SNOWMED OMOP ID standard terms.
+    :return:
+    """
+    # TODO: refactor out
+    mapping_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/'
+    vocab_dir = f"{mapping_path}/athena"
+    vocab = {
+        "concept": pd.read_csv(f"{vocab_dir}/CONCEPT.csv", sep='\t'),
+        # "domain": pd.read_csv(f"{vocab_dir}/DOMAIN.csv", sep='\t'),
+        # "class": pd.read_csv(f"{vocab_dir}/CONCEPT_CLASS.csv", sep='\t'),
+        # "relationship": pd.read_csv(f"{vocab_dir}/RELATIONSHIP.csv", sep='\t'),
+        # "drug_strength": pd.read_csv(f"{vocab_dir}/DRUG_STRENGTH.csv", sep='\t'),
+        # "vocabulary": pd.read_csv(f"{vocab_dir}/VOCABULARY.csv", sep='\t'),
+        # "concept_synonym": pd.read_csv(f"{vocab_dir}/CONCEPT_SYNONYM.csv", sep='\t'),
+        # "concept_ancestor": pd.read_csv(f"{vocab_dir}/CONCEPT_ANCESTOR.csv", sep='\t'),
+        "concept_relationship": pd.read_csv(f"{vocab_dir}/CONCEPT_RELATIONSHIP.csv", sep='\t')
+    }
+    rx_omop = vocab["concept"].query("vocabulary_id=='RxNorm'")[
+        ["concept_code", "concept_id", "concept_name", "domain_id", "concept_class_id",
+         "vocabulary_id"]]  # .rename(columns={"concept_code": "code"})
+    rx_omop = rx_omop.loc[:, ['concept_name', 'concept_code', 'concept_id']]
+    rx_omop.rename(columns={'concept_code': 'code'}, inplace=True)
+    rx_omop.loc[:, 'code_type_match'] = 'gp_scripts'
+
+    return rx_omop
 
 
 def get_opcs_omop():
@@ -138,7 +169,8 @@ def get_opcs_omop():
     opcs_omop = opcs_omop.sort_values(by='concept_class_id').drop_duplicates(subset=['code'],
                                                                              keep='first')  # 19109 -> 15776 shapes
 
-    opcs_omop = opcs_omop.loc[:, ['code', 'concept_id']]
+    opcs_omop.rename(columns={"concept_name_y": "concept_name"}, inplace=True)
+    opcs_omop = opcs_omop.loc[:, ['code', 'concept_id', 'concept_name']]
     opcs_omop.loc[:, 'code_type_match'] = 'oper'
     return opcs_omop
 
@@ -204,8 +236,8 @@ def get_read_omop():
     rc_map.concept_id = rc_map.concept_id.astype(int)
     rc_map = rc_map.merge(vocab_concept, left_on='concept_id', right_on='concept_code', how='left')
 
-    rc_map = rc_map.loc[:, ['code', 'concept_id_y', 'code_type_match']]
-    rc_map.columns = ['code', 'concept_id', 'code_type_match']
+    rc_map = rc_map.loc[:, ['code', 'concept_id_y', 'concept_name', 'code_type_match']]
+    rc_map.columns = ['code', 'concept_id', 'concept_name', 'code_type_match']
 
     return rc_map
 
@@ -217,8 +249,10 @@ def get_omop_map(save_path=os.path.join(EXTERNAL_DATA_DIR, 'omop_map.csv')):
         opcs_omop = get_opcs_omop()
         read_omop = get_read_omop()
         icd10_omop = get_icd_omop()
+        rxnorm_omop = get_rxnorm_omop()
 
-        omop_map = pd.concat([opcs_omop, read_omop, icd10_omop], axis=0)
+
+        omop_map = pd.concat([opcs_omop, read_omop, icd10_omop, rxnorm_omop], axis=0)
 
         omop_map.to_csv(save_path, index=False)
 
@@ -238,7 +272,7 @@ def align_pretrained_embedding(embedding, token2idx, save_path):
 
     found_embeddings = embedding_df.dropna()
     # check
-    # missing = embedding_df[embedding_df.embedding.isna()]
+    missing = embedding_df[embedding_df.embedding.isna()]
     # omop_map = get_omop_map()
     # omop_map.query("concept_id in @missing.concept_id").code_type_match.value_counts()
     # missing = missing.loc[6:, :] # remove symbols
@@ -254,6 +288,7 @@ def align_pretrained_embedding(embedding, token2idx, save_path):
 
     embedding_tensor = torch.from_numpy(rand_embeddings)
     torch.save(embedding_tensor, save_path)
+    return embedding_tensor, missing
 
 
 def vocab_omop_embedding(embedding, token2idx,

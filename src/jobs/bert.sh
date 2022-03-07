@@ -18,7 +18,7 @@ source /share/apps/source_files/cuda/cuda-10.1.source
 conda activate
 
 CONFIG_FILE=$1
-#python scripts/train_bert_mlm.py fit --config="${CONFIG_FILE:=jobs/configs/mlm/bert.yaml}"
+#python scripts/train_bert_mlm.py fit --config="${CONFIG_FILE:=jobs/configs/mlm/bert_phecode.yaml}"
 python scripts/train_bert_mlm.py $@
 date
 

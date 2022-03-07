@@ -27,7 +27,8 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                  feature_dict=None, num_attention_heads=12, intermediate_size=256, hidden_act="gelu",
                  attention_probs_dropout_prob=0.22, max_position_embeddings=256, initializer_range=0.02,
                  age_vocab_size=None, seg_vocab_size=2,
-                 pretrained_embedding_path=None, freeze_pretrained=False, single_multihot_training=True,
+                 pretrained_embedding_path=None,
+                 freeze_pretrained=False
                  ):
         if feature_dict is None:
             feature_dict = {
@@ -49,7 +50,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                             seg_vocab_size=seg_vocab_size,
                             age_vocab_size=age_vocab_size,
                             shared_lm_input_output_weights=shared_lm_input_output_weights,
-                            pretrained_embedding_path=pretrained_embedding_path)
+                            pretrained_embedding_path=pretrained_embedding_path, freeze_pretrained=freeze_pretrained)
         super(BERTMLM, self).__init__(config)
 
         self.output_dim = output_dim
@@ -74,7 +75,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                 AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
                 Precision(compute_on_step=False, average='micro'),
                 Accuracy(compute_on_step=False, average='micro'),
-                # AUROC(num_classes=self.output_dim, compute_on_step=False)
+                AUROC(num_classes=self.output_dim, compute_on_step=False)
             ]
         )
 
@@ -138,3 +139,24 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                                                lr=self.lr,
                                                warmup=self.warmup_proportion)
         return optimizer
+
+
+if __name__ == '__main__':
+    from src.models.bert.mlm import BERTMLM
+    gnn_bert = BERTMLM(input_dim=4697, output_dim=794,
+                       pretrained_embedding_path='/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/gnn_embeddings_256_1gr128qk_20220217.pt',
+                       freeze_pretrained=False,
+                       embedding_dim=256,
+                       num_attention_heads=2,
+                       lr=0.0001
+                       )
+    prone_bert = BERTMLM(input_dim=4697, output_dim=794,
+                       pretrained_embedding_path='/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt',
+                       freeze_pretrained=False,
+                       embedding_dim=256,
+                       num_attention_heads=2,
+                       lr=0.0001
+                       )
+
+    gnn_bert.bert.embeddings.word_embeddings.weight
+    prone_bert.bert.embeddings.word_embeddings.weight

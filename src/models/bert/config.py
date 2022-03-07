@@ -6,7 +6,7 @@ class BertConfig(Bert.modeling.BertConfig):
     def __init__(self, input_dim, output_dim, hidden_size, num_hidden_layers, num_attention_heads, intermediate_size,
                  hidden_act, hidden_dropout_prob, attention_probs_dropout_prob, max_position_embeddings,
                  initializer_range, seg_vocab_size, age_vocab_size, shared_lm_input_output_weights,
-                 pretrained_embedding_path):
+                 pretrained_embedding_path, freeze_pretrained):
         super(BertConfig, self).__init__(
             vocab_size_or_config_json_file=input_dim,
             hidden_size=hidden_size,
@@ -24,3 +24,4 @@ class BertConfig(Bert.modeling.BertConfig):
         self.shared_lm_input_output_weights = shared_lm_input_output_weights
         self.output_dim = output_dim
         self.pretrained_embedding_path = pretrained_embedding_path
+        self.freeze_pretrained = freeze_pretrained
