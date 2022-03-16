@@ -37,7 +37,7 @@ class BertEmbeddings(nn.Module):
 
         if feature_dict['word']:
             if config.pretrained_embedding_path is None:
-                self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
+                self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0, sparse=False)
             else:
                 self.word_embeddings = nn.Embedding.from_pretrained(
                     embeddings=self._init_pretrained_graph_embedding(config.pretrained_embedding_path),
@@ -167,7 +167,6 @@ class CustomBertLMPredictionHead(nn.Module):
     """
     Allows for different vocab for input and output
     """
-
     def __init__(self, config, bert_model_embedding_weights):
         super(CustomBertLMPredictionHead, self).__init__()
         self.transform = BertPredictionHeadTransform(config)

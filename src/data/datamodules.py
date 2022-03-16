@@ -68,7 +68,7 @@ class DataModuleMLM(AbstractDataModule):
                  label_col='phecode',
                  token_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab_top100_105.pkl'),
                  label_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab_top100_105.pkl'),
-                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'age_vocab_90.pkl'),
+                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'age_vocab_89.pkl'),
                  train_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_train.parquet'),
                  val_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_val.parquet'),
                  test_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_test.parquet'),
@@ -117,12 +117,12 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                  label_col='phecode',
                  token_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab_top100_105.pkl'),
                  label_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab_top100_105.pkl'),
-                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'age_vocab_90.pkl'),
+                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'age_vocab_89.pkl'),
                  train_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_train.parquet'),
                  val_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_val.parquet'),
                  test_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_test.parquet'),
                  covariates_path=os.path.join(
-                     os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet')),
+                     os.path.join(DATA_DIR, 'processed', 'covariates', 'patient_base.parquet')),
                  batch_size=32,
                  max_len_seq=256,
                  num_workers=1,
@@ -131,6 +131,17 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         super().__init__(token_col, label_col, token_vocab_path, label_vocab_path, age_vocab_path,
                          train_data_path, val_data_path, test_data_path, covariates_path, batch_size, max_len_seq,
                          num_workers, debug)
+
+    # @staticmethod
+    # def get_weightings(train_dataset=None):
+    #     if train_dataset is not None:
+    #         labels = [train_dataset.__getitem__(i)[-1] for i in range(len(train_dataset))]
+    #         labels = torch.stack(labels).cpu()
+    #         class_weights = 1 / labels.sum(axis=0)
+    #         torch.save(class_weights, os.path.join(DATA_DIR, 'interim', 'class_weights'))
+    #     else:
+    #         class_weights = torch.load()
+    #     return class_weights
 
     def train_dataloader(self):
         covariates = pd.read_parquet(self.covariates_path)
@@ -157,10 +168,13 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         return DataLoader(val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
+        covariates = pd.read_parquet(self.covariates_path)
         test_data = pd.read_parquet(self.test_data_path)
         test_data = test_data.head(1_000) if self.debug else test_data
-        test_dataset = DatasetMLM(test_data, self.token_vocab['token2idx'], self.label_vocab['token2idx'],
-                                  self.age_vocab['token2idx'],
-                                  max_len=self.max_len_seq, token_col=self.token_col, label_col=self.label_col,
-                                  mask_prob=self.mask_prob)
+        val_dataset = DatasetAssessmentRiskPredict(test_data, self.token_vocab['token2idx'],
+                                                   self.label_vocab['token2idx'],
+                                                   self.age_vocab['token2idx'],
+                                                   max_len=self.max_len_seq, token_col=self.token_col,
+                                                   label_col=self.label_col,
+                                                   covariates=covariates)
         return DataLoader(test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)

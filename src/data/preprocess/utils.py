@@ -251,7 +251,6 @@ def get_omop_map(save_path=os.path.join(EXTERNAL_DATA_DIR, 'omop_map.csv')):
         icd10_omop = get_icd_omop()
         rxnorm_omop = get_rxnorm_omop()
 
-
         omop_map = pd.concat([opcs_omop, read_omop, icd10_omop, rxnorm_omop], axis=0)
 
         omop_map.to_csv(save_path, index=False)
@@ -263,6 +262,29 @@ def reformat_gnn_embedding(embedding):
     embedding.columns = ['concept_id', 'embedding']
     embedding.concept_id = embedding.concept_id.str.split('_').str[1]
     return embedding
+
+
+# csvcut -c 'eid,31-0.0,34-0.0,53-0.0,54-0.0,21003-0.0' 58356.csv > /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/covariates.csv
+def get_covariates(covariates_path=None):
+    if os.path.exists(covariates_path):
+        return pd.read_parquet(covariates_path)
+    else:
+        path = '/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/covariates/covariates.csv'
+        patient_base = pd.read_csv(path, low_memory=False, encoding='latin')
+        patient_base.rename(columns={
+            "31-0.0": "sex",
+            "34-0.0": "yob",
+            "52-0.0": "mob",
+            "54-0.0": "center_ass",
+            "53-0.0": "date_ass",
+            "21003-0.0": "age_ass",
+        }, inplace=True)
+        # patient_base.loc[:, "dob"] = pd.to_datetime(patient_base.apply(
+        #     lambda x: '{}/{}/01'.format(x.yob, x.mob) if x is not None else '{}/07/01'.format(x.yob), axis=1))
+        patient_base.date_ass = pd.to_datetime(patient_base.date_ass)
+        patient_base.loc[:, "year_ass"] = patient_base.date_ass.dt.year
+        patient_base.to_parquet(os.path.join(DATA_DIR, 'processed', "covariates", "patient_base.parquet"))
+        return patient_base
 
 
 def align_pretrained_embedding(embedding, token2idx, save_path):

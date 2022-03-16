@@ -1,0 +1,9 @@
+data:
+  token_col: concept_id
+  label_col: phecode
+  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_train.parquet
+  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_val.parquet
+  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_test.parquet
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_4809.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_695.pkl
+

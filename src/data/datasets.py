@@ -7,6 +7,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 
 from data.preprocess.utils import SYMBOL_IDX
+from collections import defaultdict
 
 
 def drop_mask(tokens, symbol='MASK'):
@@ -149,45 +150,74 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         # year_ass
         # age_ass
 
-        year_ass = cov.year_ass
+        date_ass = cov.date_ass.values[0]
         age = self.age.iloc[index]
 
-        # Add Buffer
-        history_idx = (self.date.dt.year < year_ass)
-        future_idx = ~history_idx
-
+        # extract data
         tokens = self.tokens.iloc[index]
         labels = self.labels.iloc[index]
+        # Extract days time difference
+        dates = self.date.iloc[index]
+        times = (dates - date_ass).astype('timedelta64[D]').astype(int)
 
-        # extract data
-        age = self.age.iloc[index][(-self.max_len + 1):]
-        tokens = self.tokens.iloc[index][(-self.max_len + 1):]
-        labels = self.labels.iloc[index][(-self.max_len + 1):]
+        # TODO: Add Buffer?
+        history_idx = (times <= 0)
+        future_idx = ~history_idx
 
-        # avoid data cut with first element to be 'SEP'
-        if tokens[0] != 'SEP':
-            tokens = np.append(np.array(['CLS']), tokens)
-            labels = np.append(np.array(['CLS']), labels)
-            age = np.append(np.array(age[0]), age)
-        else:
-            tokens[0] = 'CLS'
-            labels[0] = 'CLS'
+        # Get only tokens before or after assessment and keep only max_len events
+        history_tokens = tokens[history_idx][(-self.max_len + 1):]
+        future_labels = labels[future_idx][(-self.max_len + 1):]
+        future_times = times[future_idx][(-self.max_len + 1):]
 
+        future_labels_keep = (future_labels != 'nan') & ~np.isin(future_labels, list(SYMBOL_IDX.keys()))
+        future_labels_k = future_labels[future_labels_keep]
+        future_times_k = future_times[future_labels_keep]
+
+        future_labels_u, future_label_times = self._get_first_times(future_labels_k, future_times_k)
+
+        label_idx = get_token2idx(future_labels_u, self.label2idx)
+
+        label_oh = torch.nn.functional.one_hot(torch.LongTensor(label_idx), num_classes=len(self.label2idx))
+        label_multihot = (label_oh > 0).any(axis=0).float()
+
+        # Feels hacky but it's just adding the days from assessment to the oh encoding
+        label_times = label_multihot.long()
+        label_idx.reverse(), future_label_times.reverse()  # reversed to add first time rather than last for duplicates
+        label_times[label_idx] = torch.LongTensor(future_label_times)
+
+        history_tokens = np.append(np.array(['CLS']), history_tokens)
+        age = np.append(np.array(age[0]), age)
+
+        # used for attention mask the padding
+        mask = np.ones(self.max_len)
+        mask[len(history_tokens):] = 0
 
         # pad age_col sequence and code_col sequence
         age = pad_sequence(age, self.max_len)
-        tokens = pad_sequence(tokens, self.max_len)
-        labels = pad_sequence(labels, self.max_len)
+        history_tokens = pad_sequence(history_tokens, self.max_len)
         age_idx = get_token2idx(age, self.age2idx)
-        token_idx = get_token2idx(tokens, self.token2idx)
-        label_idx = get_token2idx(labels, self.label2idx)
+        token_idx = get_token2idx(history_tokens, self.token2idx)
 
-        position = position_idx(tokens)
-        segment = index_seg(tokens)
+        position = position_idx(history_tokens)
+        segment = index_seg(history_tokens)
 
         # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
+        input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask]),
+        label_tuple = (label_multihot, label_times)
 
-        return *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, future_idx]),
+        return input_tuple, label_tuple
+
+    @staticmethod
+    def _get_first_times(future_labels_k, future_times_k):
+        label_store = []
+        label_time_store = []
+        for (l, t) in zip(future_labels_k, future_times_k):
+            if l not in label_store:
+                label_store.append(l)
+                label_time_store.append(t)
+            else:
+                pass
+        return label_store, label_time_store
 
     def __len__(self):
         return len(self.tokens)

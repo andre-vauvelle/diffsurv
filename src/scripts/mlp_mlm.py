@@ -1,8 +1,8 @@
 import torch
-from pytorch_lightning.utilities.cli import LightningCLI, SaveConfigCallback
+from pytorch_lightning.utilities.cli import LightningCLI
 
 from data.datamodules import DataModuleMLM
-from models.bert.mlm import BERTMLM
+from modules.mlp import MultilayerMLM
 
 
 class CustomLightningCLI(LightningCLI):
@@ -22,7 +22,7 @@ class CustomLightningCLI(LightningCLI):
 
 def cli_main():
     cli = CustomLightningCLI(
-        BERTMLM, DataModuleMLM, seed_everything_default=42,
+        MultilayerMLM, DataModuleMLM, seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,
     )

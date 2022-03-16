@@ -12,7 +12,8 @@ from ast import literal_eval
 import pyarrow
 from tqdm import tqdm
 
-from data.preprocess.utils import fit_vocab, get_phecode_map, get_omop_map, SYMBOL_IDX, get_rxnorm_omop
+from data.preprocess.utils import fit_vocab, get_phecode_map, get_omop_map, SYMBOL_IDX, get_rxnorm_omop, \
+    reformat_gnn_embedding
 from definitions import DATA_DIR, EXTERNAL_DATA_DIR
 from src.omni.common import save_pickle, load_pickle
 
@@ -451,40 +452,55 @@ def main(
     from ast import literal_eval
 
     # TODO: add argparse support
-    with_codes = "omop"  # 'phecode'  # 'phecode'
+    with_codes = "in_gnn"  # 'phecode'  # 'phecode'
+    # with_codes = "in_gnn"
 
     b = BiobankDataset()
-    # raw_patient_table = b.get_patient_base()
-    # raw_patient_table.to_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
-    # raw_patient_table = pd.read_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
-
-    # print('Raw. Total patients: {}'.format(raw_patient_table.eid.unique().shape[0]))
-
-    # patient_event_data = b.get_patient_events(raw_patient_table)
-    # d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str}
-    patient_event_data_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data.csv')
-    # patient_event_data.to_csv(patient_event_data_path)
-    patient_event_data = None
-    # patient_event_data = pd.read_csv(patient_event_data_path,
-    #                                  dtype=d_types, parse_dates=['date'])
-
-    if patient_event_data is None:
-        patient_event_data = b.omop_covert(patient_event_data_path=patient_event_data_path, chunksize=10_000)
+    # # raw_patient_table = b.get_patient_base()
+    # # raw_patient_table.to_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
+    # # raw_patient_table = pd.read_parquet(os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet'))
+    #
+    # # print('Raw. Total patients: {}'.format(raw_patient_table.eid.unique().shape[0]))
+    #
+    # # patient_event_data = b.get_patient_events(raw_patient_table)
+    # # d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str}
+    # patient_event_data_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data.csv')
+    # # patient_event_data.to_csv(patient_event_data_path)
+    # patient_event_data = None
+    # # patient_event_data = pd.read_csv(patient_event_data_path,
+    # #                                  dtype=d_types, parse_dates=['date'])
+    #
+    # if patient_event_data is None:
+    #     patient_event_data = b.omop_covert(patient_event_data_path=patient_event_data_path, chunksize=10_000)
+    # else:
+    #     print('Within HES or primary care data. Total patients: {}, Total events: {}'.format(
+    #         patient_event_data.eid.unique().shape[0],
+    #         patient_event_data.shape[0]))
+    #     patient_event_data = b.omop_covert(patient_event_data=patient_event_data)
+    #
+    # print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+    #                                                                         patient_event_data.shape[0]))
+    #
+    if with_codes == 'in_gnn':
+        patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.csv')
+        d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str,
+                   'concept_id': str}
+        patient_event_data = pd.read_csv(patient_event_data_mapped_path, dtype=d_types)
+        patient_event_data.concept_id = patient_event_data.concept_id.str.replace('\.0', '', regex=True)
+        embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/gnn_embeddings_256_1gr128qk_20220217.feather'
+        embedding = pd.read_feather(embeddings_path)
+        embedding = reformat_gnn_embedding(embedding)
+        patient_event_data.head(100)[patient_event_data.head(100).concept_id.isin(embedding.concept_id)].shape
+        patient_event_data = patient_event_data[patient_event_data.concept_id.isin(embedding.concept_id)]
+        # patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped_in_gnn.csv')
     else:
-        print('Within HES or primary care data. Total patients: {}, Total events: {}'.format(
-            patient_event_data.eid.unique().shape[0],
-            patient_event_data.shape[0]))
-        patient_event_data = b.omop_covert(patient_event_data=patient_event_data)
+        patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.csv')
+        patient_event_data = pd.read_csv(patient_event_data_mapped_path)
 
-    print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-                                                                            patient_event_data.shape[0]))
-
-    patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.parquet')
-    patient_event_data.to_parquet(patient_event_data_mapped_path, index=False)
-    # patient_event_data = pd.read_parquet(patient_event_data_mapped_path)
-    patient_event_data = b.phecode_convert(patient_event_data)
     d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
                'concept_id': 'category', 'phecode': 'category'}
+    # patient_event_data.to_csv(patient_event_data_mapped_path, index=False)
+    patient_event_data = b.phecode_convert(patient_event_data)
     patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
     patient_event_data.date = pd.to_datetime(patient_event_data.date)
 
@@ -507,9 +523,9 @@ def main(
     #                               "age": 'str',
     #                               'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
     phe_data.concept_id = phe_data.concept_id.str.replace('\.0', '', regex=True)
-    phe_data.phecode = phe_data.phecode.fillna(UNKNOWN_TOKEN)
-    phe_data.concept_id = phe_data.concept_id.fillna(UNKNOWN_TOKEN)
-    phe_data.code = phe_data.code.fillna(UNKNOWN_TOKEN)
+    phe_data.phecode = phe_data.phecode.astype(str).fillna(UNKNOWN_TOKEN)
+    phe_data.concept_id = phe_data.concept_id.astype(str).fillna(UNKNOWN_TOKEN)
+    phe_data.code = phe_data.code.astype(str).fillna(UNKNOWN_TOKEN)
     phe_data = phe_data.loc[:, ['eid', 'date', 'code', 'age', 'concept_id', 'phecode']]
     phe_lists = b.get_sequences_df(phe_data)
     phe_lists['length'] = phe_lists['phecode'].apply(

@@ -1,0 +1,49 @@
+trainer:
+  logger:
+    - class_path: src.models.loggers.CustomWandbLogger
+      init_args:
+        project: ehrgnn
+        entity: qndre
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+        tags:
+          - bert
+          - concept_id
+          - risk
+          - coxph
+        log_model: True
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        patience: 30
+        monitor: val/loss
+        min_delta: 0.0
+        mode: min
+  max_epochs: 100
+  check_val_every_n_epoch: 1
+  val_check_interval: 0.2
+  enable_checkpointing: True
+  num_sanity_val_steps: 2
+  accumulate_grad_batches: 4
+  default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/
+data:
+  debug: False
+  token_col: concept_id
+  label_col: phecode
+  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_train.parquet
+  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_val.parquet
+  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_test.parquet
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_4809.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_695.pkl
+  batch_size: 64
+  num_workers: 8
+model:
+  #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pt
+  #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt
+  #  freeze_pretrained: False
+  embedding_dim: 256
+  num_attention_heads: 2
+  lr: 0.0005 # from auto lr find
+#  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
+#  embedding_dim: 32
+
+#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/ehrgnn/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
