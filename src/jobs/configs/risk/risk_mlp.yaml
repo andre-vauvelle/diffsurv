@@ -12,6 +12,7 @@ trainer:
           - relu
           - in_gnn
           - new_vocab
+          - layernorm
         log_model: True
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping

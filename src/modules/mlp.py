@@ -11,6 +11,7 @@ import pandas as pd
 
 from data.preprocess.utils import vocab_omop_embedding, SYMBOL_IDX
 from definitions import TENSORBOARD_DIR
+from models.heads import PredictionHead
 from modules.loss import CoxPHLoss
 
 
@@ -20,7 +21,7 @@ class MultilayerBase(pl.LightningModule):
                  input_dim=1390,
                  output_dim=1390, embedding_dim=128, hidden_dropout_prob=0.2, lr=1e-4,
                  pretrained_embedding_path=None, freeze_pretrained=False, single_multihot_training=True, count=True,
-                 covariates=None):
+                 used_covs=('age_ass', 'sex'), only_covs=False):
         super().__init__()
         self.lr = lr
 
@@ -28,6 +29,7 @@ class MultilayerBase(pl.LightningModule):
         self.loss_func = CoxPHLoss()
         self.single_multihot_training = single_multihot_training
         self.count = count
+        self.used_covs = used_covs
 
         if pretrained_embedding_path is None:
             self.embed = nn.EmbeddingBag(num_embeddings=input_dim, embedding_dim=embedding_dim,
@@ -39,13 +41,12 @@ class MultilayerBase(pl.LightningModule):
             # pretrained_embedding = pd.read_feather(pretrained_embedding_path)
             self.embed = nn.EmbeddingBag.from_pretrained(pretrained_embedding, freeze=freeze_pretrained, sparse=True)
 
-        self.relu = torch.nn.ReLU()
-
-        if covariates is not None:
-            self.covariates = covariates
-            self.head = nn.Linear(in_features=embedding_dim + len(covariates), out_features=output_dim)
+        if self.used_covs is None:
+            self.head = PredictionHead(in_features=embedding_dim, out_features=output_dim)
+        elif self.used_covs is not None and only_covs:
+            self.head = PredictionHead(in_features=len(self.used_covs), out_features=output_dim)
         else:
-            self.head = nn.Linear(in_features=embedding_dim, out_features=output_dim)
+            self.head = PredictionHead(in_features=embedding_dim + len(self.used_covs), out_features=output_dim)
 
         self.save_hyperparameters()
 
@@ -65,10 +66,15 @@ class MultilayerBase(pl.LightningModule):
         self.valid_metrics = metrics.clone(prefix='val/')
         self.test_metrics = metrics.clone(prefix='test/')
 
-    def forward(self, idx) -> torch.Tensor:
-        pooled = self.embed(idx)
+    def forward(self, idx, covariates=None) -> torch.Tensor:
+        if not self.only_covs:
+            pooled = covariates
+        else:
+            pooled = self.embed(idx)
+            if self.used_covs is not None:
+                pooled = torch.cat((pooled, covariates), dim=1)
 
-        logits = self.head(self.relu(pooled))
+        logits = self.head(pooled)
 
         return logits
 
@@ -137,11 +143,11 @@ class MultilayerRisk(MultilayerBase):
                          )
 
     def _shared_eval_step(self, batch, batch_idx):
-        (token_idx, age_idx, position, segment, mask), (label_multihot, label_times) = batch
+        (token_idx, age_idx, position, segment, mask, covariates), (label_multihot, label_times) = batch
         if not self.count:
             token_idx = self._row_unique(token_idx)
 
-        logits = self(token_idx)
+        logits = self(token_idx, covariates=covariates)
 
         loss = self.loss_func(logits, label_multihot, label_times)
         return loss, logits, label_multihot

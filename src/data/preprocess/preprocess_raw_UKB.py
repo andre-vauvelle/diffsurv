@@ -514,6 +514,7 @@ def main(
     #
     # phe_data = b.add_separator(patient_event_data)
     # del patient_event_data
+    with_codes = "omop"  # 'phecode'  # 'phecode'
     phe_data_dir = os.path.join(DATA_DIR, 'processed', with_codes)
     os.makedirs(phe_data_dir, exist_ok=True)
     phe_data_path = os.path.join(phe_data_dir, 'phe_data.csv')
@@ -521,7 +522,7 @@ def main(
     phe_data = pd.read_csv(phe_data_path, parse_dates=['date'],
                            dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
                                   "age": 'str',
-                                  'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
+                                  'code_type_match': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
     phe_data.concept_id = phe_data.concept_id.str.replace('\.0', '', regex=True)
     phe_data.phecode = phe_data.phecode.astype(str).fillna(UNKNOWN_TOKEN)
     phe_data.concept_id = phe_data.concept_id.astype(str).fillna(UNKNOWN_TOKEN)

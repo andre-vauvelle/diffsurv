@@ -7,6 +7,7 @@ from pytorch_pretrained_bert.modeling import BertPredictionHeadTransform
 from torch.optim import SparseAdam
 from torchmetrics import AveragePrecision, MetricCollection, AUROC, Precision, Accuracy
 
+from models.heads import PredictionHead
 from modules.loss import CoxPHLoss
 from src.models.bert.components import BertModel, CustomBertLMPredictionHead
 from src.models.bert.config import BertConfig
@@ -63,10 +64,10 @@ class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
 
         self.bert = BertModel(config, feature_dict)
         # self.cls = CustomBertLMPredictionHead(config, self.bert.embeddings.word_embeddings.weight)
-        self.cls = nn.Linear(embedding_dim, output_dim)
+        self.head = PredictionHead(embedding_dim, output_dim)
         self.apply(self.init_bert_weights)
 
-        self.loss_func = nn.BCEWithLogitsLoss(pos_weight=weighting)  # Required for multihot training
+        # self.loss_func = nn.BCEWithLogitsLoss(pos_weight=weighting)  # Required for multihot training
         self.loss_func = CoxPHLoss()
 
         metrics = MetricCollection(
@@ -92,7 +93,7 @@ class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                                      attention_mask=mask,
                                      output_all_encoded_layers=False)
 
-        logits = self.cls(pooled_output)
+        logits = self.head(pooled_output)
         return logits
 
     def training_step(self, batch, batch_idx):
@@ -169,7 +170,7 @@ class BERTRisk(BertBase):
                                        pretrained_embedding_path=pretrained_embedding_path,
                                        freeze_pretrained=freeze_pretrained)
 
-        self.cls = nn.Linear(embedding_dim, output_dim)
+        self.head = PredictionHead(embedding_dim, output_dim)
         self.apply(self.init_bert_weights)
 
         # self.loss_func = nn.BCEWithLogitsLoss(pos_weight=weighting)  # Required for multihot training
@@ -226,7 +227,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                                       pretrained_embedding_path=pretrained_embedding_path,
                                       freeze_pretrained=freeze_pretrained)
 
-        self.cls = CustomBertLMPredictionHead(self.config, self.bert.embeddings.word_embeddings.weight)
+        self.head = CustomBertLMPredictionHead(self.config, self.bert.embeddings.word_embeddings.weight)
         self.apply(self.init_bert_weights)
 
         self.loss_func = nn.CrossEntropyLoss(ignore_index=-1)
@@ -249,7 +250,7 @@ class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
         unpooled_output, _ = self.bert(input_ids=token_idx, age_ids=age_idx, seg_ids=segment, posi_ids=position,
                                        attention_mask=mask,
                                        output_all_encoded_layers=False)
-        logits = self.cls(unpooled_output)
+        logits = self.head(unpooled_output)
         return logits
 
     def validation_step(self, batch, batch_idx):

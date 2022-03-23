@@ -91,7 +91,7 @@ def flip(p):
 
 class AbstractDataset(Dataset):
     def __init__(self, records, token2idx, label2idx, age2idx, max_len,
-                 token_col='concept_id', label_col='phecode', age_col='age', covariates=None):
+                 token_col='concept_id', label_col='phecode', age_col='age', covariates=None, used_covs=None):
         """
 
         :param records:
@@ -111,6 +111,7 @@ class AbstractDataset(Dataset):
         self.label2idx = label2idx
         self.age2idx = age2idx
         self.covariates = covariates
+        self.used_covs = used_covs
 
     def __getitem__(self, index):
         """
@@ -123,7 +124,7 @@ class AbstractDataset(Dataset):
 
 
 class DatasetAssessmentRiskPredict(AbstractDataset):
-    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, **kwargs):
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, **kwargs):
         """
 
         :param records:
@@ -131,8 +132,8 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         :param age2idx:
         :param max_len:
         """
-        super().__init__(records, token2idx, label2idx, age2idx, max_len, **kwargs)
-        self.covariates = covariates
+        super().__init__(records=records, token2idx=token2idx, label2idx=label2idx, age2idx=age2idx, max_len=max_len,
+                         covariates=covariates, used_covs=used_covs, **kwargs)
 
     def __getitem__(self, index):
         """
@@ -201,8 +202,14 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         position = position_idx(history_tokens)
         segment = index_seg(history_tokens)
 
+        covariates = np.array([])
+        if 'age_ass' in self.used_covs:
+            covariates = np.append(covariates, cov.age_ass)
+        if 'sex' in self.used_covs:
+            covariates = np.append(covariates, cov.sex)
+
         # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
-        input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask]),
+        input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask, covariates]),
         label_tuple = (label_multihot, label_times)
 
         return input_tuple, label_tuple

@@ -25,6 +25,7 @@ class AbstractDataModule(pl.LightningDataModule):
                  batch_size=32,
                  max_len_seq=256,
                  num_workers=1,
+                 used_covs=('age_ass', 'sex'),
                  debug=True):
         super().__init__()
         self.token_col = token_col
@@ -42,6 +43,7 @@ class AbstractDataModule(pl.LightningDataModule):
         self.test_data_path = test_data_path
 
         self.covariates_path = covariates_path
+        self.used_covs = used_covs
         self.input_dim = len(list(self.token_vocab['token2idx'].keys()))
         self.output_dim = len(list(self.label_vocab['token2idx'].keys()))
         self.debug = debug
@@ -75,12 +77,14 @@ class DataModuleMLM(AbstractDataModule):
                  batch_size=32,
                  max_len_seq=256,
                  num_workers=1,
+                 used_covs=('age_ass', 'sex'),
                  debug=False,
                  mask_prob=0.2):
         super().__init__(token_col=token_col, label_col=label_col, token_vocab_path=token_vocab_path,
                          label_vocab_path=label_vocab_path, age_vocab_path=age_vocab_path,
                          train_data_path=train_data_path, val_data_path=val_data_path, test_data_path=test_data_path,
-                         batch_size=batch_size, max_len_seq=max_len_seq, num_workers=num_workers, debug=debug)
+                         batch_size=batch_size, max_len_seq=max_len_seq, num_workers=num_workers, used_covs=used_covs,
+                         debug=debug)
         self.mask_prob = mask_prob
 
     def train_dataloader(self):
@@ -126,11 +130,12 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                  batch_size=32,
                  max_len_seq=256,
                  num_workers=1,
+                 used_covs=('age_ass', 'sex'),
                  debug=False,
                  ):
         super().__init__(token_col, label_col, token_vocab_path, label_vocab_path, age_vocab_path,
                          train_data_path, val_data_path, test_data_path, covariates_path, batch_size, max_len_seq,
-                         num_workers, debug)
+                         num_workers, used_covs=used_covs, debug=debug)
 
     # @staticmethod
     # def get_weightings(train_dataset=None):
@@ -152,8 +157,9 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                                                      self.age_vocab['token2idx'],
                                                      max_len=self.max_len_seq, token_col=self.token_col,
                                                      label_col=self.label_col,
-                                                     covariates=covariates)
-        return DataLoader(train_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+                                                     covariates=covariates,
+                                                     used_covs=self.used_covs)
+        return DataLoader(train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         covariates = pd.read_parquet(self.covariates_path)
@@ -164,7 +170,8 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                                                    self.age_vocab['token2idx'],
                                                    max_len=self.max_len_seq, token_col=self.token_col,
                                                    label_col=self.label_col,
-                                                   covariates=covariates)
+                                                   covariates=covariates,
+                                                   used_covs=self.used_covs)
         return DataLoader(val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
@@ -176,5 +183,6 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                                                    self.age_vocab['token2idx'],
                                                    max_len=self.max_len_seq, token_col=self.token_col,
                                                    label_col=self.label_col,
-                                                   covariates=covariates)
+                                                   covariates=covariates,
+                                                   used_covs=self.used_covs)
         return DataLoader(test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
