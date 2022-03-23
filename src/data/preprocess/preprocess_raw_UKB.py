@@ -452,7 +452,7 @@ def main(
     from ast import literal_eval
 
     # TODO: add argparse support
-    with_codes = "in_gnn"  # 'phecode'  # 'phecode'
+    with_codes = "omop"  # 'phecode'  # 'phecode'
     # with_codes = "in_gnn"
 
     b = BiobankDataset()
@@ -481,47 +481,47 @@ def main(
     # print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
     #                                                                         patient_event_data.shape[0]))
     #
-    if with_codes == 'in_gnn':
-        patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.csv')
-        d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str,
-                   'concept_id': str}
-        patient_event_data = pd.read_csv(patient_event_data_mapped_path, dtype=d_types)
-        patient_event_data.concept_id = patient_event_data.concept_id.str.replace('\.0', '', regex=True)
-        embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/gnn_embeddings_256_1gr128qk_20220217.feather'
-        embedding = pd.read_feather(embeddings_path)
-        embedding = reformat_gnn_embedding(embedding)
-        patient_event_data.head(100)[patient_event_data.head(100).concept_id.isin(embedding.concept_id)].shape
-        patient_event_data = patient_event_data[patient_event_data.concept_id.isin(embedding.concept_id)]
-        # patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped_in_gnn.csv')
-    else:
-        patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.csv')
-        patient_event_data = pd.read_csv(patient_event_data_mapped_path)
-
-    d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
-               'concept_id': 'category', 'phecode': 'category'}
-    # patient_event_data.to_csv(patient_event_data_mapped_path, index=False)
-    patient_event_data = b.phecode_convert(patient_event_data)
-    patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
-    patient_event_data.date = pd.to_datetime(patient_event_data.date)
-
-    print('After phecode convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-                                                                               patient_event_data.shape[0]))
-
-    patient_event_data = patient_event_data[(patient_event_data.date.dt.year > 1950) &
-                                            (patient_event_data.date.dt.year < 2021)]
-    print('Within Study period. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
-                                                                             patient_event_data.shape[0]))
-
-    phe_data = b.add_separator(patient_event_data)
-    del patient_event_data
+    # if with_codes == 'in_gnn':
+    #     patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.csv')
+    #     d_types = {'eid': 'Int64', 'date': str, 'code_type': str, 'code': str, 'yob': 'Int16', 'age': str,
+    #                'concept_id': str}
+    #     patient_event_data = pd.read_csv(patient_event_data_mapped_path, dtype=d_types)
+    #     patient_event_data.concept_id = patient_event_data.concept_id.str.replace('\.0', '', regex=True)
+    #     embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/gnn_embeddings_256_1gr128qk_20220217.feather'
+    #     embedding = pd.read_feather(embeddings_path)
+    #     embedding = reformat_gnn_embedding(embedding)
+    #     patient_event_data.head(100)[patient_event_data.head(100).concept_id.isin(embedding.concept_id)].shape
+    #     patient_event_data = patient_event_data[patient_event_data.concept_id.isin(embedding.concept_id)]
+    #     # patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped_in_gnn.csv')
+    # else:
+    #     patient_event_data_mapped_path = os.path.join(DATA_DIR, 'interim', 'patient_event_data_mapped.csv')
+    #     patient_event_data = pd.read_csv(patient_event_data_mapped_path)
+    #
+    # d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
+    #            'concept_id': 'category', 'phecode': 'category'}
+    # # patient_event_data.to_csv(patient_event_data_mapped_path, index=False)
+    # patient_event_data = b.phecode_convert(patient_event_data)
+    # patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
+    # patient_event_data.date = pd.to_datetime(patient_event_data.date)
+    #
+    # print('After phecode convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+    #                                                                            patient_event_data.shape[0]))
+    #
+    # patient_event_data = patient_event_data[(patient_event_data.date.dt.year > 1950) &
+    #                                         (patient_event_data.date.dt.year < 2021)]
+    # print('Within Study period. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
+    #                                                                          patient_event_data.shape[0]))
+    #
+    # phe_data = b.add_separator(patient_event_data)
+    # del patient_event_data
     phe_data_dir = os.path.join(DATA_DIR, 'processed', with_codes)
     os.makedirs(phe_data_dir, exist_ok=True)
     phe_data_path = os.path.join(phe_data_dir, 'phe_data.csv')
-    phe_data.to_csv(phe_data_path, index=False)
-    # phe_data = pd.read_csv(phe_data_path, parse_dates=['date'],
-    #                        dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
-    #                               "age": 'str',
-    #                               'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
+    # phe_data.to_csv(phe_data_path, index=False)
+    phe_data = pd.read_csv(phe_data_path, parse_dates=['date'],
+                           dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
+                                  "age": 'str',
+                                  'code_type': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
     phe_data.concept_id = phe_data.concept_id.str.replace('\.0', '', regex=True)
     phe_data.phecode = phe_data.phecode.astype(str).fillna(UNKNOWN_TOKEN)
     phe_data.concept_id = phe_data.concept_id.astype(str).fillna(UNKNOWN_TOKEN)
@@ -539,10 +539,10 @@ def main(
     phe_train, phe_val, phe_test = train_val_test(phe_lists)
 
     age_vocab = fit_vocab(phe_train.age.explode().astype(str))
-    code_vocab = fit_vocab(phe_train.code.explode().astype(str), min_count=1000)
-    phecode_vocab = fit_vocab(phe_train.phecode.explode().astype(str), min_proportion=0.00001)
-    phecode_vocab_top100 = fit_vocab(phe_train.phecode.explode().astype(str), top_n=100, )
-    concept_vocab = fit_vocab(phe_train.concept_id.explode().astype(str), min_count=1000)
+    code_vocab = fit_vocab(phe_train.code.explode().astype(str), min_count=1)
+    phecode_vocab = fit_vocab(phe_train.phecode.explode().astype(str), min_proportion=0.00000)
+    phecode_vocab_top100 = fit_vocab(phe_train.phecode.explode().astype(str), top_n=1000, )
+    concept_vocab = fit_vocab(phe_train.concept_id.explode().astype(str), min_count=1)
 
     age_vocab_len = len(list(age_vocab['token2idx'].keys()))
     code_vocab_len = len(list(code_vocab['token2idx'].keys()))

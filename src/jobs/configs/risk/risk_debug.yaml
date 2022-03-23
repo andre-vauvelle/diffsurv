@@ -9,6 +9,7 @@ trainer:
           - mlp
           - concept_id
           - risk
+          - relu
         log_model: True
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
@@ -22,7 +23,7 @@ trainer:
   val_check_interval: 0.2
   enable_checkpointing: True
   num_sanity_val_steps: 2
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 8
   default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/
 data:
   debug: False
@@ -36,7 +37,9 @@ data:
   batch_size: 64
   num_workers: 8
 model:
-  count: False
-  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
-  embedding_dim: 32
+  count: True
+  lr: 0.0005
+#  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
+#  embedding_dim: 32
+
 #ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/ehrgnn/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt

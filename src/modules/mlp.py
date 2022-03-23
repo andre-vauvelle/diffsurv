@@ -11,6 +11,7 @@ import pandas as pd
 
 from data.preprocess.utils import vocab_omop_embedding, SYMBOL_IDX
 from definitions import TENSORBOARD_DIR
+from modules.loss import CoxPHLoss
 
 
 class MultilayerBase(pl.LightningModule):
@@ -23,7 +24,8 @@ class MultilayerBase(pl.LightningModule):
         super().__init__()
         self.lr = lr
 
-        self.loss_func = nn.BCEWithLogitsLoss()  # Required for multihot training
+        # self.loss_func = nn.BCEWithLogitsLoss()  # Required for multihot training
+        self.loss_func = CoxPHLoss()
         self.single_multihot_training = single_multihot_training
         self.count = count
 
@@ -135,13 +137,13 @@ class MultilayerRisk(MultilayerBase):
                          )
 
     def _shared_eval_step(self, batch, batch_idx):
-        token_idx, age_idx, position, segment, mask, label_multihot = batch
+        (token_idx, age_idx, position, segment, mask), (label_multihot, label_times) = batch
         if not self.count:
             token_idx = self._row_unique(token_idx)
 
         logits = self(token_idx)
 
-        loss = self.loss_func(logits, label_multihot)
+        loss = self.loss_func(logits, label_multihot, label_times)
         return loss, logits, label_multihot
 
     def training_step(self, batch, batch_idx, optimizer_idx):

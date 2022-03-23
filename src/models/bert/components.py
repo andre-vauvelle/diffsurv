@@ -167,6 +167,7 @@ class CustomBertLMPredictionHead(nn.Module):
     """
     Allows for different vocab for input and output
     """
+
     def __init__(self, config, bert_model_embedding_weights):
         super(CustomBertLMPredictionHead, self).__init__()
         self.transform = BertPredictionHeadTransform(config)
