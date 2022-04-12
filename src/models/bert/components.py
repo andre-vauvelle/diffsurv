@@ -22,7 +22,7 @@ class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, segment, age
     """
 
-    def __init__(self, config, feature_dict=None):
+    def __init__(self, config, feature_dict=None, sparse=True):
         super(BertEmbeddings, self).__init__()
 
         if feature_dict is None:
@@ -37,21 +37,21 @@ class BertEmbeddings(nn.Module):
 
         if feature_dict['word']:
             if config.pretrained_embedding_path is None:
-                self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0, sparse=False)
+                self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)
             else:
                 self.word_embeddings = nn.Embedding.from_pretrained(
                     embeddings=self._init_pretrained_graph_embedding(config.pretrained_embedding_path),
                     freeze=config.freeze_pretrained, padding_idx=0)
 
         if feature_dict['seg']:
-            self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0)
+            self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)
 
         if feature_dict['age']:
-            self.age_embeddings = nn.Embedding(config.age_vocab_size, config.hidden_size, padding_idx=0)
+            self.age_embeddings = nn.Embedding(config.age_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)
 
         if feature_dict['position']:
             self.posi_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size,
-                                                padding_idx=0). \
+                                                padding_idx=0, sparse=sparse). \
                 from_pretrained(
                 embeddings=self._init_posi_embedding(config.max_position_embeddings, config.hidden_size))
 
@@ -107,7 +107,7 @@ class BertEmbeddings(nn.Module):
 class BertModel(Bert.modeling.BertPreTrainedModel):
     def __init__(self, config, feature_dict):
         super(BertModel, self).__init__(config)
-        self.embeddings = BertEmbeddings(config=config, feature_dict=feature_dict)
+        self.embed = BertEmbeddings(config=config, feature_dict=feature_dict)
         self.encoder = Bert.modeling.BertEncoder(config=config)
         self.pooler = Bert.modeling.BertPooler(config)
 
@@ -137,7 +137,7 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
-        embedding_output = self.embeddings(input_ids, age_ids, seg_ids, posi_ids)
+        embedding_output = self.embed(input_ids, age_ids, seg_ids, posi_ids)
         encoded_layers = self.encoder(embedding_output,
                                       extended_attention_mask,
                                       output_all_encoded_layers=output_all_encoded_layers)
@@ -152,7 +152,7 @@ class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
     def __init__(self, config, feature_dict):
         super(BertForMaskedLM, self).__init__(config, feature_dict)
         self.bert = BertModel(config, feature_dict)
-        self.cls = Bert.modeling.BertOnlyMLMHead(config, self.bert.embeddings.word_embeddings.weight)
+        self.cls = Bert.modeling.BertOnlyMLMHead(config, self.bert.embed.word_embeddings.weight)
         # self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None):

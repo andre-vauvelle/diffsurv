@@ -197,10 +197,18 @@ def get_phecode_map():
     read3_phecode = read3_phecode.loc[:, ['code', 'code_type_match', 'phecode']]
 
     phecode_lookup = pd.concat([icd_phecode, read2_phecode, read3_phecode], axis=0)
+
+    phecode_lookup.phecode = phecode_lookup.phecode.astype(str)
+    phecode_lookup.phecode = phecode_lookup.phecode.str.replace('\.0', '', regex=False)
+
+    #add new line to pandas dataframe
+
     return phecode_lookup
 
 
+
 def get_read_omop():
+
     mapping_tables_dir = '/SAN/ihibiobank/denaxaslab/andre/UKBB/data/external/Mapping Tables/'
     rc2_map = pd.read_csv(
         os.path.join(mapping_tables_dir, "Updated/Not Clinically Assured/rcmap_uk_20200401000001.txt"), sep='\t')
@@ -375,10 +383,13 @@ def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, label
     proportions = counts / counts.sum()
     if min_count is not None:
         excluded_tokens = set(counts[counts < min_count].index)
+        print(f'Excluding {counts[counts<min_count].sum()} tokens with count < {min_count}')
     elif min_proportion is not None:
         excluded_tokens = set(proportions[proportions < min_proportion].index)
+        print(f'Excluding {proportions[proportions<min_proportion].sum()} tokens with count < {min_count}')
     elif top_n is not None:
         excluded_tokens = set(counts.iloc[top_n:].index)
+        print(f'Excluding {counts.iloc[top_n:].sum()} tokens with count < {min_count}')
     else:
         excluded_tokens = set()
 

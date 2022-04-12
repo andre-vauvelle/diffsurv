@@ -11,6 +11,9 @@ class CustomLightningCLI(LightningCLI):
         # TODO: remove symbols from label space?
         parser.link_arguments("data.input_dim", "model.input_dim", apply_on="instantiate")
         parser.link_arguments("data.output_dim", "model.output_dim", apply_on="instantiate")
+        parser.link_arguments("data.label_vocab", "model.label_vocab", apply_on="instantiate")
+        parser.link_arguments("data.grouping_labels", "model.grouping_labels", apply_on="instantiate")
+        parser.link_arguments("data.weightings", "model.weightings", apply_on="instantiate")
 
 
 # class CustomSaveConfigCallback(SaveConfigCallback):

@@ -9,6 +9,7 @@ from torchmetrics import AveragePrecision, MetricCollection, AUROC, Precision, A
 
 from models.heads import PredictionHead
 from modules.loss import CoxPHLoss
+from modules.tasks import RiskMixin
 from src.models.bert.components import BertModel, CustomBertLMPredictionHead
 from src.models.bert.config import BertConfig
 
@@ -28,7 +29,7 @@ class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                  age_vocab_size=None, seg_vocab_size=2,
                  pretrained_embedding_path=None,
                  freeze_pretrained=False,
-                 weighting=None,
+                 used_covs=('age_ass', 'sex'),
                  ):
         if feature_dict is None:
             feature_dict = {
@@ -48,28 +49,23 @@ class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                             seg_vocab_size=seg_vocab_size,
                             age_vocab_size=age_vocab_size,
                             shared_lm_input_output_weights=None,
-                            pretrained_embedding_path=pretrained_embedding_path, freeze_pretrained=freeze_pretrained)
-        super(BertBase, self).__init__(config)
+                            pretrained_embedding_path=pretrained_embedding_path, freeze_pretrained=freeze_pretrained
+                            )
+        super().__init__(config)
 
         self.output_dim = output_dim
         self.lr = lr
         self.warmup_proportion = warmup_proportion
         self.temperature_scaling = temperature_scaling
-        self.save_hyperparameters(
-            "embedding_dim",
-            "lr",
-            "num_attention_heads",
-            "pretrained_embedding_path",
-            "freeze_pretrained")
+        self.used_covs = used_covs
 
         self.bert = BertModel(config, feature_dict)
+        in_features = embedding_dim if used_covs is None else embedding_dim + len(used_covs)
+        self.head = PredictionHead(in_features, output_dim)
         # self.cls = CustomBertLMPredictionHead(config, self.bert.embeddings.word_embeddings.weight)
-        self.head = PredictionHead(embedding_dim, output_dim)
         self.apply(self.init_bert_weights)
 
-        # self.loss_func = nn.BCEWithLogitsLoss(pos_weight=weighting)  # Required for multihot training
-        self.loss_func = CoxPHLoss()
-
+        # TODO: Consider moving to mixin
         metrics = MetricCollection(
             [
                 AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
@@ -86,53 +82,36 @@ class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
     def _shared_eval_step(self, batch, batch_idx):
         rank_zero_warn("`_shared_eval_step` must be implemented to be used with the Lightning Trainer")
 
-    def forward(self, input_tuple) -> torch.Tensor:
+    def forward(self, input_tuple, covariates) -> torch.Tensor:
+
         token_idx, age_idx, position, segment, mask = input_tuple
 
-        _, pooled_output = self.bert(input_ids=token_idx, age_ids=age_idx, seg_ids=segment, posi_ids=position,
-                                     attention_mask=mask,
-                                     output_all_encoded_layers=False)
+        _, pooled = self.bert(input_ids=token_idx, age_ids=age_idx, seg_ids=segment, posi_ids=position,
+                              attention_mask=mask,
+                              output_all_encoded_layers=False)
+        if self.used_covs is not None:
+            pooled = torch.cat((pooled, covariates), dim=1)
 
-        logits = self.head(pooled_output)
+        logits = self.head(pooled)
         return logits
-
-    def training_step(self, batch, batch_idx):
-        loss, logits, label_multihot = self._shared_eval_step(batch, batch_idx)
-        self.log('train/loss', loss)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        loss, logits, label_multihot = self._shared_eval_step(batch, batch_idx)
-        self.log('val/loss', loss, prog_bar=True)
-
-        predictions = torch.sigmoid(logits)
-        self.valid_metrics.update(predictions, label_multihot.int())
-
-    def on_validation_epoch_end(self) -> None:
-        output = self.valid_metrics.compute()
-        self.valid_metrics.reset()
-        self.log_dict(output, prog_bar=True)
-        self.log('hp_metric', output['val/AveragePrecision'])
 
     def configure_optimizers(self):
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
 
-        params = self.named_parameters()
-
+        sparse = {n: p for n, p in self.named_parameters() if 'embeddings' in n}
+        not_sparse = {n: p for n, p in self.named_parameters() if 'embeddings' not in n}
         optimizer_grouped_parameters = [
-            {'params': [p for n, p in params if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
-            {'params': [p for n, p in params if any(nd in n for nd in no_decay)], 'weight_decay': 0}
+            {'params': [p for n, p in not_sparse.items() if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+            {'params': [p for n, p in not_sparse.items() if any(nd in n for nd in no_decay)], 'weight_decay': 0}
         ]
-
+        optimizer_sparse = torch.optim.SparseAdam(sparse.values(), lr=self.lr)
         optimizer = Bert.optimization.BertAdam(optimizer_grouped_parameters,
                                                lr=self.lr,
                                                warmup=self.warmup_proportion)
-        # optimizer = SparseAdam(optimizer_grouped_parameters,
-        #                        lr=self.lr)
-        return optimizer
+        return optimizer_sparse, optimizer
 
 
-class BERTRisk(BertBase):
+class BERTRisk(RiskMixin, BertBase):
     """
     For MLM pretraining.
     """
@@ -149,41 +128,33 @@ class BERTRisk(BertBase):
                  age_vocab_size=None, seg_vocab_size=2,
                  pretrained_embedding_path=None,
                  freeze_pretrained=False,
-                 weighting=None,
+                 used_covs=('age_ass', 'sex'),
+                 grouping_labels=None, label_vocab=None, weightings=None, use_weighted_loss=False
                  ):
-        if feature_dict is None:
-            feature_dict = {
-                'word': True,
-                'seg': True,
-                'age': False,
-                'position': True}
-
-        super(BERTRisk, self).__init__(input_dim=input_dim, output_dim=output_dim, embedding_dim=embedding_dim,
-                                       num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads,
-                                       intermediate_size=intermediate_size, hidden_act=hidden_act,
-                                       hidden_dropout_prob=hidden_dropout_prob,
-                                       attention_probs_dropout_prob=attention_probs_dropout_prob,
-                                       max_position_embeddings=max_position_embeddings,
-                                       initializer_range=initializer_range,
-                                       seg_vocab_size=seg_vocab_size,
-                                       age_vocab_size=age_vocab_size,
-                                       pretrained_embedding_path=pretrained_embedding_path,
-                                       freeze_pretrained=freeze_pretrained)
-
-        self.head = PredictionHead(embedding_dim, output_dim)
-        self.apply(self.init_bert_weights)
-
-        # self.loss_func = nn.BCEWithLogitsLoss(pos_weight=weighting)  # Required for multihot training
-        self.loss_func = CoxPHLoss()
+        super().__init__(input_dim=input_dim, output_dim=output_dim, embedding_dim=embedding_dim,
+                         num_hidden_layers=num_hidden_layers, num_attention_heads=num_attention_heads,
+                         intermediate_size=intermediate_size, hidden_act=hidden_act,
+                         hidden_dropout_prob=hidden_dropout_prob,
+                         attention_probs_dropout_prob=attention_probs_dropout_prob,
+                         max_position_embeddings=max_position_embeddings, lr=lr, warmup_proportion=warmup_proportion,
+                         temperature_scaling=temperature_scaling, feature_dict=feature_dict,
+                         initializer_range=initializer_range,
+                         seg_vocab_size=seg_vocab_size,
+                         age_vocab_size=age_vocab_size,
+                         pretrained_embedding_path=pretrained_embedding_path, used_covs=used_covs,
+                         freeze_pretrained=freeze_pretrained, grouping_labels=grouping_labels,
+                         label_vocab=label_vocab, weightings=weightings, use_weighted_loss=use_weighted_loss)
+        self.save_hyperparameters()
 
     def _shared_eval_step(self, batch, batch_idx):
-        (token_idx, age_idx, position, segment, mask), (label_multihot, label_times) = batch
-        logits = self((token_idx, age_idx, position, segment, mask))
+        (token_idx, age_idx, position, segment, mask, covariates), (label_multihot, label_times, censorings,
+                                                                    exclusions) = batch
+        logits = self((token_idx, age_idx, position, segment, mask), covariates)
 
         # predictions = self.sigmoid(logits)
         loss = self.loss_func(logits, label_multihot, label_times)
 
-        return loss, logits, label_multihot
+        return loss, logits, label_multihot, label_times
 
 
 class BERTMLM(Bert.modeling.BertPreTrainedModel, pl.LightningModule):

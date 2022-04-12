@@ -4,6 +4,14 @@ import _pickle as pickle
 import dill as dill
 
 
+def safe_string(name):
+    return name.replace('/', '_').replace('.', '_')
+
+
+def unsafe_string(name):
+    return name.replace('_', '.').replace('_', '/')
+
+
 def create_folder(path):
     if not os.path.exists(path):
         os.makedirs(path)

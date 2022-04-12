@@ -20,7 +20,7 @@ def drop_mask(tokens, symbol='MASK'):
     return seq
 
 
-def pad_sequence(tokens, max_len, symbol='PAD'):
+def pad_sequence(tokens, max_len, symbol=SYMBOL_IDX['PAD']):
     seq = []
     token_len = len(tokens)
     for i in range(max_len):
@@ -31,7 +31,7 @@ def pad_sequence(tokens, max_len, symbol='PAD'):
     return seq
 
 
-def index_seg(tokens, symbol='SEP'):
+def index_seg(tokens, symbol=SYMBOL_IDX['SEP']):
     """
     Alternates between visits
     :param tokens:
@@ -53,7 +53,7 @@ def index_seg(tokens, symbol='SEP'):
     return seg
 
 
-def position_idx(tokens, symbol='SEP'):
+def position_idx(tokens, symbol=SYMBOL_IDX['SEP']):
     """
     Increments per vist
     :param tokens:
@@ -72,13 +72,17 @@ def position_idx(tokens, symbol='SEP'):
     return pos
 
 
-def get_token2idx(tokens, token2idx, drop_mask=False, mask_symbol='MASK'):
+def drop_unk_idx(idxs, idx_with_unk=None, unk_idx=SYMBOL_IDX['UNK']):
+    if idx_with_unk is None:
+        return [i for i in idxs if i != unk_idx]
+    else:
+        return [i for i,j in zip(idxs, idx_with_unk) if j != unk_idx]
+
+
+def get_token2idx(tokens, token2idx):
     output_idx = []
     for i, token in enumerate(tokens):
-        if drop_mask and token == mask_symbol:
-            continue
-        else:
-            output_idx.append(token2idx.get(token, token2idx['UNK']))
+        output_idx.append(token2idx.get(token, token2idx['UNK']))
     return output_idx
 
 
@@ -124,7 +128,7 @@ class AbstractDataset(Dataset):
 
 
 class DatasetAssessmentRiskPredict(AbstractDataset):
-    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, **kwargs):
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk, **kwargs):
         """
 
         :param records:
@@ -134,6 +138,8 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         """
         super().__init__(records=records, token2idx=token2idx, label2idx=label2idx, age2idx=age2idx, max_len=max_len,
                          covariates=covariates, used_covs=used_covs, **kwargs)
+        self.max_date = records['date'].explode().max()
+        self.drop_unk = drop_unk
 
     def __getitem__(self, index):
         """
@@ -160,47 +166,68 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         # Extract days time difference
         dates = self.date.iloc[index]
         times = (dates - date_ass).astype('timedelta64[D]').astype(int)
+        max_time = (self.max_date - date_ass).days
 
         # TODO: Add Buffer?
         history_idx = (times <= 0)
         future_idx = ~history_idx
 
         # Get only tokens before or after assessment and keep only max_len events
-        history_tokens = tokens[history_idx][(-self.max_len + 1):]
-        future_labels = labels[future_idx][(-self.max_len + 1):]
-        future_times = times[future_idx][(-self.max_len + 1):]
+        history_tokens = tokens[history_idx]  # [(-self.max_len + 1):]
+        history_labels = labels[history_idx]
+        history_times = times[history_idx]
+        future_labels = labels[future_idx]
+        future_times = times[future_idx]
 
-        future_labels_keep = (future_labels != 'nan') & ~np.isin(future_labels, list(SYMBOL_IDX.keys()))
-        future_labels_k = future_labels[future_labels_keep]
-        future_times_k = future_times[future_labels_keep]
+        def process_labels(labels_, times_):
+            # Gets multihot labels that occured first and their times
+            labels_keep = (labels_ != 'nan') & ~np.isin(labels_, list(SYMBOL_IDX.keys()))
+            labels_k = labels_[labels_keep]
+            times_k = times_[labels_keep]
+            labels_u, label_times_list = self._get_first_times(labels_k, times_k)
+            label_idx = get_token2idx(labels_u, self.label2idx)
+            label_oh = torch.nn.functional.one_hot(torch.LongTensor(label_idx), num_classes=len(self.label2idx))
+            label_multihot = (label_oh > 0).any(axis=0).float()
 
-        future_labels_u, future_label_times = self._get_first_times(future_labels_k, future_times_k)
+            # Feels hacky but it's just adding the days from assessment to the oh encoding
+            label_times = label_multihot.long()
+            label_idx.reverse(), label_times_list.reverse()  # reversed to add first time rather than last for
+            # duplicates
+            label_times[label_idx] = torch.LongTensor(label_times_list)
+            # If no disease is found in the future, we use the last time in the history
+            censorings_ = (label_multihot == 0).float()
+            label_times[label_multihot == 0] = max_time
 
-        label_idx = get_token2idx(future_labels_u, self.label2idx)
+            return label_multihot, label_times, censorings_
 
-        label_oh = torch.nn.functional.one_hot(torch.LongTensor(label_idx), num_classes=len(self.label2idx))
-        label_multihot = (label_oh > 0).any(axis=0).float()
+        # Process future labels
+        future_label_multihot, future_label_times, censorings = process_labels(future_labels, future_times)
+        # Process history labels
+        history_label_multihot, _, _ = process_labels(history_labels, history_times)
 
-        # Feels hacky but it's just adding the days from assessment to the oh encoding
-        label_times = label_multihot.long()
-        label_idx.reverse(), future_label_times.reverse()  # reversed to add first time rather than last for duplicates
-        label_times[label_idx] = torch.LongTensor(future_label_times)
+        # Exclusions, used to remove patients with prior event from c-index metric (before recruitment)
+        exclusions = ((history_label_multihot + future_label_multihot) == 2).long()  # if both are 1, then exclude
 
         history_tokens = np.append(np.array(['CLS']), history_tokens)
         age = np.append(np.array(age[0]), age)
 
-        # used for attention mask the padding
-        mask = np.ones(self.max_len)
-        mask[len(history_tokens):] = 0
-
         # pad age_col sequence and code_col sequence
-        age = pad_sequence(age, self.max_len)
-        history_tokens = pad_sequence(history_tokens, self.max_len)
         age_idx = get_token2idx(age, self.age2idx)
         token_idx = get_token2idx(history_tokens, self.token2idx)
+        if len(token_idx) > self.max_len:
+            raise
 
-        position = position_idx(history_tokens)
-        segment = index_seg(history_tokens)
+        if self.drop_unk:
+            age_idx = drop_unk_idx(age_idx, idx_with_unk=token_idx)
+            token_idx = drop_unk_idx(token_idx)
+
+        position = position_idx(token_idx)
+        segment = index_seg(token_idx)
+
+        age_idx = pad_sequence(age_idx, self.max_len)
+        token_idx= pad_sequence(token_idx, self.max_len)
+        position = pad_sequence(position, self.max_len)
+        segment = pad_sequence(segment, self.max_len)
 
         covariates = np.array([])
         if 'age_ass' in self.used_covs:
@@ -208,9 +235,13 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         if 'sex' in self.used_covs:
             covariates = np.append(covariates, cov.sex)
 
+        # used for attention mask the padding
+        mask = np.ones(self.max_len)
+        mask[len(token_idx):] = 0
+
         # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
         input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask, covariates]),
-        label_tuple = (label_multihot, label_times)
+        label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
 
         return input_tuple, label_tuple
 
