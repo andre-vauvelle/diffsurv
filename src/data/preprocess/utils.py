@@ -4,6 +4,7 @@ from typing import List, Dict
 import pandas as pd
 import torch
 import numpy as np
+from pandas.core.dtypes.concat import union_categoricals
 
 from tqdm import tqdm
 from definitions import EXTERNAL_DATA_DIR, DATA_DIR
@@ -176,7 +177,7 @@ def get_opcs_omop():
 
 
 def get_phecode_map():
-    icd10_phecode = os.path.join(EXTERNAL_DATA_DIR, 'phecode_icd10.csv')
+    icd10_phecode = os.path.join(EXTERNAL_DATA_DIR, 'icd10_phecodeX.csv')
     read2_phecode = os.path.join(EXTERNAL_DATA_DIR, 'read2_to_phecode.csv')
     readctv3_phecode = os.path.join(EXTERNAL_DATA_DIR, 'readctv3_to_phecode.csv')
 
@@ -201,14 +202,12 @@ def get_phecode_map():
     phecode_lookup.phecode = phecode_lookup.phecode.astype(str)
     phecode_lookup.phecode = phecode_lookup.phecode.str.replace('\.0', '', regex=False)
 
-    #add new line to pandas dataframe
+    # add new line to pandas dataframe
 
     return phecode_lookup
 
 
-
 def get_read_omop():
-
     mapping_tables_dir = '/SAN/ihibiobank/denaxaslab/andre/UKBB/data/external/Mapping Tables/'
     rc2_map = pd.read_csv(
         os.path.join(mapping_tables_dir, "Updated/Not Clinically Assured/rcmap_uk_20200401000001.txt"), sep='\t')
@@ -250,6 +249,77 @@ def get_read_omop():
     return rc_map
 
 
+def update_with_phecode_x(phe_data):
+    """
+    Update the phe_data with the phecode_x mapping
+    :param phe_data:
+    :return:
+    """
+    covariates = pd.read_parquet(os.path.join(EXTERNAL_DATA_DIR, 'eid_covariates.parquet'))
+    phe_data = phe_data.merge(covariates.loc[:, ['eid', 'sex']], on='eid', how='left')
+
+    sno_icd_phe_map = pd.read_feather(os.path.join(EXTERNAL_DATA_DIR, 'snomed_icd10_phecode_mapping_220407.feather'))
+    sno_icd_phe_map.rename(columns={'phecode': 'phecode_X'}, inplace=True)
+    sno_icd_phe_map.rename(columns={'mapRule': 'sex'}, inplace=True)
+    sno_icd_phe_map.concept_id = sno_icd_phe_map.concept_id.astype(str).astype("category")
+
+    c = union_categoricals([sno_icd_phe_map.concept_id, phe_data.concept_id])
+    sno_icd_phe_map.concept_id = sno_icd_phe_map.concept_id.cat.set_categories(c.categories)
+    phe_data.concept_id = phe_data.concept_id.cat.set_categories(c.categories)
+
+    sno_icd_phe_map.sex = sno_icd_phe_map.sex.cat.rename_categories(
+        {'IFA 248152002 | Female (finding) |': 0,
+         'IFA 248153007 | Male (finding) |': 1,
+         'OTHERWISE TRUE': 2,
+         'TRUE': 3}
+    )
+
+
+    phe_data_x = phe_data.merge(sno_icd_phe_map.loc[:, ['concept_id',
+                                                        'phecode_X', 'sex']],
+                                on=['concept_id'], how='left')
+    phe_data_x.sex_x = phe_data_x.sex_x.astype("category")
+    c = union_categoricals([phe_data_x.sex_x.astype("category"), phe_data_x.sex_y])
+    phe_data_x.sex_x = phe_data_x.sex_x.cat.set_categories(c.categories)
+    phe_data_x.sex_y = phe_data_x.sex_y.cat.set_categories(c.categories)
+
+    # remove rows with miss matching sex requirements and keep those with no requirements
+    phe_data_x = phe_data_x.query("~((sex_y == 1 & sex_x == 0)|(sex_y == 0 & sex_x == 1))")
+    phe_data_x.phecode_X = phe_data_x.phecode_X.cat.add_categories(["SEP", "UNK"])
+    phe_data_x.loc[phe_data_x.phecode == "SEP", 'phecode_X'] = 'SEP'
+    phe_data_x.phecode_X = phe_data_x.phecode_X.fillna('UNK')
+
+    # death
+    phe_data_x.phecode_X = phe_data_x.phecode_X.cat.add_categories(["death"])
+    phe_data_x.code = phe_data_x.code.cat.add_categories(["death"])
+    phe_data_x.code_type = phe_data_x.code_type.cat.add_categories(["death"])
+    # phe_data_x.concept_id= phe_data_x.concept_id.cat.add_categories(["4306655"])
+    deaths = pd.read_csv(os.path.join(DATA_DIR, 'raw', 'application58356', 'death.txt'), delimiter='\t')
+    deaths.loc[:, 'date'] = pd.to_datetime(deaths.date_of_death)
+    deaths.sort_values(by=['date'], inplace=True)
+    deaths.drop_duplicates(subset=['eid'], keep='last', inplace=True)  # around 60 are duplicated
+
+    # merge death data with phe data
+    phe_data_x_deaths = phe_data_x.merge(deaths.loc[:, ['eid', 'date']], on=['eid', 'date'], how='inner')
+    phe_data_x_deaths.code_type = 'death'
+    phe_data_x_deaths.code = 'death'
+    phe_data_x_deaths.phecode = 'death'
+    phe_data_x_deaths.phecode_X = 'death'
+    phe_data_x_deaths.concept_id = '4306655'
+    phe_data_x_deaths.drop_duplicates(subset=['eid'], inplace=True)
+
+    phe_data_x.drop(columns=['sex_y', 'sex_x'], inplace=True)
+
+    phe_data_x = pd.concat([phe_data_x, phe_data_x_deaths], axis=0)
+
+    phe_data_x.sort_values(by=['eid', 'date'], inplace=True)
+    phe_data_x.drop_duplicates(ignore_index=True, inplace=True)
+
+    phe_data_x.to_feather('/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_data_x.feather')
+    return phe_data_x
+
+
+
 def get_omop_map(save_path=os.path.join(EXTERNAL_DATA_DIR, 'omop_map.csv')):
     if os.path.exists(save_path):
         omop_map = pd.read_csv(save_path)
@@ -258,8 +328,13 @@ def get_omop_map(save_path=os.path.join(EXTERNAL_DATA_DIR, 'omop_map.csv')):
         read_omop = get_read_omop()
         icd10_omop = get_icd_omop()
         rxnorm_omop = get_rxnorm_omop()
+        death = pd.DataFrame(
+            [{'concept_name': 'death',
+              'code': 'DEAD',
+              'concept_id': '4306655',
+              'code_type_match': 'death_nocause'}, ])
 
-        omop_map = pd.concat([opcs_omop, read_omop, icd10_omop, rxnorm_omop], axis=0)
+        omop_map = pd.concat([opcs_omop, read_omop, icd10_omop, rxnorm_omop, death], axis=0)
 
         omop_map.to_csv(save_path, index=False)
 
@@ -383,10 +458,10 @@ def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, label
     proportions = counts / counts.sum()
     if min_count is not None:
         excluded_tokens = set(counts[counts < min_count].index)
-        print(f'Excluding {counts[counts<min_count].sum()} tokens with count < {min_count}')
+        print(f'Excluding {counts[counts < min_count].sum()} tokens with count < {min_count}')
     elif min_proportion is not None:
         excluded_tokens = set(proportions[proportions < min_proportion].index)
-        print(f'Excluding {proportions[proportions<min_proportion].sum()} tokens with count < {min_count}')
+        print(f'Excluding {proportions[proportions < min_proportion].sum()} tokens with count < {min_count}')
     elif top_n is not None:
         excluded_tokens = set(counts.iloc[top_n:].index)
         print(f'Excluding {counts.iloc[top_n:].sum()} tokens with count < {min_count}')

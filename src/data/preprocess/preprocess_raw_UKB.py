@@ -113,7 +113,7 @@ class BiobankDataset:
         event_data = pd.read_csv(self.event_data_path, delimiter='\t')
         event_data = event_data.loc[:, id_vars + ['epistart']]
 
-        diag_data = pd.read_csv(self.diag_event_data_path, delimiter='\t')
+        diag_data = pd.read_csv(self.diag_event_data_path, delimiter='\t')  # raw data doesn't have dots for icd10
         opcs_data = pd.read_csv(self.opcs_event_data_path, delimiter='\t', encoding='latin')
         gp_clinical = pd.read_csv(self.gp_event_data_path, delimiter='\t', encoding='latin')
         deaths = pd.read_csv(os.path.join(DATA_DIR, 'raw', 'application58356', 'death.txt'), delimiter='\t')
@@ -148,15 +148,17 @@ class BiobankDataset:
         gp_scripts.loc[:, 'date'] = gp_scripts.date
         deaths.loc[:, 'date'] = deaths.date_of_death
 
-
         diag_data = diag_data.loc[:, desired_columns]
         opcs_data = opcs_data.loc[:, desired_columns]
         gp_clinical = gp_clinical.loc[:, desired_columns]
         gp_scripts = gp_scripts.loc[:, desired_columns]
         deaths = deaths.loc[:, desired_columns]
 
+        deaths_nocause = deaths
+        deaths_nocause.loc[:, 'code'] = 'death'
+        deaths_nocause.loc[:, 'code_type'] = 'death'
 
-        patient_event_data = pd.concat([diag_data, opcs_data, gp_clinical, gp_scripts, deaths], axis=0)
+        patient_event_data = pd.concat([diag_data, opcs_data, gp_clinical, gp_scripts, deaths, deaths_nocause], axis=0)
 
         patient_event_data = pd.merge(patient_event_data, patient_base.loc[:, ['eid', 'yob']], how='inner',
                                       on='eid')
@@ -435,6 +437,17 @@ def train_val_test(df_input, stratify_colname=None, frac_train=0.6, frac_val=0.2
     return df_train, df_val, df_test
 
 
+def in_gnn_only(phe_data):
+    embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/gnn_embeddings_256_1gr128qk_20220217.feather'
+    embedding = pd.read_feather(embeddings_path)
+    embedding = reformat_gnn_embedding(embedding)
+    in_gnn_concepts = set(embedding.concept_id)
+    in_gnn_concepts = in_gnn_concepts.union({*SYMBOL_IDX.keys()})
+    phe_data = phe_data[phe_data.concept_id.isin(in_gnn_concepts)]
+    phe_data.reset_index(drop=True, inplace=True)
+    return phe_data
+
+
 # b = BiobankDataset(
 #     patient_base_raw_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'patient_base.csv'),
 #     event_data_path=os.path.join(DATA_DIR, 'raw', 'application58356', 'hesin.tsv'),
@@ -494,7 +507,6 @@ def main(
     print('After omop convert. Total patients: {}, Total events: {}'.format(patient_event_data.eid.unique().shape[0],
                                                                             patient_event_data.shape[0]))
 
-
     d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
                'concept_id': 'category', 'phecode': 'category'}
     # patient_event_data.to_csv(patient_event_data_mapped_path, index=False)
@@ -527,15 +539,10 @@ def main(
     phe_data_path = os.path.join(phe_data_dir, 'phe_data.feather')
     # phe_data.reset_index(drop=True, inplace=True)
     # phe_data.to_feather(phe_data_path)
-    phe_data = pd.read_feather(os.path.join(DATA_DIR, 'processed', 'omop', 'phe_data.feather'))
+    # phe_data = pd.read_feather(os.path.join(DATA_DIR, 'processed', 'omop', 'phe_data.feather'))
+    phe_data = pd.read_feather(os.path.join(DATA_DIR, 'processed', 'omop', 'phe_data_x.feather'))
     if with_codes == 'in_gnn':
-        embeddings_path = '/SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/gnn_embeddings_256_1gr128qk_20220217.feather'
-        embedding = pd.read_feather(embeddings_path)
-        embedding = reformat_gnn_embedding(embedding)
-        in_gnn_concepts = set(embedding.concept_id)
-        in_gnn_concepts = in_gnn_concepts.union({*SYMBOL_IDX.keys()})
-        phe_data = phe_data[phe_data.concept_id.isin(in_gnn_concepts)]
-        phe_data.reset_index(drop=True, inplace=True)
+        phe_data = in_gnn_only(phe_data)
         phe_data_dir = os.path.join(DATA_DIR, 'processed', with_codes)
         os.makedirs(phe_data_dir, exist_ok=True)
         phe_data_path = os.path.join(phe_data_dir, 'phe_data.feather')
@@ -549,6 +556,7 @@ def main(
     #                        dtype={"phecode": 'str', "code": 'str', "concept_id": 'str',
     #                               "age": 'str',
     #                               'code_type_match': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
+
 
     phe_lists = b.get_sequences_df(phe_data)
     phe_lists['length'] = phe_lists['phecode'].apply(

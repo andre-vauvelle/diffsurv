@@ -21,11 +21,18 @@ def drop_mask(tokens, symbol='MASK'):
 
 
 def pad_sequence(tokens, max_len, symbol=SYMBOL_IDX['PAD']):
+    """
+    Pad sequence to max_len, also restricts to max_len if sequence is longer, reorders s
+    :param tokens:
+    :param max_len:
+    :param symbol:
+    :return:
+    """
     seq = []
     token_len = len(tokens)
     for i in range(max_len):
         if i < token_len:
-            seq.append(tokens[i])
+            seq.append(tokens[-i])
         else:
             seq.append(symbol)
     return seq
@@ -38,16 +45,16 @@ def index_seg(tokens, symbol=SYMBOL_IDX['SEP']):
     :param symbol:
     :return:
     """
-    flag = 0
+    flag = 1
     seg = []
 
     for token in tokens:
         if token == symbol:
             seg.append(flag)
-            if flag == 0:
-                flag = 1
+            if flag == 1:
+                flag = 2
             else:
-                flag = 0
+                flag = 1
         else:
             seg.append(flag)
     return seg
@@ -61,7 +68,7 @@ def position_idx(tokens, symbol=SYMBOL_IDX['SEP']):
     :return:
     """
     pos = []
-    flag = 0
+    flag = 1
 
     for token in tokens:
         if token == symbol:
@@ -92,6 +99,14 @@ import random
 def flip(p):
     return random.random() < p
 
+def drop_conseq_idx(token_idx, symbol_idx=SYMBOL_IDX['SEP']):
+    """
+    Drop consecutive sep indices
+    :param symbol_idx:
+    :param token_idx:
+    :return:
+    """
+    return [i for i, j in zip(token_idx, token_idx[1:]) if not ((i == symbol_idx) & (j == symbol_idx))]
 
 class AbstractDataset(Dataset):
     def __init__(self, records, token2idx, label2idx, age2idx, max_len,
@@ -127,8 +142,11 @@ class AbstractDataset(Dataset):
         return len(self.tokens)
 
 
+
+
 class DatasetAssessmentRiskPredict(AbstractDataset):
-    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk, **kwargs):
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk,
+                 drop_conseq_sep=True, **kwargs):
         """
 
         :param records:
@@ -140,6 +158,8 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
                          covariates=covariates, used_covs=used_covs, **kwargs)
         self.max_date = records['date'].explode().max()
         self.drop_unk = drop_unk
+        self.drop_conseq_sep = drop_conseq_sep
+        self.lens = []
 
     def __getitem__(self, index):
         """
@@ -214,18 +234,23 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         # pad age_col sequence and code_col sequence
         age_idx = get_token2idx(age, self.age2idx)
         token_idx = get_token2idx(history_tokens, self.token2idx)
-        if len(token_idx) > self.max_len:
-            raise
 
         if self.drop_unk:
             age_idx = drop_unk_idx(age_idx, idx_with_unk=token_idx)
             token_idx = drop_unk_idx(token_idx)
 
-        position = position_idx(token_idx)
-        segment = index_seg(token_idx)
+        if self.drop_conseq_sep:
+            token_idx = drop_conseq_idx(token_idx)
+            age_idx = drop_conseq_idx(age_idx)
+
+
+        self.lens.append(len(token_idx))
 
         age_idx = pad_sequence(age_idx, self.max_len)
         token_idx= pad_sequence(token_idx, self.max_len)
+
+        position = position_idx(token_idx)
+        segment = index_seg(token_idx)
         position = pad_sequence(position, self.max_len)
         segment = pad_sequence(segment, self.max_len)
 
