@@ -44,7 +44,8 @@ class BertEmbeddings(nn.Module):
                     freeze=config.freeze_pretrained, padding_idx=0)
 
         if feature_dict['seg']:
-            self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)
+            self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0,
+                                                   sparse=sparse)
 
         if feature_dict['age']:
             self.age_embeddings = nn.Embedding(config.age_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)

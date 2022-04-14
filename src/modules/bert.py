@@ -125,7 +125,7 @@ class BERTRisk(RiskMixin, BertBase):
                  temperature_scaling=False,
                  feature_dict=None, num_attention_heads=12, intermediate_size=256, hidden_act="gelu",
                  attention_probs_dropout_prob=0.22, max_position_embeddings=256, initializer_range=0.02,
-                 age_vocab_size=None, seg_vocab_size=2,
+                 age_vocab_size=None, seg_vocab_size=3,
                  pretrained_embedding_path=None,
                  freeze_pretrained=False,
                  used_covs=('age_ass', 'sex'),

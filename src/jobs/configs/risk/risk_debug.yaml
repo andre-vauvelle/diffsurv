@@ -38,7 +38,7 @@ data:
   age_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/age_vocab_90.pkl
   weightings_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/weightings.pt
   batch_size: 300
-  num_workers: 8
+  num_workers: 1
 model:
   #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13.pt
   #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt

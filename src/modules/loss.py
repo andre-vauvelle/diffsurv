@@ -38,10 +38,14 @@ class CoxPHLoss(torch.nn.Module):
             losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
-        losses = [l for l in losses if l.item() > 0]
+        loss_tensor = torch.stack(losses)
+        loss_idx = loss_tensor.gt(0)
+
         if self.weightings is None:
-            loss = torch.stack(losses).mean()
+            loss = loss_tensor[loss_idx].mean()
         else:
-            loss = torch.stack(losses).mul(self.weightings).sum()
+            # re-normalize weights
+            weightings = self.weightings[loss_idx] / self.weightings[loss_idx].sum()
+            loss = loss_tensor[loss_idx].mul(weightings).sum()
 
         return loss
