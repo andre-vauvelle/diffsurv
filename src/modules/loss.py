@@ -1,5 +1,6 @@
 import torch
 
+import pdb
 import diffsort
 
 
@@ -18,10 +19,11 @@ class SortingCrossEntropyLoss(torch.nn.Module):
     """
 
     def __init__(self, sorter,
-                 eps=1e-6):
+                 eps=1e-6, weightings=None):
         super().__init__()
         self.eps = eps
         self.sorter = sorter
+        self.weightings = weightings
 
     def forward(self, logits, events, durations):
         losses = []
@@ -69,7 +71,7 @@ class SortingCrossEntropyLoss(torch.nn.Module):
         :return:
         """
         # Initialize the soft permutation matrix
-        perm_matrix = torch.zeros(events.shape[0], events.shape[0])
+        perm_matrix = torch.zeros(events.shape[0], events.shape[0], device=events.device)
 
         idx = torch.argsort(d, descending=False)
 

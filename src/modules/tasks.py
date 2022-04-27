@@ -9,6 +9,8 @@ import pytorch_lightning as pl
 from models.metrics import CIndex
 from omni.common import safe_string, unsafe_string
 from modules.loss import CoxPHLoss, SortingCrossEntropyLoss
+from modules.sorter import CustomDiffSortNet
+import pdb
 
 
 class RiskMixin(pl.LightningModule):
@@ -21,22 +23,26 @@ class RiskMixin(pl.LightningModule):
             {'c_index/' + safe_string(name): CIndex() for name in c_index_metric_names}
         )
         self.valid_cindex = c_index_metrics.clone(prefix='val/')
-        losses = []
-        if loss == 'CoxPHLoss':
+
+        if loss is None:
             self.loss_func = CoxPHLoss()
-            if weightings is not None:
-                self.loss_func_w = CoxPHLoss(weightings=weightings)
-            else:
-                self.loss_func_w = None
-        if loss.type == 'SortingCrossEntropyLoss':
-            self.sorter = diffsort.DiffSortNet(
-                sorting_network_type=loss.args['sorting_network'],
-                size=loss.args['num_compare'],
-                steepness=loss.args['steepness'],
-                art_lambda=loss.args['art_lambda'],
-                distribution=loss.args['distribution'],
+        else:
+            loss = loss[0]
+            loss_args = loss['args']
+            #pdb.set_trace()
+            self.sorter = CustomDiffSortNet(
+                sorting_network_type=loss_args['sorting_network'],
+                size=loss_args['num_compare'],
+                steepness=loss_args['steepness'],
+                art_lambda=loss_args['art_lambda'],
+                distribution=loss_args['distribution'],
             )
             self.loss_func = SortingCrossEntropyLoss(self.sorter)
+
+        if weightings is not None:
+            self.loss_func_w = CoxPHLoss(weightings=weightings)
+        else:
+            self.loss_func_w = None
 
         self.use_weighted_loss = use_weighted_loss
 
