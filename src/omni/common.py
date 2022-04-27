@@ -1,3 +1,4 @@
+import importlib
 import os
 import _pickle as pickle
 
@@ -59,3 +60,33 @@ def load_pickle(filename, use_dill=False):
         else:
             obj = dill.load(file)
     return obj
+
+
+def save_feather_split(df, filename, n_files=10, create_folder=True):
+    """ Save a dataframe to feather format.
+    Args:
+        df (pandas dataframe): The dataframe to be saved.
+        filename (str): Location to save the file.
+        n_files (int): Number of files to split the dataframe into.
+    Returns:
+        None
+    """
+    if create_folder:
+        _create_folder_if_not_exist(filename)
+
+    # Save each split
+    for i in range(n_files):
+        df_split = df.iloc[i::n_files]
+        df_split.reset_index(drop=True, inplace=True)
+        df_split.to_feather(filename + '_' + str(i) + '.feather')
+
+
+def init_class_from(class_path, init_args):
+    # Init loss class from string
+    module_name = '.'.join(class_path.split('.')[:-1])
+    class_name = class_path.split('.')[-1]
+
+    module = importlib.import_module(module_name)
+    class_ = getattr(module, class_name)
+    class_(**init_args)
+    return class_

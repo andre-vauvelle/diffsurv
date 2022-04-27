@@ -265,6 +265,9 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         mask[len(token_idx):] = 0
 
         # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
+
+        # reorder patients in batch with the shortest duration first
+
         input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask, covariates]),
         label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
 

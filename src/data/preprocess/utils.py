@@ -255,7 +255,7 @@ def update_with_phecode_x(phe_data):
     :param phe_data:
     :return:
     """
-    covariates = pd.read_parquet(os.path.join(EXTERNAL_DATA_DIR, 'eid_covariates.parquet'))
+    covariates = pd.read_parquet(os.path.join(DATA_DIR,'processed', 'covariates', 'eid_covariates.parquet'))
     phe_data = phe_data.merge(covariates.loc[:, ['eid', 'sex']], on='eid', how='left')
 
     sno_icd_phe_map = pd.read_feather(os.path.join(EXTERNAL_DATA_DIR, 'snomed_icd10_phecode_mapping_220407.feather'))
@@ -299,6 +299,8 @@ def update_with_phecode_x(phe_data):
     deaths.sort_values(by=['date'], inplace=True)
     deaths.drop_duplicates(subset=['eid'], keep='last', inplace=True)  # around 60 are duplicated
 
+    phe_data_x.drop(columns=['sex_y', 'sex_x'], inplace=True)
+
     # merge death data with phe data
     phe_data_x_deaths = phe_data_x.merge(deaths.loc[:, ['eid', 'date']], on=['eid', 'date'], how='inner')
     phe_data_x_deaths.code_type = 'death'
@@ -308,13 +310,13 @@ def update_with_phecode_x(phe_data):
     phe_data_x_deaths.concept_id = '4306655'
     phe_data_x_deaths.drop_duplicates(subset=['eid'], inplace=True)
 
-    phe_data_x.drop(columns=['sex_y', 'sex_x'], inplace=True)
 
     phe_data_x = pd.concat([phe_data_x, phe_data_x_deaths], axis=0)
 
     phe_data_x.sort_values(by=['eid', 'date'], inplace=True)
     phe_data_x.drop_duplicates(ignore_index=True, inplace=True)
 
+    phe_data_x.to_csv('/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_data_x.csv', index=False)
     phe_data_x.to_feather('/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_data_x.feather')
     return phe_data_x
 
@@ -461,10 +463,10 @@ def fit_vocab(data: List, min_count=None, min_proportion=None, top_n=None, label
         print(f'Excluding {counts[counts < min_count].sum()} tokens with count < {min_count}')
     elif min_proportion is not None:
         excluded_tokens = set(proportions[proportions < min_proportion].index)
-        print(f'Excluding {proportions[proportions < min_proportion].sum()} tokens with count < {min_count}')
+        print(f'Excluding {proportions[proportions < min_proportion].sum()} tokens with proportion < {min_proportion}')
     elif top_n is not None:
         excluded_tokens = set(counts.iloc[top_n:].index)
-        print(f'Excluding {counts.iloc[top_n:].sum()} tokens with count < {min_count}')
+        print(f'Excluding {counts.iloc[top_n:].sum()} tokens outside top n < {top_n}')
     else:
         excluded_tokens = set()
 

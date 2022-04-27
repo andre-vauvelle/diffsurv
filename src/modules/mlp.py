@@ -53,7 +53,7 @@ class MultilayerBase(pl.LightningModule):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-        #TODO: consider moving to mixin
+        # TODO: consider moving to mixin
         metrics = MetricCollection(
             [
                 AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
@@ -135,14 +135,15 @@ class MultilayerRisk(RiskMixin, MultilayerBase):
                  output_dim=1390, embedding_dim=256, hidden_dropout_prob=0.1, lr=1e-4,
                  pretrained_embedding_path=None, freeze_pretrained=False, count=True,
                  only_covs=False, label_vocab=None, grouping_labels=None, used_covs=('age_ass', 'sex'), weightings=None,
-                 use_weighted_loss=False
+                 use_weighted_loss=False, loss=None
                  ):
         super().__init__(input_dim=input_dim, output_dim=output_dim, embedding_dim=embedding_dim,
                          hidden_dropout_prob=hidden_dropout_prob,
                          lr=lr, pretrained_embedding_path=pretrained_embedding_path,
                          freeze_pretrained=freeze_pretrained, used_covs=used_covs,
                          count=count,
-                         only_covs=only_covs, label_vocab=label_vocab, grouping_labels=grouping_labels, weightings=weightings,
+                         only_covs=only_covs, label_vocab=label_vocab, grouping_labels=grouping_labels, loss=loss,
+                         weightings=weightings,
                          use_weighted_loss=use_weighted_loss)
         self.save_hyperparameters()
 

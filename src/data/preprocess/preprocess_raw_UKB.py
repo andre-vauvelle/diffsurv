@@ -278,6 +278,7 @@ class BiobankDataset:
         date_lists = df.groupby(list(group_sequences))['date'].apply(list)
         # df.groupby(list(group_sequences))[code_col, phe_col, 'age'].apply(list)
         df = pd.concat([age_lists, code_lists, phe_lists, concept_lists, date_lists], axis=1)
+        df.rename(columns={phe_col: 'phecode'}, inplace=True)
         df = df.reset_index(drop=False)
         return df
 
@@ -508,7 +509,7 @@ def main(
                                                                             patient_event_data.shape[0]))
 
     d_types = {'eid': 'Int64', 'date': str, 'code_type': 'category', 'code': 'category', 'yob': 'Int16', 'age': 'Int16',
-               'concept_id': 'category', 'phecode': 'category'}
+               'concept_id': 'category', 'phecode': 'category', "phecode_X": "category"}
     # patient_event_data.to_csv(patient_event_data_mapped_path, index=False)
     patient_event_data = b.phecode_convert(patient_event_data)
     patient_event_data = patient_event_data.astype(dtype=d_types, copy=False)
@@ -558,7 +559,7 @@ def main(
     #                               'code_type_match': 'str', 'eid': 'int64', 'yob': "int16", 'age_ass': "int16"}, )
 
 
-    phe_lists = b.get_sequences_df(phe_data)
+    phe_lists = b.get_sequences_df(phe_data, phe_col='phecode_X')
     phe_lists['length'] = phe_lists['phecode'].apply(
         lambda x: len([i for i in range(len(x)) if x[i] == SEPARATOR_TOKEN]))
     phe_lists['length'] = phe_lists['concept_id'].apply(
@@ -575,14 +576,14 @@ def main(
     age_vocab = fit_vocab(phe_train.age.explode().astype(str))
     code_vocab = fit_vocab(phe_train.code.explode().astype(str), min_count=1)
     phecode_vocab = fit_vocab(phe_train.phecode.explode().astype(str), min_proportion=0.00000)
-    phecode_vocab_top100 = fit_vocab(phe_train.phecode.explode().astype(str), top_n=1000, )
+    phecode_vocab_top = fit_vocab(phe_train.phecode.explode().astype(str), top_n=1000, )
     concept_vocab = fit_vocab(phe_train.concept_id.explode().astype(str), min_count=1)
     concept_vocab_15k = fit_vocab(phe_train.concept_id.explode().astype(str), top_n=15_000)
 
     age_vocab_len = len(list(age_vocab['token2idx'].keys()))
     code_vocab_len = len(list(code_vocab['token2idx'].keys()))
     phecode_vocab_len = len(list(phecode_vocab['token2idx'].keys()))
-    phecode_vocab_top100_len = len(list(phecode_vocab_top100['token2idx'].keys()))
+    phecode_vocab_top_len = len(list(phecode_vocab_top['token2idx'].keys()))
     concept_vocab_len = len(list(concept_vocab['token2idx'].keys()))
     concept_vocab_15k_len = len(list(concept_vocab_15k['token2idx'].keys()))
 
@@ -590,8 +591,8 @@ def main(
     save_pickle(code_vocab, os.path.join(DATA_DIR, 'processed', with_codes, 'code_vocab_{}.pkl'.format(code_vocab_len)))
     save_pickle(phecode_vocab,
                 os.path.join(DATA_DIR, 'processed', with_codes, 'phecode_vocab_{}.pkl'.format(phecode_vocab_len)))
-    save_pickle(phecode_vocab_top100, os.path.join(DATA_DIR, 'processed', with_codes,
-                                                   'phecode_vocab_top100_{}.pkl'.format(phecode_vocab_top100_len)))
+    save_pickle(phecode_vocab_top, os.path.join(DATA_DIR, 'processed', with_codes,
+                                                   'phecode_vocab_top_{}.pkl'.format(phecode_vocab_top_len)))
     save_pickle(concept_vocab,
                 os.path.join(DATA_DIR, 'processed', with_codes, 'concept_vocab_{}.pkl'.format(concept_vocab_len)))
     save_pickle(concept_vocab_15k,

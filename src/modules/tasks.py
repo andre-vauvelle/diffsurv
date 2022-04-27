@@ -1,16 +1,18 @@
+import importlib
+
 import torch
+from diffsort import diffsort
 from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
 
 import pytorch_lightning as pl
 from models.metrics import CIndex
 from omni.common import safe_string, unsafe_string
-from modules.loss import CoxPHLoss
-
+from modules.loss import CoxPHLoss, SortingCrossEntropyLoss
 
 
 class RiskMixin(pl.LightningModule):
-    def __init__(self, grouping_labels, label_vocab, weightings=None, use_weighted_loss=False, **kwargs):
+    def __init__(self, grouping_labels, label_vocab, loss=None, weightings=None, use_weighted_loss=False, **kwargs):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
@@ -19,11 +21,23 @@ class RiskMixin(pl.LightningModule):
             {'c_index/' + safe_string(name): CIndex() for name in c_index_metric_names}
         )
         self.valid_cindex = c_index_metrics.clone(prefix='val/')
-        self.loss_func = CoxPHLoss()
-        if weightings is not None:
-            self.loss_func_w = CoxPHLoss(weightings=weightings)
-        else:
-            self.loss_func_w = None
+        losses = []
+        if loss == 'CoxPHLoss':
+            self.loss_func = CoxPHLoss()
+            if weightings is not None:
+                self.loss_func_w = CoxPHLoss(weightings=weightings)
+            else:
+                self.loss_func_w = None
+        if loss.type == 'SortingCrossEntropyLoss':
+            self.sorter = diffsort.DiffSortNet(
+                sorting_network_type=loss.args['sorting_network'],
+                size=loss.args['num_compare'],
+                steepness=loss.args['steepness'],
+                art_lambda=loss.args['art_lambda'],
+                distribution=loss.args['distribution'],
+            )
+            self.loss_func = SortingCrossEntropyLoss(self.sorter)
+
         self.use_weighted_loss = use_weighted_loss
 
     def training_step(self, batch, batch_idx, optimizer_idx):

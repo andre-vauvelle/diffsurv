@@ -173,6 +173,9 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         :param weightings_path: the path to the weightings
         :return: tensor of weightings, index of label
         """
+        if weightings_path is None:
+            return None
+
         if os.path.exists(weightings_path):
             class_weights = torch.load(weightings_path)
         else:
@@ -190,7 +193,7 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
             labels = [train_dataset.__getitem__(i)[-1][0] for i in range(len(train_dataset))]
             labels = torch.stack(labels).cpu()
             labels_counts = labels.sum(dim=0)
-            class_weights = (labels_counts+min_count) / ((labels_counts+min_count).sum(dim=0))
+            class_weights = (labels_counts + min_count) / ((labels_counts + min_count).sum(dim=0))
             torch.save(class_weights, weightings_path)
             print("Weightings saved to {}".format(weightings_path))
         return class_weights

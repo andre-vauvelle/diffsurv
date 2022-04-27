@@ -5,7 +5,7 @@ data:
   val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_val.feather
   test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_test.feather
   token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_15003.pkl
-  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_1566.pkl
-  weightings_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/weightings.pl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_3169.pkl
+  weightings_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/weightings_x.pl
   drop_unk: True
 

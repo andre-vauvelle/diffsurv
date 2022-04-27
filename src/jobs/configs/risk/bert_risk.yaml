@@ -12,6 +12,7 @@ trainer:
           - in_gnn
           - layernorm
           - precision16
+          - phex
         log_model: True
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
