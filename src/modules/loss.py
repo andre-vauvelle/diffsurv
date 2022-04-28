@@ -3,6 +3,8 @@ import torch
 import pdb
 import diffsort
 
+from modules.sorter import CustomDiffSortNet
+
 
 class SortingCrossEntropyLoss(torch.nn.Module):
     """
@@ -121,9 +123,10 @@ def test_diff_sort_loss_get_soft_perm():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    sorter = SortingCrossEntropyLoss(num_compare=7, sorting_network='bitonic')
+    sorter = CustomDiffSortNet(sorting_network_type='bitonic', size=7)
+    loss = SortingCrossEntropyLoss(sorter)
 
-    true_perm_matrix = sorter._get_soft_perm(test_events[:, 0], test_durations[:, 0])
+    true_perm_matrix = loss._get_soft_perm(test_events[:, 0], test_durations[:, 0])
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
 

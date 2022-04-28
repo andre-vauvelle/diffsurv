@@ -1,0 +1,62 @@
+trainer:
+  #  logger:
+  #    - class_path: src.models.loggers.CustomWandbLogger
+  #      init_args:
+  #        project: ehrgnn
+  #        entity: qndre
+  #        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+  #        tags:
+  #          - mlp
+  #          - concept_id
+  #          - risk
+  #          - relu
+  #          - in_gnn
+  #          - layernorm
+  #          - precision16
+  #          - phex
+  #        log_model: True
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        patience: 5
+        monitor: val/loss
+        min_delta: 0.02
+        mode: min
+  max_epochs: 100
+  check_val_every_n_epoch: 1
+  val_check_interval: 0.5
+  enable_checkpointing: True
+  num_sanity_val_steps: 2
+  accumulate_grad_batches: 1
+  default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/
+#  precision: 16
+data:
+  debug: False
+  token_col: concept_id
+  label_col: phecode
+  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_train.feather
+  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_val.feather
+  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_test.feather
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_15003.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_3169.pkl
+  age_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/age_vocab_90.pkl
+  batch_size: 512
+  num_workers: 8
+model:
+  embedding_dim: 256
+  lr: 0.002 # from auto lr find
+  only_covs: False
+  loss:
+    - type: SortingCrossEntropyLoss
+      args:
+        num_compare: 512
+        sorting_network: bitonic
+        steepness: 10
+        art_lambda: 0.25
+        distribution: cauchy
+
+
+#  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
+#  embedding_dim: 32
+
+#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/ehrgnn/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
