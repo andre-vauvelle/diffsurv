@@ -83,7 +83,7 @@ def drop_unk_idx(idxs, idx_with_unk=None, unk_idx=SYMBOL_IDX['UNK']):
     if idx_with_unk is None:
         return [i for i in idxs if i != unk_idx]
     else:
-        return [i for i,j in zip(idxs, idx_with_unk) if j != unk_idx]
+        return [i for i, j in zip(idxs, idx_with_unk) if j != unk_idx]
 
 
 def get_token2idx(tokens, token2idx):
@@ -99,6 +99,7 @@ import random
 def flip(p):
     return random.random() < p
 
+
 def drop_conseq_idx(token_idx, symbol_idx=SYMBOL_IDX['SEP']):
     """
     Drop consecutive sep indices
@@ -107,6 +108,7 @@ def drop_conseq_idx(token_idx, symbol_idx=SYMBOL_IDX['SEP']):
     :return:
     """
     return [i for i, j in zip(token_idx, token_idx[1:]) if not ((i == symbol_idx) & (j == symbol_idx))]
+
 
 class AbstractDataset(Dataset):
     def __init__(self, records, token2idx, label2idx, age2idx, max_len,
@@ -142,6 +144,15 @@ class AbstractDataset(Dataset):
         return len(self.tokens)
 
 
+class DatasetSyntheticRisk:
+    def __init__(self, ):
+        pass
+
+    def __getitem__(self, index):
+        # input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask, covariates]),
+        # label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
+
+        return  # input_tuple, label_tuple
 
 
 class DatasetAssessmentRiskPredict(AbstractDataset):
@@ -243,11 +254,10 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
             token_idx = drop_conseq_idx(token_idx)
             age_idx = drop_conseq_idx(age_idx)
 
-
         self.lens.append(len(token_idx))
 
         age_idx = pad_sequence(age_idx, self.max_len)
-        token_idx= pad_sequence(token_idx, self.max_len)
+        token_idx = pad_sequence(token_idx, self.max_len)
 
         position = position_idx(token_idx)
         segment = index_seg(token_idx)

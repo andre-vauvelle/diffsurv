@@ -1,8 +1,11 @@
 import importlib
 import os
 import _pickle as pickle
+from random import random
 
 import dill as dill
+import numpy as np
+import torch
 
 
 def safe_string(name):
@@ -21,6 +24,8 @@ def create_folder(path):
 def _create_folder_if_not_exist(filename):
     """ Makes trial_n folder if the folder component of the baseline_path does not already exist. """
     os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+
 
 
 def save_pickle(obj, filename, use_dill=False, protocol=4, create_folder=True):
