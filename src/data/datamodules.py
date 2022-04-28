@@ -288,7 +288,7 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         self.input_dim = x_covar.shape[1]
         self.output_dim = y_times.shape[1]
         self.label_vocab = {'token2idx': {'event0': 0}, 'idx2token': {0: 'event0'}}
-        self.grouping_labels = {'all': [0, 1]}
+        self.grouping_labels = {'all': ['0']}
 
     def train_dataloader(self):
         (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
