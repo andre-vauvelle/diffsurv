@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import pandas as pd
 from torch.utils.data import DataLoader
 
-from data.datasets import DatasetMLM, DatasetAssessmentRiskPredict
+from data.datasets import DatasetMLM, DatasetAssessmentRiskPredict, DatasetSyntheticRisk
 from definitions import DATA_DIR
 from omni.common import load_pickle, save_pickle
 import torch
@@ -271,3 +271,38 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                                                     used_covs=self.used_covs,
                                                     drop_unk=self.drop_unk)
         return DataLoader(test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+
+class DataModuleSytheticRisk(pl.LightningDataModule):
+    def __init__(self, path='/SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt',
+                 val_split=0.2,
+                 batch_size=32,
+                 num_workers=1,
+                 ):
+        super().__init__()
+        self.path = path
+        self.val_split = val_split
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
+        self.input_dim = x_covar.shape[1]
+        self.output_dim = y_times.shape[1]
+
+    def train_dataloader(self):
+        (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
+        n_patients = x_covar.shape[0]
+        n_training_patients = int(n_patients * (1 - self.val_split))
+        train_datatset = DatasetSyntheticRisk(x_covar[:n_training_patients], y_times[:n_training_patients],
+                                              censored_events[:n_training_patients])
+        return DataLoader(train_datatset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+
+    def val_dataloader(self):
+        (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
+        n_patients = x_covar.shape[0]
+        n_validation_patients = int(n_patients * self.val_split)
+        val_datatset = DatasetSyntheticRisk(x_covar[-n_validation_patients:], y_times[-n_validation_patients:],
+                                            censored_events[-n_validation_patients:])
+        return DataLoader(val_datatset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        pass

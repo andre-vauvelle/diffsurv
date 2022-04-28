@@ -144,15 +144,30 @@ class AbstractDataset(Dataset):
         return len(self.tokens)
 
 
-class DatasetSyntheticRisk:
-    def __init__(self, ):
-        pass
+class DatasetSyntheticRisk(Dataset):
+    def __init__(self, x_covar, y_times, censored_events):
+        self.x_covar = x_covar
+        self.y_times = y_times
+        self.censored_events = censored_events
 
     def __getitem__(self, index):
-        # input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask, covariates]),
-        # label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
+        token_idx = None
+        age_idx = None
+        position = None
+        segment = None
+        mask = None
 
-        return  # input_tuple, label_tuple
+        covariates = self.x_covar[index]
+
+        future_label_multihot = 1 - self.censored_events[index]
+        future_label_times = self.y_times[index]
+        censorings = self.censored_events[index]
+        exclusions = None
+
+        input_tuple = (token_idx, age_idx, position, segment, mask, covariates),
+        label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
+
+        return input_tuple, label_tuple
 
 
 class DatasetAssessmentRiskPredict(AbstractDataset):

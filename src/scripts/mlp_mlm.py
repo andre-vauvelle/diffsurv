@@ -24,7 +24,7 @@ def cli_main():
     cli = CustomLightningCLI(
         MultilayerMLM, DataModuleMLM, seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
-        save_config_callback=None,
+        save_config_callback=None
     )
 
 
