@@ -30,11 +30,15 @@ def gen_synthetic_dataset(n_patients=30_000, n_covariates=2, hazards=(-1, 2), pr
     censored_events[censoring_indices] = True
 
     x_covar = torch.Tensor(x_covar).float()
-    y_times = torch.Tensor(y_times).float()
-    censored_events = torch.Tensor(censored_events).int()
+    y_times = torch.Tensor(y_times).float().unsqueeze(-1)
+    censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
 
     # create directory for save
     save_path = os.path.join(DATA_DIR, 'synthetic')
     create_folder(save_path)
     torch.save((x_covar, y_times, censored_events), os.path.join(save_path, name))
     print("Saved synthetic dataset to: {}".format(os.path.join(save_path, name)))
+
+
+if __name__ == '__main__':
+    gen_synthetic_dataset()

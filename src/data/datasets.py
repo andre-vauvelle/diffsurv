@@ -151,23 +151,26 @@ class DatasetSyntheticRisk(Dataset):
         self.censored_events = censored_events
 
     def __getitem__(self, index):
-        token_idx = None
-        age_idx = None
-        position = None
-        segment = None
-        mask = None
 
         covariates = self.x_covar[index]
+        token_idx = torch.zeros(1)
+        age_idx = torch.zeros(1)
+        position = torch.zeros(1)
+        segment = torch.zeros(1)
+        mask = torch.zeros(1)
 
         future_label_multihot = 1 - self.censored_events[index]
         future_label_times = self.y_times[index]
         censorings = self.censored_events[index]
-        exclusions = None
+        exclusions = torch.zeros_like(censorings)
 
-        input_tuple = (token_idx, age_idx, position, segment, mask, covariates),
+        input_tuple = (token_idx, age_idx, position, segment, mask, covariates)
         label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
 
         return input_tuple, label_tuple
+
+    def __len__(self):
+        return self.x_covar.shape[0]
 
 
 class DatasetAssessmentRiskPredict(AbstractDataset):

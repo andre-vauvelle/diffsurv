@@ -18,6 +18,7 @@ class RiskMixin(pl.LightningModule):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
+
         c_index_metric_names = list(self.label_vocab['token2idx'].keys())
         c_index_metrics = MetricCollection(
             {'c_index/' + safe_string(name): CIndex() for name in c_index_metric_names}
@@ -29,7 +30,6 @@ class RiskMixin(pl.LightningModule):
         else:
             loss = loss[0]
             loss_args = loss['args']
-            #pdb.set_trace()
             self.sorter = CustomDiffSortNet(
                 sorting_network_type=loss_args['sorting_network'],
                 size=loss_args['num_compare'],

@@ -34,7 +34,7 @@ data:
   path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
   val_split: 0.2
   batch_size: 128
-  num_workers: 8
+  num_workers: 1
 model:
   embedding_dim: 256
   lr: 0.002 # from auto lr find
