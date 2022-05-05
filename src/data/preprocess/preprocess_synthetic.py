@@ -6,7 +6,8 @@ from definitions import DATA_DIR
 from omni.common import create_folder
 
 
-def gen_synthetic_dataset(n_patients=30_000, n_covariates=2, hazards=(-1, 2), proportion_censored=0.5,
+def gen_synthetic_dataset(n_patients=30_000, n_covariates=10, hazards=(10,) * 10, proportion_censored=0.5,
+                          baseline=0,
                           name='linear_exp_synthetic.pt'):
     """
     Generate synthetic dataset.
@@ -18,10 +19,15 @@ def gen_synthetic_dataset(n_patients=30_000, n_covariates=2, hazards=(-1, 2), pr
 
     # Used with linear comnination to sample y from exponential
     hazards = np.array(hazards)
-    y_times = np.exp(np.dot(hazards, x_covar.T))  # This is where we could introduce non-linearity
+    y_times = np.exp(
+        baseline + np.dot(1 / hazards, x_covar.T) ** 2 + np.dot(1 / hazards, x_covar.T))  # This is where we
+    # y_times = np.exp(baseline + np.dot(1/hazards, x_covar.T))  # This is where we
+    # could
+    # introduce
+    # non-linearity
 
     # Find right-censoring times for events using a random uniform distribution between 0 and min(y)
-    censoring_times = np.random.uniform(0, np.min(y_times), size=n_patients)
+    censoring_times = np.random.uniform(0, y_times, size=n_patients)
 
     # Select 50% of the patients to be right-censored using censoring_times
     censoring_indices = np.random.choice(n_patients, size=int(n_patients * proportion_censored), replace=False)
@@ -41,4 +47,5 @@ def gen_synthetic_dataset(n_patients=30_000, n_covariates=2, hazards=(-1, 2), pr
 
 
 if __name__ == '__main__':
-    gen_synthetic_dataset()
+    gen_synthetic_dataset(n_patients=32_000, name='linear_exp_synthetic.pt')
+    gen_synthetic_dataset(n_patients=32_000, proportion_censored=0, name='linear_exp_synthetic_no_censoring.pt')
