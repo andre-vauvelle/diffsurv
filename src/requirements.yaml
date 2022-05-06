@@ -1,0 +1,29 @@
+name: base
+channels:
+  - soumith
+  - defaults
+dependencies:
+  - conda
+  - python=3.8
+  - ipython
+  - pymongo
+  - torchmetrics=0.6.0
+  - torchvision
+  - cudatoolkit=10.2
+  - pytorch
+  - pycairo
+  - pygobject
+  - notebook
+  - tensorboard
+  - hyperopt
+  - gh
+  - jsonargparse
+  - pandas
+  - torchaudio
+  - pytorch-lightning==1.5.9
+  - docstring_parser
+  - wandb
+  - pip
+  - pyg
+  - zstd
+prefix: /home/vauvelle/miniconda3
