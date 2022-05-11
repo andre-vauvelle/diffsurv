@@ -10,6 +10,7 @@ data:
   token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top_1003.pkl
   #  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_3169.pkl
   label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_top_1003.pkl
-  #  weightings_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/weightings_x.pl
+#  weightings_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/weightings_x.pl
+  incidence_grouping_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/incidence_groupings_x.pkl
   drop_unk: True
 

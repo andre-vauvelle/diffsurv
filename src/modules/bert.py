@@ -148,8 +148,17 @@ class BERTRisk(RiskMixin, BertBase):
         self.save_hyperparameters()
 
     def _shared_eval_step(self, batch, batch_idx):
-        (token_idx, age_idx, position, segment, mask, covariates), (label_multihot, label_times, censorings,
-                                                                    exclusions) = batch
+        token_idx = batch['token_idx']
+        age_idx = batch['age_idx']
+        position = batch['position']
+        segment = batch['segment']
+        mask = batch['mask']
+        covariates = batch['covariates']
+        label_multihot = batch['labels']
+        label_times = batch['label_times']
+        # censorings = batch['censorings']
+        # exclusions = batch['exclusions']
+
         logits = self((token_idx, age_idx, position, segment, mask), covariates)
 
         # predictions = self.sigmoid(logits)

@@ -58,9 +58,9 @@ class MultilayerBase(BaseModel):
         metrics = MetricCollection(
             [
                 AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
-                Precision(compute_on_step=False, average='micro'),
-                Accuracy(compute_on_step=False, average='micro'),
-                AUROC(num_classes=self.output_dim, compute_on_step=False)
+                # Precision(compute_on_step=False, average='micro'),
+                # Accuracy(compute_on_step=False, average='micro'),
+                # AUROC(num_classes=self.output_dim, compute_on_step=False)
             ]
         )
 
@@ -99,8 +99,17 @@ class MultilayerRisk(RiskMixin, MultilayerBase):
         self.save_hyperparameters()
 
     def _shared_eval_step(self, batch, batch_idx):
-        (token_idx, age_idx, position, segment, mask, covariates), (label_multihot, label_times, censorings,
-                                                                    exclusions) = batch
+        token_idx = batch['token_idx']
+        # age_idx = batch['age_idx']
+        # position = batch['position']
+        # segment = batch['segment']
+        # mask = batch['mask']
+        covariates = batch['covariates']
+        label_multihot = batch['labels']
+        label_times = batch['label_times']
+        # censorings = batch['censorings']
+        # exclusions = batch['exclusions']
+
         if not self.count:
             token_idx = self._row_unique(token_idx)
 

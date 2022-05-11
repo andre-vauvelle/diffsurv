@@ -1,4 +1,5 @@
 import os
+import h5py
 
 import re
 import pandas as pd
@@ -172,11 +173,20 @@ class DatasetSyntheticRisk(Dataset):
         return self.x_covar.shape[0]
 
 
+class TensorDataset(Dataset):
+    """For preprocessed tensor datasets"""
+
+    def __init__(self, tensor_path):
+        pass
+
+    def __getitem__(self, index):
+        return self.tensors[index]
+
+
 class DatasetAssessmentRiskPredict(AbstractDataset):
-    def __init__(self, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk, records=None,
+    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk,
                  drop_conseq_sep=True, setup=False, **kwargs):
         """
-
         :param records:
         :param token2idx:
         :param age2idx:
@@ -184,7 +194,7 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         """
         super().__init__(records=records, token2idx=token2idx, label2idx=label2idx, age2idx=age2idx, max_len=max_len,
                          covariates=covariates, used_covs=used_covs, **kwargs)
-        self.max_date = records['date'].explode().max()
+        self.max_date = pd.Timestamp('2020-12-06')  # records['date'].explode().max()
         self.drop_unk = drop_unk
         self.drop_conseq_sep = drop_conseq_sep
         self.lens = []
@@ -294,12 +304,24 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
 
         # token_idx, mask_labels, noise_labels = self.get_random_mask(token_idx, label_idx, mask_prob=self.mask_prob)
 
-        # reorder patients in batch with the shortest duration first
+        # Convert to tensors
+        age_idx = torch.LongTensor(age_idx)
+        token_idx = torch.LongTensor(token_idx)
+        position = torch.LongTensor(position)
+        segment = torch.LongTensor(segment)
+        mask = torch.LongTensor(mask)
+        covariates = torch.LongTensor(covariates)
 
-        input_tuple = *(torch.LongTensor(v) for v in [token_idx, age_idx, position, segment, mask, covariates]),
-        label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
+        output = {
+            # labels
+            "labels": future_label_multihot, "label_times": future_label_times,
+            "censorings": censorings, "exclusions": exclusions,
+            # input
+            "token_idx": token_idx, "age_idx": age_idx,
+            "position": position, "segment": segment, "mask": mask, "covariates": covariates
+        }
 
-        return input_tuple, label_tuple
+        return output
 
     @staticmethod
     def _get_first_times(future_labels_k, future_times_k):
