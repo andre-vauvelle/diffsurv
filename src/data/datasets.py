@@ -151,7 +151,6 @@ class DatasetSyntheticRisk(Dataset):
         self.censored_events = censored_events
 
     def __getitem__(self, index):
-
         covariates = self.x_covar[index]
         token_idx = torch.zeros(1)
         age_idx = torch.zeros(1)
@@ -174,8 +173,8 @@ class DatasetSyntheticRisk(Dataset):
 
 
 class DatasetAssessmentRiskPredict(AbstractDataset):
-    def __init__(self, records, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk,
-                 drop_conseq_sep=True, **kwargs):
+    def __init__(self, token2idx, label2idx, age2idx, max_len, covariates, used_covs, drop_unk, records=None,
+                 drop_conseq_sep=True, setup=False, **kwargs):
         """
 
         :param records:
@@ -189,6 +188,7 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         self.drop_unk = drop_unk
         self.drop_conseq_sep = drop_conseq_sep
         self.lens = []
+        self.setup = setup
 
     def __getitem__(self, index):
         """

@@ -33,12 +33,12 @@ data:
   debug: False
   token_col: concept_id
   label_col: phecode
-  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_train.feather
-  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_val.feather
-  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_test.feather
-  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/concept_vocab_14719.pkl
-  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phecode_vocab_1564.pkl
-  age_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/age_vocab_90.pkl
+  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_train.feather
+  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_val.feather
+  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_test.feather
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_14719.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_3169.pkl
+  age_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/age_vocab_90.pkl
   batch_size: 512
   num_workers: 8
 model:
@@ -46,8 +46,11 @@ model:
   #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211209_prone_256_edge_weights_no_shortcuts_2022-01-05.pt
   #  freeze_pretrained: False
   embedding_dim: 256
-  num_attention_heads: 2
-  num_hidden_layers: 3
+  num_attention_heads: 1
+  num_hidden_layers: 1
+  intermediate_size: 512
+  attention_probs_dropout_prob: 0.5
+  hidden_dropout_prob: 0.1
   lr: 0.002 # from auto lr find
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32

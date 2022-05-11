@@ -122,9 +122,9 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                  token_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phecode_vocab_top100_105.pkl'),
                  label_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phecode_vocab_top100_105.pkl'),
                  age_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'age_vocab_89.pkl'),
-                 train_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_train.parquet'),
-                 val_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_val.parquet'),
-                 test_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_test.parquet'),
+                 train_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_train.feather'),
+                 val_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_val.feather'),
+                 test_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_test.feather'),
                  covariates_path=os.path.join(
                      os.path.join(DATA_DIR, 'processed', 'covariates', 'patient_base.parquet')),
                  batch_size=32,
@@ -162,7 +162,7 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         self.drop_unk = drop_unk
         self.save_hyperparameters()
 
-        if weightings_path == 'false':
+        if weightings_path is None:
             self.weightings = None
         else:
             self.weightings = self.get_weightings(weightings_path=weightings_path)
@@ -288,7 +288,7 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         self.input_dim = x_covar.shape[1]
         self.output_dim = y_times.shape[1]
         self.label_vocab = {'token2idx': {'event0': 0}, 'idx2token': {0: 'event0'}}
-        self.grouping_labels = {'all': ['0']}
+        self.grouping_labels = {'all': ['event0']}
 
     def train_dataloader(self):
         (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
