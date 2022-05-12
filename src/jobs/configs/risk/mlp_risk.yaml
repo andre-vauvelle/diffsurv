@@ -39,7 +39,6 @@ data:
   test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_test.feather
   token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/concept_vocab_15003.pkl
   label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phecode_vocab_3169.pkl
-  age_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/age_vocab_90.pkl
   batch_size: 512
   num_workers: 8
 model:

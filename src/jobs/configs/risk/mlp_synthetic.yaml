@@ -1,26 +1,23 @@
 trainer:
-  #  logger:
-  #    - class_path: src.models.loggers.CustomWandbLogger
-  #      init_args:
-  #        project: ehrgnn
-  #        entity: qndre
-  #        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
-  #        tags:
-  #          - mlp
-  #          - concept_id
-  #          - risk
-  #          - relu
-  #          - in_gnn
-  #          - layernorm
-  #          - precision16
-  #          - phex
-  #        log_model: True
+  logger:
+    - class_path: src.models.loggers.CustomWandbLogger
+      init_args:
+        project: ehrgnn
+        entity: qndre
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+        tags:
+          - mlp
+          - synthetic
+          - nocensoring
+          - risk
+          - diffsort
+          - precision16
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
         patience: 5
         monitor: val/loss
-        min_delta: 0.02
+        min_delta: 0.0002
         mode: min
   max_epochs: 100
   check_val_every_n_epoch: 1
@@ -31,18 +28,19 @@ trainer:
   default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/
 #  precision: 16
 data:
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
+#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
+  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic_no_censoring.pt
   val_split: 0.2
   batch_size: 128
   num_workers: 1
 model:
   embedding_dim: 256
-  lr: 0.002 # from auto lr find
+  lr: 0.02 # from auto lr find
   only_covs: True
   loss:
     - type: SortingCrossEntropyLoss
       args:
-        num_compare: 512
+        num_compare: 128
         sorting_network: bitonic
         steepness: 10
         art_lambda: 0.25
