@@ -63,11 +63,10 @@ class RiskMixin(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss, logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
-        self.log('val/CoxPH', loss, prog_bar=True)
         # calc and use weighted loss
         if self.loss_func_w is not None:
             loss_weighted = self.loss_func_w(logits, label_multihot, label_times)
-            self.log('val/CoxPH_weighted', loss)
+            self.log('val/loss_weighted', loss)
             if self.use_weighted_loss:
                 loss = loss_weighted
         self.log('val/loss', loss, prog_bar=True)
@@ -82,7 +81,8 @@ class RiskMixin(pl.LightningModule):
             # idx = self._groping_idx[name]
             idx = self.label_vocab['token2idx'][unsafe_string(name.split('/')[-1])]
             e = exclusions[:, idx]  # exclude patients with prior history of event
-            p, l, t = predictions[1 - e, idx], label_multihot[1 - e, idx], label_times[1 - e, idx]
+            e_idx = (1-e).bool()
+            p, l, t = predictions[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
             metric.update(p, l.int(), t)
 
     def on_validation_epoch_end(self) -> None:

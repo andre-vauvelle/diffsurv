@@ -1,20 +1,20 @@
 trainer:
-  #  logger:
-  #    - class_path: src.models.loggers.CustomWandbLogger
-  #      init_args:
-  #        project: ehrgnn
-  #        entity: qndre
-  #        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
-  #        tags:
-  #          - mlp
-  #          - concept_id
-  #          - risk
-  #          - relu
-  #          - in_gnn
-  #          - layernorm
-  #          - precision16
-  #          - phex
-  #        log_model: True
+  logger:
+    - class_path: src.models.loggers.CustomWandbLogger
+      init_args:
+        project: ehrgnn
+        entity: qndre
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+        tags:
+          - mlp
+          - concept_id
+          - risk
+          - relu
+          - in_gnn
+          - layernorm
+          - precision16
+          - phex
+        log_model: True
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
@@ -34,28 +34,17 @@ data:
   debug: False
   token_col: concept_id
   label_col: phecode
-  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_train.feather
-  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_val.feather
-  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phe_test.feather
-  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/concept_vocab_15003.pkl
-  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab_3169.pkl
-  age_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/age_vocab_90.pkl
-  batch_size: 128
+  train_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_train.feather
+  val_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_val.feather
+  test_data_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phe_test.feather
+  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/concept_vocab_15003.pkl
+  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phecode_vocab_3169.pkl
+  batch_size: 512
   num_workers: 8
 model:
   embedding_dim: 256
   lr: 0.002 # from auto lr find
   only_covs: False
-  loss:
-    - type: SortingCrossEntropyLoss
-      args:
-        num_compare: 128
-        sorting_network: bitonic
-        steepness: 10
-        art_lambda: 0.25
-        distribution: cauchy
-
-
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
 

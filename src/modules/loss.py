@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 import pdb
@@ -132,15 +133,18 @@ def test_diff_sort_loss_get_soft_perm():
 
 
 class CoxPHLoss(torch.nn.Module):
-    def __init__(self, weightings=None):
+    def __init__(self, weightings=None, method='efron'):
         super().__init__()
-        self.weightings = weightings
+        self.method = method
+        if weightings is not None:
+            self.register_buffer('weightings', weightings)
+        else:
+            self.weightings = weightings
 
     def forward(self, logh, events, durations, eps=1e-7):
         """
         Simple approximation of the COX-ph. Log hazard is not computed on risk-sets, but on ranked list instead.
         This approximation is valid for datamodules w/ low percentage of ties.
-        Credit to Haavard Kamme/PyCox
         :param logh: log hazard
         :param durations: (batch_size, n_risk_sets, n_events)
         :param events: 1 if event, 0 if censored
@@ -152,18 +156,12 @@ class CoxPHLoss(torch.nn.Module):
         losses = []
         for i in range(logh.shape[1]):
             lh, d, e = logh[:, i], durations[:, i], events[:, i]
-
-            # sort:
-            idx = d.sort(descending=True, dim=0)[1]
-            e = e[idx].squeeze(-1)
-            lh = lh[idx].squeeze(-1)
-            # calculate loss:
-            gamma = lh.max()
-            log_cumsum_h = lh.sub(gamma).exp().cumsum(0).add(eps).log().add(gamma)
-            if e.sum() > 0:
-                loss = -lh.sub(log_cumsum_h).mul(e).sum().div(e.sum())
+            if self.method == 'efron':
+                loss = self._efron_loss(lh, d, e, eps)
+            elif self.method == 'ranked_list':
+                loss = self._loss_ranked_list(lh, d, e, eps)
             else:
-                loss = -lh.sub(log_cumsum_h).mul(e).sum()  # would this not always be zero?
+                raise ValueError('Unknown method: {}, choose one of ["efron", "ranked_list"]'.format(self.method))
             losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
@@ -178,6 +176,130 @@ class CoxPHLoss(torch.nn.Module):
             loss = loss_tensor[loss_idx].mul(weightings).sum()
 
         return loss
+
+    @staticmethod
+    def _loss_ranked_list(lh, d, e, eps=1e-7):
+        """Ranked list method for COX-PH.
+        Credit to Haavard Kamme/PyCox
+        """
+
+        # sort:
+        idx = d.sort(descending=True, dim=0)[1]
+        e = e[idx].squeeze(-1)
+        lh = lh[idx].squeeze(-1)
+        # calculate loss:
+        gamma = lh.max()
+        log_cumsum_h = lh.sub(gamma).exp().cumsum(0).add(eps).log().add(gamma)
+        if e.sum() > 0:
+            loss = -lh.sub(log_cumsum_h).mul(e).sum().div(e.sum())
+        else:
+            loss = -lh.sub(log_cumsum_h).mul(e).sum()  # would this not always be zero?
+        return loss
+
+    @staticmethod
+    def _efron_loss(lh, d, e, eps=1e-7):
+        """Efron method for COX-PH.
+        Credit to https://bydmitry.github.io/efron-tensorflow.html
+        """
+        pass
+
+def tgt_equal_tgt(time):
+    """
+    Used for tied times. Returns a diagonal by block matrix.
+    Diagonal blocks of 1 if same time.
+    Sorted over time. A_ij = i if t_i == t_j.
+    Parameters
+    ----------
+    time: ndarray
+        Time sorted in ascending order.
+    Returns
+    -------
+    tied_matrix: ndarray
+        Diagonal by block matrix.
+    """
+    t_i = time.astype(np.float32).reshape(1, -1)
+    t_j = time.astype(np.float32).reshape(-1, 1)
+    tied_matrix = np.where(t_i == t_j, 1., 0.).astype(np.float32)
+
+    assert(tied_matrix.ndim == 2)
+    block_sizes = np.sum(tied_matrix, axis=1)
+    block_index = np.sum(tied_matrix - np.triu(tied_matrix), axis=1)
+
+    tied_matrix = tied_matrix * (block_index / block_sizes)[:, np.newaxis]
+    return tied_matrix
+
+
+def tgt_leq_tgt(time):
+    """
+    Lower triangular matrix where A_ij = 1 if t_i leq t_j.
+    Parameters
+    ----------
+    time: ndarray
+        Time sorted in ascending order.
+    Returns
+    -------
+    tril: ndarray
+        Lower triangular matrix.
+    """
+    t_i = time.astype(np.float32).reshape(1, -1)
+    t_j = time.astype(np.float32).reshape(-1, 1)
+    tril = np.where(t_i <= t_j, 1., 0.).astype(np.float32)
+    return tril
+
+
+def cox_loss_ties(pred, cens, tril, tied_matrix):
+    """
+    Compute the Efron version of the Cox loss. This version take into
+    account the ties.
+    t unique time
+    H_t denote the set of indices i such that y^i = t and c^i =1.
+    c^i = 1 event occured.
+    m_t = |H_t| number of elements in H_t.
+    l(theta) = sum_t (sum_{i in H_t} h_{theta}(x^i)
+                     - sum_{l=0}^{m_t-1} log (
+                        sum_{i: y^i >= t} exp(h_{theta}(x^i))
+                        - l/m_t sum_{i in H_t} exp(h_{theta}(x^i)))
+    Parameters
+    ----------
+    pred : torch tensor
+        Model prediction.
+    cens : torch tensor
+        Event tensor.
+    tril : torch tensor
+        Lower triangular tensor.
+    tied_matrix : torch tensor
+        Diagonal by block tensor.
+    Returns
+    -------
+    loss : float
+        Efron version of the Cox loss.
+    """
+
+    # Note that the observed variable is not required as we are sorting the
+    # inputs when generating the batch according to survival time.
+
+    # exp(h_{theta}(x^i))
+    exp_pred = torch.exp(pred)
+    # Term corresponding to the sum over events in the risk pool
+    # sum_{i: y^i >= t} exp(h_{theta}(x^i))
+    future_theta = torch.mm(tril.transpose(1, 0), exp_pred)
+    # sum_{i: y^i >= t} exp(h_{theta}(x^i))
+    # - l/m_t sum_{i in H_t} exp(h_{theta}(x^i))
+    tied_term = future_theta - torch.mm(tied_matrix, exp_pred)
+    # log (sum_{i: y^i >= t} exp(h_{theta}(x^i))
+    #      - l/m_t sum_{i in H_t} exp(h_{theta}(x^i))
+    tied_term = torch.log(tied_term)
+    # event row vector to column
+    tied_term = tied_term.view((-1, 1))
+    cens = cens.view((-1, 1))
+    # sum_t (sum_{i in H_t} h_{theta}(x^i)
+    #       - sum_{l=0}^{m_t-1} log (
+    #          sum_{i: y^i >= t} exp(h_{theta}(x^i))
+    #          - l/m_t sum_{i in H_t} exp(h_{theta}(x^i)))
+    loss = (pred - tied_term) * cens
+    # Negative loglikelihood
+    loss = -torch.mean(loss)
+    return loss
 
 
 if __name__ == '__main__':

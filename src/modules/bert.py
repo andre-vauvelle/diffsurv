@@ -8,6 +8,7 @@ from torch.optim import SparseAdam
 from torchmetrics import AveragePrecision, MetricCollection, AUROC, Precision, Accuracy
 
 from models.heads import PredictionHead
+from modules.base import BaseModel
 from modules.loss import CoxPHLoss
 from modules.tasks import RiskMixin
 from src.models.bert.components import BertModel, CustomBertLMPredictionHead
@@ -16,7 +17,7 @@ from src.models.bert.config import BertConfig
 import pytorch_lightning as pl
 
 
-class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
+class BertBase(Bert.modeling.BertPreTrainedModel, BaseModel):
     def __init__(self,
                  input_dim=1390,
                  output_dim=1390,
@@ -25,7 +26,7 @@ class BertBase(Bert.modeling.BertPreTrainedModel, pl.LightningModule):
                  hidden_dropout_prob=0.2, lr=1e-4, warmup_proportion=0.1,
                  temperature_scaling=False,
                  feature_dict=None, num_attention_heads=12, intermediate_size=256, hidden_act="gelu",
-                 attention_probs_dropout_prob=0.22, max_position_embeddings=256, initializer_range=0.02,
+                 attention_probs_dropout_prob=0.22, max_position_embeddings=2048, initializer_range=0.02,
                  age_vocab_size=None, seg_vocab_size=2,
                  pretrained_embedding_path=None,
                  freeze_pretrained=False,
@@ -147,8 +148,17 @@ class BERTRisk(RiskMixin, BertBase):
         self.save_hyperparameters()
 
     def _shared_eval_step(self, batch, batch_idx):
-        (token_idx, age_idx, position, segment, mask, covariates), (label_multihot, label_times, censorings,
-                                                                    exclusions) = batch
+        token_idx = batch['token_idx']
+        age_idx = batch['age_idx']
+        position = batch['position']
+        segment = batch['segment']
+        mask = batch['mask']
+        covariates = batch['covariates']
+        label_multihot = batch['labels']
+        label_times = batch['label_times']
+        # censorings = batch['censorings']
+        # exclusions = batch['exclusions']
+
         logits = self((token_idx, age_idx, position, segment, mask), covariates)
 
         # predictions = self.sigmoid(logits)

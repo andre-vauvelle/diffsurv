@@ -576,7 +576,7 @@ def main(
     age_vocab = fit_vocab(phe_train.age.explode().astype(str))
     code_vocab = fit_vocab(phe_train.code.explode().astype(str), min_count=1)
     phecode_vocab = fit_vocab(phe_train.phecode.explode().astype(str), min_proportion=0.00000)
-    phecode_vocab_top = fit_vocab(phe_train.phecode.explode().astype(str), top_n=1000, )
+    phecode_vocab_top = fit_vocab(phe_train.phecode.explode().astype(str), min_proportion=0.01,)
     concept_vocab = fit_vocab(phe_train.concept_id.explode().astype(str), min_count=1)
     concept_vocab_15k = fit_vocab(phe_train.concept_id.explode().astype(str), top_n=15_000)
 
