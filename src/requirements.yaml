@@ -16,3 +16,4 @@ dependencies:
   - python-dotenv
   - dill
   - numba
+  - pandas

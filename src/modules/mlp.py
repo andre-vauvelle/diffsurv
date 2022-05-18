@@ -110,14 +110,14 @@ class MultilayerRisk(RiskMixin, MultilayerBase):
                  lr=1e-4,
                  head_hidden_dim=1028, head_layers=1, hidden_dropout_prob=0.2,
                  pretrained_embedding_path=None, freeze_pretrained=False, count=True,
-                 only_covs=False, label_vocab=None, grouping_labels=None, used_covs=('age_ass', 'sex'), weightings=None,
+                 only_covs=False, label_vocab=None, grouping_labels=None, cov_size=2, weightings=None,
                  use_weighted_loss=False, loss=None
                  ):
         super().__init__(input_dim=input_dim, output_dim=output_dim, embedding_dim=embedding_dim,
                          hidden_dropout_prob=hidden_dropout_prob, head_layers=head_layers,
                          head_hidden_dim=head_hidden_dim,
                          lr=lr, pretrained_embedding_path=pretrained_embedding_path,
-                         freeze_pretrained=freeze_pretrained, used_covs=used_covs,
+                         freeze_pretrained=freeze_pretrained, cov_size=cov_size,
                          count=count,
                          only_covs=only_covs, label_vocab=label_vocab, grouping_labels=grouping_labels, loss=loss,
                          weightings=weightings,
