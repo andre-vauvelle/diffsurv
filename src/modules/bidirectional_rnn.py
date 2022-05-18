@@ -16,6 +16,9 @@ class BiRNNBase(BaseModel):
                  num_hidden_layers=3,
                  hidden_dropout_prob=0.2, lr=1e-4,
                  intermediate_size=256, hidden_act="relu",
+                 head_hidden_dim=64,
+                 head_dropout_prob=0.2,
+                 head_layers=1,
                  bidirectional=True,
                  used_covs=('age_ass', 'sex'),
                  ):
@@ -31,12 +34,11 @@ class BiRNNBase(BaseModel):
                                   batch_first=True, bidirectional=bidirectional,
                                   dropout=hidden_dropout_prob)
 
-        head_input_dim = embedding_dim
-        head_input_dim = head_input_dim * num_hidden_layers * (2 if bidirectional else 1)
-        if used_covs is not None:
-            head_input_dim = head_input_dim + len(used_covs)
+        head_input_dim = intermediate_size * (2 if bidirectional else 1) * num_hidden_layers
+        head_input_dim = head_input_dim + (len(used_covs) if used_covs is not None else 0)
 
-        self.head = PredictionHead(in_features=head_input_dim, out_features=output_dim)
+        self.head = PredictionHead(in_features=head_input_dim, out_features=output_dim,
+                                   hidden_dim=head_hidden_dim, n_layers=head_layers, dropout=head_dropout_prob)
 
         metrics = MetricCollection(
             [
@@ -78,14 +80,15 @@ class BiRNNRisk(RiskMixin, BiRNNBase):
                  weightings=None,
                  use_weighted_loss=False,
                  loss=None,
-                 grouping_labels=None
+                 grouping_labels=None,
+                 **kwargs
                  ):
         super().__init__(input_dim=input_dim, output_dim=output_dim, embedding_dim=embedding_dim,
                          num_hidden_layers=num_hidden_layers, hidden_dropout_prob=hidden_dropout_prob,
                          lr=lr, intermediate_size=intermediate_size, hidden_act=hidden_act,
                          bidirectional=bidirectional, used_covs=used_covs, label_vocab=label_vocab,
                          weightings=weightings, loss=loss, use_weighted_loss=use_weighted_loss,
-                         grouping_labels=grouping_labels, )
+                         grouping_labels=grouping_labels, **kwargs)
         self.save_hyperparameters()
 
     def _shared_eval_step(self, batch, batch_idx):
@@ -102,5 +105,4 @@ class BiRNNRisk(RiskMixin, BiRNNBase):
 
         logits = self(token_idx, covariates=covariates)
 
-        loss = self.loss_func(logits, label_multihot, label_times)
-        return loss, logits, label_multihot, label_times
+        return logits, label_multihot, label_times

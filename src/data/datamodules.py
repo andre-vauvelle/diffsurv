@@ -1,6 +1,5 @@
 import os
 
-import h5py
 import pytorch_lightning as pl
 import pandas as pd
 from torch.utils.data import DataLoader
@@ -123,7 +122,7 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                  label_col='phecode',
                  token_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phecode_vocab_top100_105.pkl'),
                  label_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phecode_vocab_top100_105.pkl'),
-                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'age_vocab_89.pkl'),
+                 age_vocab_path='/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/age_vocab_90.pkl',
                  train_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_train.feather'),
                  val_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_val.feather'),
                  test_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_test.feather'),

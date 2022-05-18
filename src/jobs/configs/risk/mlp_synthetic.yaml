@@ -1,27 +1,27 @@
 trainer:
-  logger:
-    - class_path: src.models.loggers.CustomWandbLogger
-      init_args:
-        project: ehrgnn
-        entity: qndre
-        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
-        tags:
-          - mlp
-          - synthetic
-          - nocensoring
-          - risk
-          - diffsort
-          - precision16
+#  logger:
+#    - class_path: src.models.loggers.CustomWandbLogger
+#      init_args:
+#        project: ehrgnn
+#        entity: qndre
+#        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+#        tags:
+#          - mlp
+#          - synthetic
+#          - nocensoring
+#          - risk
+#          - diffsort
+#          - precision16
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 5
+        patience: 50
         monitor: val/loss
         min_delta: 0.0002
         mode: min
   max_epochs: 100
   check_val_every_n_epoch: 1
-  val_check_interval: 0.5
+  val_check_interval: 1
   enable_checkpointing: True
   num_sanity_val_steps: 2
   accumulate_grad_batches: 1
@@ -29,22 +29,22 @@ trainer:
 #  precision: 16
 data:
 #  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic_no_censoring.pt
+#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic_no_censoring.pt
+  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/basic_rank.pt
   val_split: 0.2
-  batch_size: 128
+  batch_size: 4
   num_workers: 1
 model:
   embedding_dim: 256
   lr: 0.02 # from auto lr find
   only_covs: True
-  loss:
-    - type: SortingCrossEntropyLoss
-      args:
-        num_compare: 128
-        sorting_network: bitonic
-        steepness: 10
-        art_lambda: 0.25
-        distribution: cauchy
+  cov_size: 1
+  sorter:
+#      size: 4
+      sorting_network: bitonic
+      steepness: 10
+      art_lambda: 0.25
+      distribution: cauchy
 
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt

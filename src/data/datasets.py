@@ -1,5 +1,4 @@
 import os
-import h5py
 
 import re
 import pandas as pd
@@ -164,10 +163,16 @@ class DatasetSyntheticRisk(Dataset):
         censorings = self.censored_events[index]
         exclusions = torch.zeros_like(censorings)
 
-        input_tuple = (token_idx, age_idx, position, segment, mask, covariates)
-        label_tuple = (future_label_multihot, future_label_times, censorings, exclusions)
+        output = {
+            # labels
+            "labels": future_label_multihot, "label_times": future_label_times,
+            "censorings": censorings, "exclusions": exclusions,
+            # input
+            "token_idx": token_idx, "age_idx": age_idx,
+            "position": position, "segment": segment, "mask": mask, "covariates": covariates
+        }
 
-        return input_tuple, label_tuple
+        return output
 
     def __len__(self):
         return self.x_covar.shape[0]

@@ -47,12 +47,13 @@ class CIndex(torchmetrics.Metric):
 
     def compute(self):
         # this version is much faster, but doesn't handle ties correctly.
+        # numba doesn't handle half precision correctly, so we use float32
         return torch.Tensor(
             [
                 cindex(
-                    torch.cat(self.events).cpu().numpy(),
-                    torch.cat(self.times).cpu().numpy(),
-                    1 - torch.cat(self.logits).cpu().numpy(),
+                    torch.cat(self.events).cpu().float().numpy(),
+                    torch.cat(self.times).cpu().float().numpy(),
+                    1 - torch.cat(self.logits).cpu().float().numpy(),
                 )
             ]
         )

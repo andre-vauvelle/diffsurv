@@ -28,6 +28,7 @@ class CustomDiffSortNet(torch.nn.Module):
         self.sorting_network_type = sorting_network_type
         self.size = size
 
+        # Register the sorting network in the module buffer.
         self._sorting_network_structure = self._setup_sorting_network_structure(sorting_network_type, size)
         self._register_sorting_network(self._sorting_network_structure)
 
@@ -47,9 +48,8 @@ class CustomDiffSortNet(torch.nn.Module):
     def forward(self, vectors):
         assert len(vectors.shape) == 2
         assert vectors.shape[1] == self.size
-        return self.sort(
-            vectors, self.steepness, self.art_lambda, self.distribution
-        )
+        sorted_out, predicted_permutation = self.sort(vectors, self.steepness, self.art_lambda, self.distribution)
+        return sorted_out, predicted_permutation
 
     def _setup_sorting_network_structure(self, network_type, n):
         """Setup the sorting network structure. Used for registering the sorting network in the module buffer."""

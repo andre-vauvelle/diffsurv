@@ -25,8 +25,8 @@ class SortingCrossEntropyLoss(torch.nn.Module):
                  eps=1e-6, weightings=None):
         super().__init__()
         self.eps = eps
-        self.sorter = sorter
         self.weightings = weightings
+        self.sorter = sorter
 
     def forward(self, logits, events, durations):
         losses = []
@@ -35,7 +35,7 @@ class SortingCrossEntropyLoss(torch.nn.Module):
 
             # TODO: could refactor to dataloader
             # Get the soft permutation matrix
-            _, perm_prediction = self.sorter(lh.unsqueeze(0))
+            sort_out, perm_prediction = self.sorter(lh.unsqueeze(0))
             perm_ground_truth = self._get_soft_perm(e, d)
 
             loss = torch.nn.BCELoss()(perm_prediction, perm_ground_truth)
@@ -133,7 +133,7 @@ def test_diff_sort_loss_get_soft_perm():
 
 
 class CoxPHLoss(torch.nn.Module):
-    def __init__(self, weightings=None, method='efron'):
+    def __init__(self, weightings=None, method='ranked_list'):
         super().__init__()
         self.method = method
         if weightings is not None:
@@ -201,7 +201,8 @@ class CoxPHLoss(torch.nn.Module):
         """Efron method for COX-PH.
         Credit to https://bydmitry.github.io/efron-tensorflow.html
         """
-        pass
+        raise NotImplementedError
+
 
 def tgt_equal_tgt(time):
     """
@@ -221,7 +222,7 @@ def tgt_equal_tgt(time):
     t_j = time.astype(np.float32).reshape(-1, 1)
     tied_matrix = np.where(t_i == t_j, 1., 0.).astype(np.float32)
 
-    assert(tied_matrix.ndim == 2)
+    assert (tied_matrix.ndim == 2)
     block_sizes = np.sum(tied_matrix, axis=1)
     block_index = np.sum(tied_matrix - np.triu(tied_matrix), axis=1)
 
