@@ -28,10 +28,10 @@ trainer:
   enable_checkpointing: True
   num_sanity_val_steps: 2
   accumulate_grad_batches: 1
-  default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/
+  default_root_dir: /lustre/home/rmhivau/ehrgnn/SAN/models/checkpoints/
 #  precision: 16
 data:
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
+  path: /lustre/home/rmhivau/ehrgnn/data/synthetic/linear_exp_synthetic.pt
   val_split: 0.2
   batch_size: 128
   num_workers: 1
@@ -39,6 +39,7 @@ model:
   embedding_dim: 256
   lr: 0.002 # from auto lr find
   only_covs: True
+  cov_size: 10
   loss:
     - type: SortingCrossEntropyLoss
       args:
