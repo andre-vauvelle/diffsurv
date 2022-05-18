@@ -1,5 +1,9 @@
 # Custom 
-# data/
+data/
+!src/data/
+
+# VIM SWAPFILES
+*.swp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
