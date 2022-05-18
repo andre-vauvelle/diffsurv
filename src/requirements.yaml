@@ -7,9 +7,30 @@ dependencies:
   - conda
   - python=3.8
   - ipython
+<<<<<<< HEAD
   - pytorch=1.11=py3.8_cuda11.5_cudnn8.3.2_0
   - numpy
   - torchmetrics
+=======
+  - pymongo
+  - torchmetrics=0.6.0
+  - torchvision
+  - cudatoolkit=10.2
+  - pytorch
+  - pycairo
+  - pygobject
+  - notebook
+  - tensorboard
+  - hyperopt
+  - gh
+  - jsonargparse
+  - pandas
+  - torchaudio
+  - pytorch-lightning=1.5.9
+  - docstring_parser
+  - wandb
+  - pip
+>>>>>>> origin/main
   - pyg
   - pytorch-lightning=1.6.3
   - wandb
