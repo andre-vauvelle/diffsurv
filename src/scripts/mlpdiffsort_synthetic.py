@@ -13,6 +13,8 @@ class CustomLightningCLI(LightningCLI):
         parser.link_arguments("data.output_dim", "model.output_dim", apply_on="instantiate")
         parser.link_arguments("data.label_vocab", "model.label_vocab", apply_on="instantiate")
         parser.link_arguments("data.grouping_labels", "model.grouping_labels", apply_on="instantiate")
+        parser.link_arguments("data.batch_size", "model.sorter_size", apply_on="instantiate")
+
 
 # class CustomSaveConfigCallback(SaveConfigCallback):
 #     def on_train_start(self, trainer, pl_module) -> None:
@@ -24,7 +26,7 @@ class CustomLightningCLI(LightningCLI):
 
 def cli_main():
     cli = CustomLightningCLI(
-        MultilayerRisk, DataModuleSytheticRisk, seed_everything_default=42,
+        MultilayerDiffsort, DataModuleSytheticRisk, seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,
     )

@@ -53,7 +53,7 @@ class CIndex(torchmetrics.Metric):
                 cindex(
                     torch.cat(self.events).cpu().float().numpy(),
                     torch.cat(self.times).cpu().float().numpy(),
-                    1 - torch.cat(self.logits).cpu().float().numpy(),
+                    torch.cat(self.logits).cpu().float().numpy(),
                 )
             ]
         )

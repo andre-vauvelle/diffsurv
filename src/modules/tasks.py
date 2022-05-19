@@ -68,18 +68,18 @@ class RiskMixin(pl.LightningModule):
             idx = self.label_vocab['token2idx'][unsafe_string(name.split('/')[-1])]
             e = exclusions[:, idx]  # exclude patients with prior history of event
             e_idx = (1 - e).bool()
-            p, l, t = predictions[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
-            metric.update(p, l.int(), t)
+            p, l, t = logits[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
+            metric.update(-1*p, l.int(), t)
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
         self.valid_metrics.reset()
-        self.log_dict(output, prog_bar=True)
+        self.log_dict(output, prog_bar=False)
         output = self.valid_cindex.compute()
         self._group_cindex(output)
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
-        self.log('hp_metric', output['val/c_index/all'])
+        self.log('hp_metric', output['val/c_index/all'], prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
@@ -136,7 +136,7 @@ class SortingRiskMixin(RiskMixin):
             perm_ground_truth = _get_soft_perm(e, d)
 
             loss = self.loss_func(perm_prediction, perm_ground_truth)
-            predictions[:, i] = perm_prediction.squeeze().T @ sort_out.squeeze()
+            predictions[:, i] =  lh
             losses[i] = loss
 
         loss_idx = losses.gt(0)
@@ -234,7 +234,7 @@ def _get_soft_perm(events, d):
     perm_matrix = perm_un_ascending @ perm_matrix
 
     # Unsqueeze for one batch
-    return perm_matrix.T.unsqueeze(0)
+    return perm_matrix.unsqueeze(0)
 
 
 def test_diff_sort_loss_get_soft_perm():

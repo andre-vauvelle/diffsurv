@@ -13,7 +13,7 @@ def gen_synthetic_basic(n_patients=30_000, name='basic_rank.pt'):
     returns x, y, censored_events
     """
     # Sample X from gaussian distribution
-    x_covar = np.random.randint(0, 5, size=(n_patients, 1))
+    x_covar = np.random.uniform(0, 5, size=(n_patients, 1))
     # x_covar = np.random.normal(0, 1, size=(n_patients, n_covariates))
 
     # Used with linear comnination to sample y from exponential

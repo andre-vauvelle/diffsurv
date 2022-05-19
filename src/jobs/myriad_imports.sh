@@ -2,7 +2,7 @@
 hostname
 date
 # SOURCE project
-SOURCE_DIR='/home/rmhivau/ehrgnn/'
+SOURCE_DIR='/home/rmhivau/ehrgnn'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR/src/ || exit
 

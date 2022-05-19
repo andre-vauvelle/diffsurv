@@ -15,35 +15,37 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 50
-        monitor: val/loss
-        min_delta: 0.0002
-        mode: min
-  max_epochs: 100
+        patience: 5
+        monitor: hp_metric
+        min_delta: 0.02
+        mode: max
+  max_epochs: 10
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
   enable_checkpointing: True
-  num_sanity_val_steps: 2
+  num_sanity_val_steps: 0
   accumulate_grad_batches: 1
   default_root_dir: /lustre/home/rmhivau/ehrgnn/SAN/models/checkpoints/
 #  precision: 16
 data:
-  path: /lustre/home/rmhivau/ehrgnn/data/synthetic/linear_exp_synthetic_no_censoring.pt
+  path: /lustre/home/rmhivau/ehrgnn/data/synthetic/basic_rank.pt
   val_split: 0.2
-  batch_size: 32
+  batch_size: 8
   num_workers: 1
 model:
   embedding_dim: 5
   head_hidden_dim: 256
+  head_layers: 0
   lr: 0.002 # from auto lr find
   only_covs: True
-  cov_size: 2
-  sorter:
-    size: 4
-    sorting_network: bitonic
-    steepness: 20
-    art_lambda: 0.0
-    distribution: cauchy
+  cov_size: 1
+  hidden_dropout_prob: 0.0
+# sorter:
+#     size: 4
+#     sorting_network: odd_even
+#     steepness: 20
+#     art_lambda: 0.1
+#     distribution: cauchy
   
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt

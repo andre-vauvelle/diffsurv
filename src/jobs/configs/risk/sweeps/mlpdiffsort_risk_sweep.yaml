@@ -8,9 +8,6 @@ parameters:
   model.lr:
     min: 0.0001
     max: 0.01
-  model.embedding_dim:
-    min: 64
-    max: 1024
   model.head_layers:
     min: 0
     max: 3
@@ -30,8 +27,6 @@ command:
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/risk/mlp_risk.yaml"
-  - "--config"
-  - "jobs/configs/omop_data.yaml"
+  - "jobs/configs/risk/basic_risk.yaml"
   - ${args}
 project: ehrgnn

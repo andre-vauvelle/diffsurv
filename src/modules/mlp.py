@@ -25,7 +25,7 @@ class MultilayerBase(BaseModel):
                  input_dim=1390, output_dim=1390,
                  embedding_dim=128,
                  lr=1e-4,
-                 head_hidden_dim=1028, head_layers=1, hidden_dropout_prob=0.2,
+                 head_hidden_dim=256, head_layers=1, hidden_dropout_prob=0.2,
                  pretrained_embedding_path=None, freeze_pretrained=False, count=True,
                  cov_size=2, only_covs=False,
                  **kwargs):
@@ -61,8 +61,8 @@ class MultilayerBase(BaseModel):
         # TODO: consider moving to mixin
         metrics = MetricCollection(
             [
-                AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
-                # Precision(compute_on_step=False, average='micro'),
+                # AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
+                Precision(compute_on_step=False, average='micro'),
                 # Accuracy(compute_on_step=False, average='micro'),
                 # AUROC(num_classes=self.output_dim, compute_on_step=False)
             ]
