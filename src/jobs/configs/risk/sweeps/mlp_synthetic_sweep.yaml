@@ -1,5 +1,5 @@
 # wandb sweep
-program: scripts/mlp_risk.py
+program: scripts/mlp_synthetic.py
 method: random
 metric:
   name: val/loss
@@ -10,23 +10,23 @@ parameters:
     max: 0.01
   model.head_layers:
     min: 0
-    max: 3
+    max: 2
   model.head_hidden_dim:
     min: 128
     max: 1024
   model.hidden_dropout_prob:
     min: 0.0
-    max: 0.8
+    max: 0.5
   data.batch_size:
-    values: [ 128, 256, 512, 1024, 2048 ]
-  model.count:
-    values: [ True, False ]
+    values: [16, 32, 64, 128]
 command:
   - ${env}
   - ${interpreter}
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/risk/basic_risk.yaml"
+  - "jobs/configs/risk/mlp_synthetic.yaml"
+  - "--data.path"
+  - "/lustre/home/rmhivau/ehrgnn/data/synthetic/pysurv_gaussian_weibull_0.3.pt"
   - ${args}
 project: ehrgnn
