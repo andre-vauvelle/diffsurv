@@ -1,22 +1,22 @@
 trainer:
-#  logger:
-#    - class_path: src.models.loggers.CustomWandbLogger
-#      init_args:
-#        project: ehrgnn
-#        entity: qndre
-#        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
-#        tags:
-#          - mlp
-#          - synthetic
-#          - nocensoring
-#          - risk
-#          - diffsort
-#          - precision16
+  logger:
+    - class_path: src.models.loggers.CustomWandbLogger
+      init_args:
+        project: ehrgnn
+        entity: qndre
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+        tags:
+          - mlp
+          - synthetic
+          - nocensoring
+          - risk
+          - diffsort
+          - precision16
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
         patience: 50
-        monitor: val/loss
+        monitor: hp_metric
         min_delta: 0.0002
         mode: min
   max_epochs: 100

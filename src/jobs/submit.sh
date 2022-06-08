@@ -4,7 +4,7 @@
 #$ -l gpu=true
 #$ -S /bin/bash
 #$ -j y
-#$ -N bert_mlm
+#$ -N submit
 
 #$ -o /home/vauvelle/pycharm-sftp/ehrgnn/src/jobs/logs
 
@@ -24,4 +24,4 @@ echo python $@
 python $@
 date
 
-qstat -j $JOB_ID
+#qstat -j $JOB_ID

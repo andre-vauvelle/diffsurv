@@ -344,6 +344,28 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
         return len(self.tokens)
 
 
+class DatasetNextPredict(DatasetAssessmentRiskPredict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __getitem__(self, index: int):
+        """
+        Only use labels from the next episode after assessment
+        TODO: WARNING not implemented update to label times. only use for clasification not risk.
+        :param index:
+        :return:
+        """
+        output = super().__getitem__(index)
+        label_times = output['label_times']
+        new_labels = (label_times == label_times.min()).float()
+        if new_labels.all():
+            new_labels = torch.zeros_like(new_labels)
+        output['labels'] = new_labels
+        return output
+
+
+
+
 class DatasetMLM(AbstractDataset):
     def __init__(self, records, token2idx, label2idx, age2idx, max_len, mask_prob=0.2, **kwargs):
         """

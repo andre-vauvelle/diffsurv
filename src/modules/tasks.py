@@ -3,22 +3,22 @@ import importlib
 import torch
 from diffsort import diffsort
 from pytorch_lightning.utilities import rank_zero_warn
-from torch import nn
 from torchmetrics import MetricCollection
 
 import pytorch_lightning as pl
 from models.metrics import CIndex
 from omni.common import safe_string, unsafe_string
-from modules.loss import CoxPHLoss, SortingCrossEntropyLoss
+from modules.loss import CoxPHLoss, SortingCrossEntropyLoss, CustomBCEWithLogitsLoss
 from modules.sorter import CustomDiffSortNet
 import pdb
 
 
 class RiskMixin(pl.LightningModule):
-    def __init__(self, grouping_labels, label_vocab, loss=None, weightings=None, use_weighted_loss=False, **kwargs):
+    def __init__(self, grouping_labels, label_vocab, task='risk', weightings=None, use_weighted_loss=False, **kwargs):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
+
 
         c_index_metric_names = list(self.label_vocab['token2idx'].keys())
         c_index_metrics = MetricCollection(
@@ -26,7 +26,10 @@ class RiskMixin(pl.LightningModule):
         )
         self.valid_cindex = c_index_metrics.clone(prefix='val/')
 
-        self.loss_func = CoxPHLoss()
+        if task == 'risk':
+            self.loss_func = CoxPHLoss()
+        elif task == 'next':
+            self.loss_func = CustomBCEWithLogitsLoss()
 
         if weightings is not None:
             self.loss_func_w = CoxPHLoss(weightings=weightings)
@@ -122,7 +125,7 @@ class SortingRiskMixin(RiskMixin):
             art_lambda=sorter['art_lambda'],
             distribution=sorter['distribution'],
         )
-        self.loss_func = nn.BCELoss()
+        self.loss_func = torch.nn.BCELoss()
 
     def sorting_step(self, logits, label_multihot, label_times):
         losses = torch.zeros(logits.shape[1])

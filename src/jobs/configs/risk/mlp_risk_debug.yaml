@@ -41,6 +41,7 @@ data:
   label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/phecode_vocab_3169.pkl
   batch_size: 512
   num_workers: 8
+  task: next
 model:
   embedding_dim: 256
   lr: 0.002 # from auto lr find

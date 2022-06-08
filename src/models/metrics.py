@@ -32,9 +32,25 @@ def cindex(events, event_times, predictions):
         return np.nan
 
 
+def kendall_embedding_loop(vector):
+    n = len(vector)
+    rank = torch.argsort(vector)
+    embedding = torch.zeros(n, n)
+    for i, iv in enumerate(rank):
+        for j, jv in enumerate(rank):
+            embedding[i, j] = 1 if iv < jv else 0
+    return embedding
+
+
+# def kendall_cindex(logits, events, times):
+#     """Vectorised version of c-index using kendall embeddings to find concordenet and discordent pairs"""
+#     e
+
+
 class CIndex(torchmetrics.Metric):
-    def __init__(self, dist_sync_on_step=False):
+    def __init__(self, dist_sync_on_step=False, method='loop'):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
+        self.method = method
 
         self.add_state("logits", default=[], dist_reduce_fx="cat")
         self.add_state("events", default=[], dist_reduce_fx="cat")
@@ -48,23 +64,21 @@ class CIndex(torchmetrics.Metric):
     def compute(self):
         # this version is much faster, but doesn't handle ties correctly.
         # numba doesn't handle half precision correctly, so we use float32
-        return torch.Tensor(
-            [
-                cindex(
-                    torch.cat(self.events).cpu().float().numpy(),
-                    torch.cat(self.times).cpu().float().numpy(),
-                    1 - torch.cat(self.logits).cpu().float().numpy(),
-                )
-            ]
-        )
+        if self.method == 'kendall':
+            NotImplemented
+        else:
 
-        # if False:
-        #     return torch.Tensor(
-        #         [
-        #             lifelines.utils.concordance_index(
-        #                 torch.cat(self.times).cpu().numpy(),
-        #                 1 - torch.cat(self.logits).cpu().numpy(),
-        #                 event_observed=torch.cat(self.events).cpu().numpy(),
-        #             )
-        #         ]
-        #     )
+            return torch.Tensor(
+                [
+                    cindex(
+                        torch.cat(self.events).cpu().float().numpy(),
+                        torch.cat(self.times).cpu().float().numpy(),
+                        1 - torch.cat(self.logits).cpu().float().numpy(),
+                    )
+                ]
+            )
+
+
+if __name__ == '__main__':
+    test_vector = torch.Tensor([5, 6, 3, 9])
+    kendall_embedding_loop(test_vector)

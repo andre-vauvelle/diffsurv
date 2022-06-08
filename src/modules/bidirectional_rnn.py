@@ -1,6 +1,6 @@
 import torch
 from pytorch_lightning.utilities import rank_zero_warn
-from torchmetrics import MetricCollection, Precision
+from torchmetrics import MetricCollection, Precision, AveragePrecision, AUROC
 
 from data.preprocess.utils import SYMBOL_IDX
 from modules.base import BaseModel
@@ -42,7 +42,9 @@ class BiRNNBase(BaseModel):
 
         metrics = MetricCollection(
             [
+                AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
                 Precision(compute_on_step=False, average='micro'),
+                AUROC(num_classes=self.output_dim, compute_on_step=False)
             ]
         )
 
@@ -79,7 +81,6 @@ class BiRNNRisk(RiskMixin, BiRNNBase):
                  label_vocab=None,
                  weightings=None,
                  use_weighted_loss=False,
-                 loss=None,
                  grouping_labels=None,
                  **kwargs
                  ):
@@ -87,7 +88,7 @@ class BiRNNRisk(RiskMixin, BiRNNBase):
                          num_hidden_layers=num_hidden_layers, hidden_dropout_prob=hidden_dropout_prob,
                          lr=lr, intermediate_size=intermediate_size, hidden_act=hidden_act,
                          bidirectional=bidirectional, used_covs=used_covs, label_vocab=label_vocab,
-                         weightings=weightings, loss=loss, use_weighted_loss=use_weighted_loss,
+                         weightings=weightings, use_weighted_loss=use_weighted_loss,
                          grouping_labels=grouping_labels, **kwargs)
         self.save_hyperparameters()
 

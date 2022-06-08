@@ -5,7 +5,8 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data.datasets import DatasetMLM, DatasetAssessmentRiskPredict, DatasetSyntheticRisk, TensorDataset
+from data.datasets import DatasetMLM, DatasetAssessmentRiskPredict, DatasetSyntheticRisk, TensorDataset, \
+    DatasetNextPredict
 from definitions import DATA_DIR
 from omni.common import load_pickle, save_pickle
 import torch
@@ -130,8 +131,10 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
                      os.path.join(DATA_DIR, 'processed', 'covariates', 'patient_base.parquet')),
                  batch_size=32,
                  max_len_seq=256,
+                 min_length=5,
                  num_workers=1,
                  used_covs=('age_ass', 'sex'),
+                 task='risk',
                  init_setup=False,
                  debug=False,
                  drop_unk=True,
@@ -161,6 +164,8 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         super().__init__(token_col, label_col, token_vocab_path, label_vocab_path, age_vocab_path,
                          train_data_path, val_data_path, test_data_path, covariates_path, batch_size, max_len_seq,
                          num_workers, used_covs=used_covs, debug=debug)
+        self.task = task
+        self.min_length = min_length
         if init_setup:
             # For c-index grouping, and loss weighting
             grouping_labels, weightings = self.init_setup(weightings_path, incidence_grouping_path)
@@ -229,17 +234,32 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
 
     def get_dataset(self, stage_path, covariates_path):
         data = pd.read_feather(stage_path)
+        data = data.query(f"length > {self.min_length}")
         covariates = pd.read_parquet(covariates_path)
-        dataset = DatasetAssessmentRiskPredict(data,
-                                               self.token_vocab['token2idx'],
-                                               self.label_vocab['token2idx'],
-                                               self.age_vocab['token2idx'],
-                                               max_len=self.max_len_seq,
-                                               token_col=self.token_col,
-                                               label_col=self.label_col,
-                                               covariates=covariates,
-                                               used_covs=self.used_covs,
-                                               drop_unk=self.drop_unk)
+        if self.task == 'next':
+            dataset = DatasetNextPredict(data,
+                                         self.token_vocab['token2idx'],
+                                         self.label_vocab['token2idx'],
+                                         self.age_vocab['token2idx'],
+                                         max_len=self.max_len_seq,
+                                         token_col=self.token_col,
+                                         label_col=self.label_col,
+                                         covariates=covariates,
+                                         used_covs=self.used_covs,
+                                         drop_unk=self.drop_unk)
+        elif self.task == 'risk':
+            dataset = DatasetAssessmentRiskPredict(data,
+                                                   self.token_vocab['token2idx'],
+                                                   self.label_vocab['token2idx'],
+                                                   self.age_vocab['token2idx'],
+                                                   max_len=self.max_len_seq,
+                                                   token_col=self.token_col,
+                                                   label_col=self.label_col,
+                                                   covariates=covariates,
+                                                   used_covs=self.used_covs,
+                                                   drop_unk=self.drop_unk)
+        else:
+            raise ValueError(f"Chosen {self.task} but only ['next', 'risk'] allowed")
         return dataset
 
     def train_dataloader(self):
@@ -256,7 +276,8 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
 
 
 class DataModuleSytheticRisk(pl.LightningDataModule):
-    def __init__(self, path='/SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt',
+    def __init__(self,
+                 path='/SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt',
                  val_split=0.2,
                  batch_size=32,
                  num_workers=1,

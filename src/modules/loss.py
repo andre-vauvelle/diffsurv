@@ -26,7 +26,6 @@ class SortingCrossEntropyLoss(torch.nn.Module):
         super().__init__()
         self.eps = eps
         self.weightings = weightings
-        self.sorter = sorter
 
     def forward(self, logits, events, durations):
         losses = []
@@ -35,7 +34,7 @@ class SortingCrossEntropyLoss(torch.nn.Module):
 
             # TODO: could refactor to dataloader
             # Get the soft permutation matrix
-            sort_out, perm_prediction = self.sorter(lh.unsqueeze(0))
+            _, perm_prediction = self.sorter(lh.unsqueeze(0))
             perm_ground_truth = self._get_soft_perm(e, d)
 
             loss = torch.nn.BCELoss()(perm_prediction, perm_ground_truth)
@@ -130,6 +129,14 @@ def test_diff_sort_loss_get_soft_perm():
     true_perm_matrix = loss._get_soft_perm(test_events[:, 0], test_durations[:, 0])
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
+
+
+class CustomBCEWithLogitsLoss(torch.nn.BCEWithLogitsLoss):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, logh, events, durations=None, eps=1e-7):
+        return super().forward(logh, events)
 
 
 class CoxPHLoss(torch.nn.Module):
