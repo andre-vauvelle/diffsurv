@@ -55,7 +55,8 @@ class RiskMixin(pl.LightningModule):
         else:
             loss = self.loss_func(logits, label_multihot, label_times)
 
-        self.log('val/loss', loss, prog_bar=True)
+        if not torch.isnan(loss):
+            self.log('val/loss', loss, prog_bar=True) 
 
         predictions = torch.sigmoid(logits)
         self.valid_metrics.update(predictions, label_multihot.int())
@@ -111,16 +112,16 @@ class SortingRiskMixin(RiskMixin):
     #TODO: possible refactor to avoid this
     """
 
-    def __init__(self, sorter, sorter_size=128, *args, **kwargs):
+    def __init__(self, sorting_network="bitonic", steepness=30, art_lambda=0.2, distribution= 'cauchy', sorter_size=128, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sorter_size = sorter_size
 
         self.sorter = CustomDiffSortNet(
-            sorting_network_type=sorter['sorting_network'],
+            sorting_network_type=sorting_network,
             size=self.sorter_size,
-            steepness=sorter['steepness'],
-            art_lambda=sorter['art_lambda'],
-            distribution=sorter['distribution'],
+            steepness=steepness,
+            art_lambda=art_lambda,
+            distribution=distribution,
         )
         self.loss_func = nn.BCELoss()
 

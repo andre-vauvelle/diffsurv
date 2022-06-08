@@ -7,16 +7,10 @@ dependencies:
   - conda
   - python=3.8
   - ipython
-<<<<<<< HEAD
-  - pytorch=1.11=py3.8_cuda11.5_cudnn8.3.2_0
-  - numpy
-  - torchmetrics
-=======
   - pymongo
-  - torchmetrics=0.6.0
+  - torchmetrics
   - torchvision
-  - cudatoolkit=10.2
-  - pytorch
+  - pytorch=1.11
   - pycairo
   - pygobject
   - notebook
@@ -30,7 +24,6 @@ dependencies:
   - docstring_parser
   - wandb
   - pip
->>>>>>> origin/main
   - pyg
   - pytorch-lightning=1.6.3
   - wandb
@@ -38,3 +31,6 @@ dependencies:
   - dill
   - numba
   - pandas
+  - pysurvival
+  - pillow
+

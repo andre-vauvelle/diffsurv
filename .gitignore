@@ -1,6 +1,8 @@
 # Custom 
 data/
 !src/data/
+SAN/
+src/wandb/
 
 # VIM SWAPFILES
 *.swp
