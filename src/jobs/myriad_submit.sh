@@ -6,7 +6,7 @@
 #$ -j y
 #$ -N myriad_submit
 
-#$ -o /home/vauvelle/pycharm-sftp/ehrgnn/src/jobs/logs
+#$ -o /home/vauvelle/ehrgnn/src/jobs/logs
 
 hostname
 date
@@ -14,10 +14,14 @@ SOURCE_DIR='/home/rmhivau/ehrgnn/'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR/src/ || exit
 # load cuda
-module unload compilers mpi
-module load compilers/gnu/4.9.2
-module load cuda/7.5.18/gnu-4.9.2
+module -f unload compilers mpi gcc-libs
+module load beta-modules
+module load gcc-libs/10.2.0
+module load compilers/gnu/10.2.0
+module load cuda/11.3.1/gnu-10.2.0
+
 conda activate ehrgnn
+
 
 #python scripts/bert_mlm.py fit --config="${CONFIG_FILE:=jobs/configs/mlm/bert_phecode.yaml}"
 echo Using command:
