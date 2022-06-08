@@ -13,7 +13,7 @@ def gen_synthetic_basic(n_patients=30_000, name='basic_rank.pt'):
     returns x, y, censored_events
     """
     # Sample X from gaussian distribution
-    x_covar = np.random.randint(0, 5, size=(n_patients, 1))
+    x_covar = np.random.uniform(0, 5, size=(n_patients, 1))
     # x_covar = np.random.normal(0, 1, size=(n_patients, n_covariates))
 
     # Used with linear comnination to sample y from exponential
@@ -32,8 +32,8 @@ def gen_synthetic_basic(n_patients=30_000, name='basic_rank.pt'):
     print("Saved basic synthetic dataset to: {}".format(os.path.join(save_path, name)))
 
 
-def gen_synthetic_risk_dataset(n_patients=30_000, n_covariates=2, hazards=(100, 1), proportion_censored=0.3,
-                               baseline=30,
+def gen_synthetic_risk_dataset(n_patients=30_000, n_covariates=3, hazards=(100, 100, 100), proportion_censored=0.3,
+                               baseline=0,
                                name='linear_exp_synthetic.pt', linear=True):
     """
     Generate synthetic dataset.
@@ -41,8 +41,8 @@ def gen_synthetic_risk_dataset(n_patients=30_000, n_covariates=2, hazards=(100, 
     Similar to the one used in the paper: http://medianetlab.ee.ucla.edu/papers/AAAI_2018_DeepHit
     """
     # Sample X from gaussian distribution
-    x_covar = np.random.randint(0, 5, size=(n_patients, n_covariates))
-    # x_covar = np.random.normal(0, 1, size=(n_patients, n_covariates))
+    # x_covar = np.random.randint(0, 5, size=(n_patients, n_covariates))
+    x_covar = np.random.uniform(0, 1, size=(n_patients, n_covariates))
 
     # Used with linear comnination to sample y from exponential
     hazards = np.array(hazards)
@@ -73,7 +73,12 @@ def gen_synthetic_risk_dataset(n_patients=30_000, n_covariates=2, hazards=(100, 
 
 
 if __name__ == '__main__':
-    gen_synthetic_risk_dataset(n_patients=32_000, name='linear_exp_synthetic.pt', linear=True)
-    gen_synthetic_risk_dataset(n_patients=32_000, proportion_censored=0, name='linear_exp_synthetic_no_censoring.pt',
-                          linear=True)
-    gen_synthetic_basic(n_patients=32_000, name='basic_rank.pt')
+    #gen_synthetic_risk_dataset(n_patients=32_000, name='linear_exp_synthetic.pt', linear=True)
+    #gen_synthetic_risk_dataset(n_patients=32_000, proportion_censored=0, name='linear_exp_synthetic_no_censoring.pt', linear=True)
+    #gen_synthetic_risk_dataset(n_patients=32_000, name='nonlinear_exp_synthetic.pt', linear=False)
+    #gen_synthetic_basic(n_patients=32_000, name='basic_rank.pt')
+    #gen_synthetic_risk_dataset(n_patients=32_000, name='nonlinear_exp_synthetic_0.9c.pt', linear=False, proportion_censored=0.9)
+    #gen_synthetic_risk_dataset(n_patients=32_000, proportion_censored=0, name='nonlinear_exp_synthetic_no_censoring.pt', linear=False)
+    for c in [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99]:
+        gen_synthetic_risk_dataset(n_patients=32_000, proportion_censored=c, name=f"nonlinear_exp_synthetic_{str(c)}.pt", linear=False)
+

@@ -1,16 +1,16 @@
-name: base
+name: ehrgnn
 channels:
-  - soumith
-  - defaults
+  - pytorch
+  - conda-forge
+  - pyg
 dependencies:
   - conda
   - python=3.8
   - ipython
   - pymongo
-  - torchmetrics=0.6.0
+  - torchmetrics
   - torchvision
-  - cudatoolkit=10.2
-  - pytorch
+  - pytorch=1.11
   - pycairo
   - pygobject
   - notebook
@@ -25,5 +25,12 @@ dependencies:
   - wandb
   - pip
   - pyg
-  - zstd
-prefix: /home/vauvelle/miniconda3
+  - pytorch-lightning=1.6.3
+  - wandb
+  - python-dotenv
+  - dill
+  - numba
+  - pandas
+  - pysurvival
+  - pillow
+

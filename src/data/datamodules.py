@@ -299,7 +299,7 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         n_training_patients = int(n_patients * (1 - self.val_split))
         train_datatset = DatasetSyntheticRisk(x_covar[:n_training_patients], y_times[:n_training_patients],
                                               censored_events[:n_training_patients])
-        return DataLoader(train_datatset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+        return DataLoader(train_datatset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True)
 
     def val_dataloader(self):
         (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
