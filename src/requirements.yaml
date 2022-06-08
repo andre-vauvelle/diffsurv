@@ -8,9 +8,10 @@ dependencies:
   - python=3.8
   - ipython
   - pymongo
-  - torchmetrics
+  - torchmetrics=0.6.0
   - torchvision
-  - pytorch=1.11
+  - cudatoolkit=10.2
+  - pytorch
   - pycairo
   - pygobject
   - notebook
@@ -20,17 +21,10 @@ dependencies:
   - jsonargparse
   - pandas
   - torchaudio
-  - pytorch-lightning=1.5.9
+  - pytorch-lightning==1.5.9
   - docstring_parser
   - wandb
   - pip
   - pyg
-  - pytorch-lightning=1.6.3
-  - wandb
-  - python-dotenv
-  - dill
-  - numba
-  - pandas
-  - pysurvival
-  - pillow
-
+  - zstd
+prefix: /home/vauvelle/miniconda3

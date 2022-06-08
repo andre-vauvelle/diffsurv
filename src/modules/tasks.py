@@ -59,7 +59,7 @@ class RiskMixin(pl.LightningModule):
             loss = self.loss_func(logits, label_multihot, label_times)
 
         if not torch.isnan(loss):
-            self.log('val/loss', loss, prog_bar=True) 
+            self.log('val/loss', loss, prog_bar=True)
 
         predictions = torch.sigmoid(logits)
         self.valid_metrics.update(predictions, label_multihot.int())
@@ -73,7 +73,7 @@ class RiskMixin(pl.LightningModule):
             e = exclusions[:, idx]  # exclude patients with prior history of event
             e_idx = (1 - e).bool()
             p, l, t = logits[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
-            metric.update(-1*p, l.int(), t)
+            metric.update(-1*p, l.int(), t) # -1 due to inverse risk/logit vs coxph
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
