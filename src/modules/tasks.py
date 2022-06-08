@@ -1,6 +1,7 @@
 import importlib
 
 import torch
+import torchvision.utils
 from diffsort import diffsort
 from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
@@ -18,7 +19,6 @@ class RiskMixin(pl.LightningModule):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
-
 
         c_index_metric_names = list(self.label_vocab['token2idx'].keys())
         c_index_metrics = MetricCollection(
@@ -73,7 +73,7 @@ class RiskMixin(pl.LightningModule):
             e = exclusions[:, idx]  # exclude patients with prior history of event
             e_idx = (1 - e).bool()
             p, l, t = logits[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
-            metric.update(-1*p, l.int(), t) # -1 due to inverse risk/logit vs coxph
+            metric.update(p, l.int(), t)
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
@@ -115,7 +115,9 @@ class SortingRiskMixin(RiskMixin):
     #TODO: possible refactor to avoid this
     """
 
-    def __init__(self, sorting_network="bitonic", steepness=30, art_lambda=0.2, distribution= 'cauchy', sorter_size=128, *args, **kwargs):
+    def __init__(self, sorting_network="bitonic", steepness=30, art_lambda=0.2, distribution='cauchy',
+                 sorter_size=128, ignore_censoring=False,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sorter_size = sorter_size
 
@@ -126,7 +128,7 @@ class SortingRiskMixin(RiskMixin):
             art_lambda=art_lambda,
             distribution=distribution,
         )
-        self.loss_func = torch.nn.BCELoss()
+        self.ignore_censoring = ignore_censoring
 
     def sorting_step(self, logits, label_multihot, label_times):
         losses = torch.zeros(logits.shape[1])
@@ -139,17 +141,21 @@ class SortingRiskMixin(RiskMixin):
             sort_out, perm_prediction = self.sorter(lh.unsqueeze(0))
             perm_ground_truth = _get_soft_perm(e, d)
 
-            loss = self.loss_func(perm_prediction, perm_ground_truth)
-            predictions[:, i] =  lh
+            if self.ignore_censoring:
+                weight = e
+            else:
+                weight = None
+            loss = torch.nn.BCELoss(weight=weight)(perm_prediction, perm_ground_truth)
+            predictions[:, i] = lh
             losses[i] = loss
 
         loss_idx = losses.gt(0)
         loss = losses[loss_idx].mean()
-        return loss, predictions
+        return loss, predictions, perm_prediction, perm_ground_truth
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
-        loss, _ = self.sorting_step(logits, label_multihot, label_times)
+        loss, _, _, _ = self.sorting_step(logits, label_multihot, label_times)
 
         self.log('train/loss', loss, prog_bar=True)
 
@@ -158,7 +164,7 @@ class SortingRiskMixin(RiskMixin):
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
-        loss, predictions = self.sorting_step(logits, label_multihot, label_times)
+        loss, predictions, perm_prediction, perm_ground_truth = self.sorting_step(logits, label_multihot, label_times)
 
         self.log('val/loss', loss, prog_bar=True)
 
@@ -173,7 +179,9 @@ class SortingRiskMixin(RiskMixin):
             e = exclusions[:, idx]  # exclude patients with prior history of event
             e_idx = (1 - e).bool()
             p, l, t = predictions[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
-            metric.update(p, l.int(), t)
+            metric.update(-1 * p, l.int(), t)  # -1 due to inverse risk/logit vs coxph
+
+        return loss, predictions, perm_prediction, perm_ground_truth
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()

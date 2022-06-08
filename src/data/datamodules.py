@@ -2,6 +2,7 @@ import os
 
 import pytorch_lightning as pl
 import pandas as pd
+from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -308,6 +309,10 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         val_datatset = DatasetSyntheticRisk(x_covar[-n_validation_patients:], y_times[-n_validation_patients:],
                                             censored_events[-n_validation_patients:])
         return DataLoader(val_datatset, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def predict_dataloader(self) -> EVAL_DATALOADERS:
+        return self.val_dataloader()
+
 
     def test_dataloader(self):
         pass

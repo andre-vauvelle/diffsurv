@@ -22,10 +22,11 @@ class SortingCrossEntropyLoss(torch.nn.Module):
     """
 
     def __init__(self, sorter,
-                 eps=1e-6, weightings=None):
+                 eps=1e-6, weightings=None, ignore_censoring=False):
         super().__init__()
         self.eps = eps
         self.weightings = weightings
+        self.ignore_censoring = ignore_censoring
 
     def forward(self, logits, events, durations):
         losses = []
@@ -37,7 +38,13 @@ class SortingCrossEntropyLoss(torch.nn.Module):
             _, perm_prediction = self.sorter(lh.unsqueeze(0))
             perm_ground_truth = self._get_soft_perm(e, d)
 
-            loss = torch.nn.BCELoss()(perm_prediction, perm_ground_truth)
+            if self.ignore_censoring:
+                weight = e
+            else:
+                weight = None
+            loss_fn = torch.nn.BCELoss(weight=weight)
+
+            loss = (perm_prediction, perm_ground_truth)
             losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
