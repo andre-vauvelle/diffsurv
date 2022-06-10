@@ -33,6 +33,7 @@ def gen_pysurvival(name, N,
     dataset = sim.generate_data(num_samples=N, num_features=len(feature_weights), feature_weights=feature_weights)
     x_covar = dataset.iloc[:, :len(feature_weights)].to_numpy()
     y_times = dataset.time.to_numpy()
+    risks = dataset.risk.to_numpy()
 
     censoring_times = np.random.uniform(0, y_times, size=N)
 
@@ -54,6 +55,7 @@ def gen_pysurvival(name, N,
 
     x_covar = torch.Tensor(x_covar).float()
     y_times = torch.Tensor(y_times).float().unsqueeze(-1)
+    risks = torch.Tensor(risks).float().unsqueeze(-1)
     y_times_uncensored = torch.Tensor(y_times_uncensored).float().unsqueeze(-1)
     censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
     print(f"Proportion censored: {censored_events.sum() / N}")
@@ -61,7 +63,7 @@ def gen_pysurvival(name, N,
     # create directory for save
     save_path = os.path.join(DATA_DIR, 'synthetic')
     create_folder(save_path)
-    torch.save((x_covar, y_times, censored_events, y_times_uncensored), os.path.join(save_path, name))
+    torch.save((x_covar, y_times, censored_events, y_times_uncensored, risks), os.path.join(save_path, name))
     print("Saved risk synthetic dataset to: {}".format(os.path.join(save_path, name)))
     if save_artifact:
         config = {'name': name, 'N': N, 'survival_distribution': survival_distribution, 'risk_type': risk_type,
