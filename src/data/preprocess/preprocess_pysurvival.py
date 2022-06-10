@@ -47,19 +47,21 @@ def gen_pysurvival(name, N,
         censoring_indices = np.array(mean_covs < percentile_cut)
     else:
         raise NotImplementedError(f"censoring_function {censoring_function} but must be either 'independent' or 'mean'")
+    y_times_uncensored = y_times.copy()
     y_times[censoring_indices] = censoring_times[censoring_indices]
     censored_events = np.zeros(N, dtype=bool)
     censored_events[censoring_indices] = True
 
     x_covar = torch.Tensor(x_covar).float()
     y_times = torch.Tensor(y_times).float().unsqueeze(-1)
+    y_times_uncensored = torch.Tensor(y_times_uncensored).float().unsqueeze(-1)
     censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
     print(f"Proportion censored: {censored_events.sum() / N}")
 
     # create directory for save
     save_path = os.path.join(DATA_DIR, 'synthetic')
     create_folder(save_path)
-    torch.save((x_covar, y_times, censored_events), os.path.join(save_path, name))
+    torch.save((x_covar, y_times, censored_events, y_times_uncensored), os.path.join(save_path, name))
     print("Saved risk synthetic dataset to: {}".format(os.path.join(save_path, name)))
     if save_artifact:
         config = {'name': name, 'N': N, 'survival_distribution': survival_distribution, 'risk_type': risk_type,
@@ -98,10 +100,9 @@ if __name__ == '__main__':
     #                    censored_proportion=c,
     #                    alpha=0.1, beta=3.2, feature_weights=[1.] * 3)
 
-    gen_pysurvival('pysurv_square_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
-                   censored_proportion=0.3,
-                   alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
+    gen_pysurvival('pysurv_square_weibull_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+                   censored_proportion=0.3, alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
 
-    gen_pysurvival('pysurv_square_independent_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
-                   censored_proportion=0.3,
-                   alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')
+    gen_pysurvival('pysurv_square_weibull_independent_0.3.pt', 32000, survival_distribution='weibull',
+                   risk_type='square',
+                   censored_proportion=0.3, alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')

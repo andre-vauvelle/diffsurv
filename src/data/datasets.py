@@ -145,10 +145,11 @@ class AbstractDataset(Dataset):
 
 
 class DatasetSyntheticRisk(Dataset):
-    def __init__(self, x_covar, y_times, censored_events):
+    def __init__(self, x_covar, y_times, censored_events, y_times_uncensored):
         self.x_covar = x_covar
         self.y_times = y_times
         self.censored_events = censored_events
+        self.y_times_uncensored = y_times_uncensored
 
     def __getitem__(self, index):
         covariates = self.x_covar[index]
@@ -160,6 +161,7 @@ class DatasetSyntheticRisk(Dataset):
 
         future_label_multihot = 1 - self.censored_events[index]
         future_label_times = self.y_times[index]
+        future_label_times_uncensored = self.y_times_uncensored[index]
         censorings = self.censored_events[index]
         exclusions = torch.zeros_like(censorings)
 
@@ -167,6 +169,7 @@ class DatasetSyntheticRisk(Dataset):
             # labels
             "labels": future_label_multihot, "label_times": future_label_times,
             "censorings": censorings, "exclusions": exclusions,
+            'future_label_times_uncensored': future_label_times_uncensored,
             # input
             "token_idx": token_idx, "age_idx": age_idx,
             "position": position, "segment": segment, "mask": mask, "covariates": covariates
@@ -342,28 +345,6 @@ class DatasetAssessmentRiskPredict(AbstractDataset):
 
     def __len__(self):
         return len(self.tokens)
-
-
-class DatasetNextPredict(DatasetAssessmentRiskPredict):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __getitem__(self, index: int):
-        """
-        Only use labels from the next episode after assessment
-        TODO: WARNING not implemented update to label times. only use for clasification not risk.
-        :param index:
-        :return:
-        """
-        output = super().__getitem__(index)
-        label_times = output['label_times']
-        new_labels = (label_times == label_times.min()).float()
-        if new_labels.all():
-            new_labels = torch.zeros_like(new_labels)
-        output['labels'] = new_labels
-        return output
-
-
 
 
 class DatasetMLM(AbstractDataset):
