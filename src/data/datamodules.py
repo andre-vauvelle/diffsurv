@@ -288,27 +288,31 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         self.val_split = val_split
         self.batch_size = batch_size
         self.num_workers = num_workers
-        (x_covar, y_times, censored_events, y_time_uncensored) = torch.load(os.path.join(self.path))
+        (x_covar, y_times, censored_events, y_time_uncensored, risk) = torch.load(os.path.join(self.path))
         self.input_dim = x_covar.shape[1]
         self.output_dim = y_times.shape[1]
         self.label_vocab = {'token2idx': {'event0': 0}, 'idx2token': {0: 'event0'}}
         self.grouping_labels = {'all': ['event0']}
 
     def train_dataloader(self):
-        (x_covar, y_times, censored_events, y_time_uncensored) = torch.load(os.path.join(self.path))
+        (x_covar, y_times, censored_events, y_time_uncensored, risks) = torch.load(os.path.join(self.path))
         n_patients = x_covar.shape[0]
         n_training_patients = int(n_patients * (1 - self.val_split))
         train_datatset = DatasetSyntheticRisk(x_covar[:n_training_patients], y_times[:n_training_patients],
-                                              censored_events[:n_training_patients])
+                                              censored_events[:n_training_patients],
+                                              y_times_uncensored=y_time_uncensored[:n_training_patients],
+                                              risks=risks[:n_training_patients])
         return DataLoader(train_datatset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True,
                           shuffle=True)
 
     def val_dataloader(self):
-        (x_covar, y_times, censored_events, y_time_uncensored) = torch.load(os.path.join(self.path))
+        (x_covar, y_times, censored_events, y_time_uncensored, risks) = torch.load(os.path.join(self.path))
         n_patients = x_covar.shape[0]
         n_validation_patients = int(n_patients * self.val_split)
         val_datatset = DatasetSyntheticRisk(x_covar[-n_validation_patients:], y_times[-n_validation_patients:],
-                                            censored_events[-n_validation_patients:], y_time_uncensored=y_time_uncensored)
+                                            censored_events[-n_validation_patients:],
+                                            y_times_uncensored=y_time_uncensored[-n_validation_patients:],
+                                            risks=risks[-n_validation_patients:])
         return DataLoader(val_datatset, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
