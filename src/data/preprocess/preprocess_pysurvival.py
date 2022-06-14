@@ -9,9 +9,122 @@ from pysurvival.models.simulations import SimulationModel
 from pysurvival.models.semi_parametric import NonLinearCoxPHModel
 from pysurvival.utils.metrics import concordance_index
 from pysurvival.utils.display import integrated_brier_score
+from pysurvival import utils
 from definitions import DATA_DIR
 from omni.common import create_folder
 import wandb
+
+
+class CustomSimulationModel(SimulationModel):
+    """Simple extention to also output BX risk scores"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def generate_data(self, num_samples=100, num_features=3,
+                      feature_weights=None):
+        """
+        Generating a dataset of simulated survival times from a given
+        distribution through the hazard function using the Cox model
+
+        Parameters:
+        -----------
+        * `num_samples`: **int** *(default=100)* --
+            Number of samples to generate
+
+        * `num_features`: **int** *(default=3)* --
+            Number of features to generate
+
+        * `feature_weights`: **array-like** *(default=None)* --
+            list of the coefficients of the underlying Cox-Model.
+            The features linked to each coefficient are generated
+            from random distribution from the following list:
+
+            * binomial
+            * chisquare
+            * exponential
+            * gamma
+            * normal
+            * uniform
+            * laplace
+
+            If None then feature_weights = [1.]*num_features
+
+        Returns:
+        --------
+        * dataset: pandas.DataFrame
+            dataset of simulated survival times, event status and features
+
+
+        Example:
+        --------
+        from pysurvival.models.simulations import SimulationModel
+
+        # Initializing the simulation model
+        sim = SimulationModel( survival_distribution = 'gompertz',
+                               risk_type = 'linear',
+                               censored_parameter = 5.0,
+                               alpha = 0.01,
+                               beta = 5., )
+
+        # Generating N Random samples
+        N = 1000
+        dataset = sim.generate_data(num_samples = N, num_features=5)
+
+        # Showing a few data-points
+        dataset.head()
+        """
+
+        # Data parameters
+        self.num_variables = num_features
+        if feature_weights is None:
+            self.feature_weights = [1.] * self.num_variables
+            feature_weights = self.feature_weights
+
+        else:
+            feature_weights = utils.check_data(feature_weights)
+            if num_features != len(feature_weights):
+                error = "The length of feature_weights ({}) "
+                error += "and num_features ({}) are not the same."
+                error = error.format(len(feature_weights), num_features)
+                raise ValueError(error)
+            self.feature_weights = feature_weights
+
+        # Generating random features
+        # Creating the features
+        X = np.zeros((num_samples, self.num_variables))
+        columns = []
+        for i in range(self.num_variables):
+            key, X[:, i] = self.random_data(num_samples)
+            columns.append('x_' + str(i + 1))
+        X_std = self.scaler.fit_transform(X)
+        BX = self.risk_function(X_std)
+
+        # Building the survival times
+        T = self.time_function(BX)
+        C = np.random.normal(loc=self.censored_parameter,
+                             scale=5, size=num_samples)
+        C = np.maximum(C, 0.)
+        time = np.minimum(T, C)
+        E = 1. * (T == time)
+
+        # Building dataset
+        self.features = columns
+        self.dataset = pd.DataFrame(data=np.c_[X, time, E, BX],
+                                    columns=columns + ['time', 'event', 'risk'])
+
+        # Building the time axis and time buckets
+        self.times = np.linspace(0., max(self.dataset['time']), self.bins)
+        self.get_time_buckets()
+
+        # Building baseline functions
+        self.baseline_hazard = self.hazard_function(self.times, 0)
+        self.baseline_survival = self.survival_function(self.times, 0)
+
+        # Printing summary message
+        message_to_print = "Number of data-points: {} - Number of events: {}"
+        print(message_to_print.format(num_samples, sum(E)))
+
+        return self.dataset
 
 
 def gen_pysurvival(name, N,
@@ -22,12 +135,26 @@ def gen_pysurvival(name, N,
                    beta=3.2,
                    feature_weights=[1.] * 3,
                    censoring_function='independent', save_artifact=True):
+    """
+
+    :param name:
+    :param N:
+    :param survival_distribution:
+    :param risk_type:
+    :param censored_proportion:
+    :param alpha: scale parameter (often noted as \lamda)
+    :param beta: shape parameter (often noted as k)
+    :param feature_weights:
+    :param censoring_function:
+    :param save_artifact:
+    :return:
+    """
     #### 2 - Generating the dataset from a nonlinear Weibull parametric model
     # Initializing the simulation model
-    sim = SimulationModel(survival_distribution=survival_distribution,
-                          risk_type=risk_type,
-                          censored_parameter=10000000,
-                          alpha=alpha, beta=beta)
+    sim = CustomSimulationModel(survival_distribution=survival_distribution,
+                                risk_type=risk_type,
+                                censored_parameter=10000000,  # Remove censoring model from pysurival
+                                alpha=alpha, beta=beta)
 
     # Generating N random samples 
     dataset = sim.generate_data(num_samples=N, num_features=len(feature_weights), feature_weights=feature_weights)
@@ -102,9 +229,10 @@ if __name__ == '__main__':
     #                    censored_proportion=c,
     #                    alpha=0.1, beta=3.2, feature_weights=[1.] * 3)
 
-    gen_pysurvival('pysurv_square_weibull_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
-                   censored_proportion=0.3, alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
+    # gen_pysurvival('pysurv_square_weibull_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+    #                censored_proportion=0.3, alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
 
-    gen_pysurvival('pysurv_square_weibull_independent_0.3.pt', 32000, survival_distribution='weibull',
+    gen_pysurvival('pysurv_square_weibull_independent_0.0.pt', 32000, survival_distribution='weibull',
                    risk_type='square',
-                   censored_proportion=0.3, alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')
+                   censored_proportion=0.0, alpha=0.5, beta=3.2, feature_weights=[1.] * 3,
+                   censoring_function='independent')

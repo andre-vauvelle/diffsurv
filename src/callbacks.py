@@ -21,21 +21,28 @@ class LogPredictionsCallback(Callback):
                 loss, predictions, perm_prediction, perm_ground_truth = outputs
                 # Let's log 20 sample image predictions from first batch
                 label_times = batch['label_times']
-                idx = torch.argsort(label_times.squeeze(), descending=False)
-                perm_ascending = torch.nn.functional.one_hot(idx).transpose(-2, -1).float()
-                perm_prediction_asc = perm_ascending.T @ perm_prediction
-                perm_ground_truth_asc = perm_ascending.T @ perm_ground_truth
+                perm_ground_truth_asc, perm_prediction_asc = self.plot_permutations(label_times,
+                                                                                    perm_ground_truth,
+                                                                                    perm_prediction
+                                                                                    )
+                true_label_times = batch['future_label_times_uncensored']
+                perm_ground_truth_asc_t, perm_prediction_asc_t = self.plot_permutations(true_label_times,
+                                                                                        perm_ground_truth,
+                                                                                        perm_prediction
+                                                                                        )
 
                 captions = ["Soft Permutation", "Predicted Permutation"]
 
-                wandb_logger.log_image(key=f'batch:{batch_idx}', images=[perm_ground_truth_asc, perm_prediction_asc],
+                wandb_logger.log_image(key=f'batch:{batch_idx}', images=[perm_ground_truth_asc_t,
+                                                                         perm_prediction_asc_t],
                                        caption=captions)
-            if isinstance(list(pl_module.modules())[0], RiskMixin):
+
+            else:
                 wandb_logger = trainer.logger
                 loss, predictions, logits, label_times, label_multihot = outputs
                 lh = logits.squeeze()
                 lh = predictions.squeeze()
-                lh = lh*-1
+                lh = lh * -1
                 e = label_multihot.squeeze()
                 d = label_times.squeeze()
                 sorter = CustomDiffSortNet(sorting_network_type='odd_even', size=predictions.shape[0], steepness=50,
@@ -49,21 +56,26 @@ class LogPredictionsCallback(Callback):
                 torch_show([perm_ground_truth_asc, perm_prediction_asc])
                 plt.show()
 
-
+    @staticmethod
+    def plot_permutations(times, perm_ground_truth, perm_prediction):
+        """Reoders permutation form largest to the smallest times"""
+        idx = torch.argsort(times.squeeze(), descending=False)
+        perm_ascending = torch.nn.functional.one_hot(idx).transpose(-2, -1).float()
+        perm_prediction_asc = perm_ascending.T @ perm_prediction
+        perm_ground_truth_asc = perm_ascending.T @ perm_ground_truth
+        torch_show([perm_ground_truth_asc, perm_prediction_asc])
+        plt.show()
+        return perm_ground_truth_asc, perm_prediction_asc
 
 
 def debug_plot():
     pass
     # lt_dist = torch.nn.functional.normalize(label_times.squeeze()[idx], dim=0)
     # pred_dist = torch.nn.functional.normalize(predictions[idx], dim=0)
-    #
+
     # data = list(zip(lt_dist, pred_dist))
     # table = wandb.Table(data=data, columns=["label", "value"])
     # wandb_logger.({"my_bar_chart_id": wandb.plot.bar(table, "label", "value", title="Custom Bar Chart")})
-    #
-    # torch_show([perm_ground_truth_asc, perm_prediction_asc])
-    # plt.show()
-
 
 
 log_predictions_callback = LogPredictionsCallback()

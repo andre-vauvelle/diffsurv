@@ -31,7 +31,7 @@ trainer:
 data:
 #  path: /lustre/home/rmhivau/ehrgnn/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
 #  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.3.pt
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.3.pt
+  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.0.pt
   val_split: 0.2
   batch_size: 16
   num_workers: 1
