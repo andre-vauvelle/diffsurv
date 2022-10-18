@@ -1,4 +1,4 @@
-name: ehrgnn
+name: diffsort
 channels:
   - pytorch
   - conda-forge
@@ -10,7 +10,6 @@ dependencies:
   - pymongo
   - torchmetrics=0.6.0
   - torchvision
-  - cudatoolkit=10.2
   - pytorch
   - pycairo
   - pygobject

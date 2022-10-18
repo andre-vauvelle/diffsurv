@@ -30,7 +30,8 @@ trainer:
 data:
 #  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
 #  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic_no_censoring.pt
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.3.pt
+#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.3.pt
+  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.0.pt
   val_split: 0.2
   batch_size: 32
   num_workers: 1

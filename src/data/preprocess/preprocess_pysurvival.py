@@ -175,6 +175,7 @@ def gen_pysurvival(name, N,
         censoring_indices = np.array(mean_covs < percentile_cut)
     else:
         raise NotImplementedError(f"censoring_function {censoring_function} but must be either 'independent' or 'mean'")
+
     y_times_uncensored = y_times.copy()
     y_times[censoring_indices] = censoring_times[censoring_indices]
     censored_events = np.zeros(N, dtype=bool)
@@ -234,5 +235,9 @@ if __name__ == '__main__':
 
     gen_pysurvival('pysurv_square_weibull_independent_0.0.pt', 32000, survival_distribution='weibull',
                    risk_type='square',
-                   censored_proportion=0.0, alpha=0.5, beta=3.2, feature_weights=[1.] * 3,
+                   censored_proportion=0.0, alpha=0.1, beta=3.2, feature_weights=[1.] * 3,
+                   censoring_function='independent')
+    gen_pysurvival('pysurv_square_exp_independent_0.0.pt', 32000, survival_distribution='weibull',
+                   risk_type='square',
+                   censored_proportion=0.0, alpha=0.1, beta=3.2, feature_weights=[1.] * 3,
                    censoring_function='independent')

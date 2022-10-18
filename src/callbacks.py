@@ -12,9 +12,10 @@ from src.models.loggers import CustomWandbLogger
 
 
 class LogPredictionsCallback(Callback):
-    def __init__(self, log_wandb=True, *args, **kwargs):
+    def __init__(self, steepness=19, log_wandb=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log_wandb = log_wandb
+        self.steepness = steepness
 
     def on_validation_batch_end(
             self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
@@ -33,7 +34,8 @@ class LogPredictionsCallback(Callback):
                 lh = lh * -1
                 e = label_multihot.squeeze()
                 d = label_times.squeeze()
-                sorter = CustomDiffSortNet(sorting_network_type='odd_even', size=predictions.shape[0], steepness=50,
+                sorter = CustomDiffSortNet(sorting_network_type='odd_even', size=predictions.shape[0],
+                                           steepness=self.steepness,
                                            distribution='cauchy')
                 sort_out, perm_prediction = sorter(lh.unsqueeze(0))
                 perm_ground_truth = _get_soft_perm(e, d)
@@ -60,7 +62,7 @@ class LogPredictionsCallback(Callback):
                 captions = ["Obs Time", "Obs Time Pred", "True Time", "True Time Pred", "Risk", "Risk Pred"]
                 m = np.eye(perm_ground_truth_asc_r.shape[1])
                 masks = [{'trace': {'mask_data': m}}] * 6
-                wandb_logger.log_image(key=f'Step {trainer.global_step}:{batch_idx}',
+                wandb_logger.log_image(key=f'Permutation Matrices:{batch_idx}',
                                        images=[perm_ground_truth_asc, perm_prediction_asc,
                                                perm_ground_truth_asc_t, perm_prediction_asc_t,
                                                perm_ground_truth_asc_r, perm_prediction_asc_r],
