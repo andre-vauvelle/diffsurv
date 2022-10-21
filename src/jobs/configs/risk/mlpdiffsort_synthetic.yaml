@@ -2,7 +2,7 @@ trainer:
   logger:
     - class_path: src.models.loggers.CustomWandbLogger
       init_args:
-        project: ehrgnn
+        project: diffsurv
         entity: qndre
         save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
         tags:
@@ -29,7 +29,7 @@ trainer:
   default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
 #  precision: 16
 data:
-#  path: /lustre/home/rmhivau/ehrgnn/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
+#  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
   path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.3.pt
   val_split: 0.2
   batch_size: 16
@@ -52,4 +52,4 @@ model:
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
 
-#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/ehrgnn/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
+#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/diffsurv/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt

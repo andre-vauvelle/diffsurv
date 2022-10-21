@@ -26,7 +26,7 @@ def get_icd_omop():
     :return:
     """
     # TODO: refactor out
-    mapping_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/'
+    mapping_path = '/home/vauvelle/pycharm-sftp/diffsurv/data/'
     vocab_dir = f"{mapping_path}/athena"
     vocab = {
         "concept": pd.read_csv(f"{vocab_dir}/CONCEPT.csv", sep='\t'),
@@ -90,7 +90,7 @@ def get_rxnorm_omop():
     :return:
     """
     # TODO: refactor out
-    mapping_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/'
+    mapping_path = '/home/vauvelle/pycharm-sftp/diffsurv/data/'
     vocab_dir = f"{mapping_path}/athena"
     vocab = {
         "concept": pd.read_csv(f"{vocab_dir}/CONCEPT.csv", sep='\t'),
@@ -119,7 +119,7 @@ def get_opcs_omop():
     :return:
     """
     # TODO: refactor out
-    mapping_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/'
+    mapping_path = '/home/vauvelle/pycharm-sftp/diffsurv/data/'
     vocab_dir = f"{mapping_path}/athena"
     vocab = {
         "concept": pd.read_csv(f"{vocab_dir}/CONCEPT.csv", sep='\t'),
@@ -232,7 +232,7 @@ def get_read_omop():
     rc_map = pd.concat([rc2_map, rc3_map], axis=0)
 
     # concept id to omop id...
-    mapping_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/'
+    mapping_path = '/home/vauvelle/pycharm-sftp/diffsurv/data/'
     vocab_dir = f"{mapping_path}/athena"
     vocab_concept = pd.read_csv(f"{vocab_dir}/CONCEPT.csv", sep='\t')
 

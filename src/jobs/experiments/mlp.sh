@@ -6,11 +6,11 @@
 #$ -j y
 #$ -N ehrgnn_mlp
 
-#$ -o /home/vauvelle/pycharm-sftp/ehrgnn/src/jobs/logs
+#$ -o /home/vauvelle/pycharm-sftp/diffsurv/src/jobs/logs
 
 hostname
 date
-SOURCE_DIR='/home/vauvelle/pycharm-sftp/ehrgnn/src/'
+SOURCE_DIR='/home/vauvelle/pycharm-sftp/diffsurv/src/'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR || exit
 source /share/apps/source_files/cuda/cuda-10.1.source

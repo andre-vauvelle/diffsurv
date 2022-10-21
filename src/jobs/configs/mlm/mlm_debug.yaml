@@ -19,7 +19,7 @@ trainer:
 #  logger:
 #    - class_path: src.models.loggers.CustomWandbLogger
 #      init_args:
-#        project: ehrgnn
+#        project: diffsurv
 #        entity: qndre
 #        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
 #        tags:

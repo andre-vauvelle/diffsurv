@@ -1,4 +1,4 @@
-name: ehrgnn
+name: diffsurv
 channels:
   - pytorch
   - conda-forge

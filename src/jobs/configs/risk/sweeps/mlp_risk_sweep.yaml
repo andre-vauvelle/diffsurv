@@ -34,4 +34,4 @@ command:
   - "--config"
   - "jobs/configs/omop_data.yaml"
   - ${args}
-project: ehrgnn
+project: diffsurv

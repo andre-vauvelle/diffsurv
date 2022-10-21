@@ -66,7 +66,7 @@ def gen_pysurvival(name, N,
                   'censored_proportion': censored_proportion, 'alpha': alpha, 'beta': beta,
                   'feature_weights': feature_weights, 'censoring_function': censoring_function}
 
-        run = wandb.init(job_type='preprocess_synthetic', project='ehrgnn', config=config)
+        run = wandb.init(job_type='preprocess_synthetic', project='diffsurv', config=config)
         artifact = wandb.Artifact(name, type='dataset', metadata=config)
         artifact.add_file(os.path.join(save_path, name), name)
         run.log_artifact(artifact)

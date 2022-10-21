@@ -27,6 +27,6 @@ command:
   - "--config"
   - "jobs/configs/risk/mlp_synthetic.yaml"
   - "--data.path"
-  - "/lustre/home/rmhivau/ehrgnn/data/synthetic/pysurv_gaussian_weibull_0.3.pt"
+  - "/lustre/home/rmhivau/diffsurv/data/synthetic/pysurv_gaussian_weibull_0.3.pt"
   - ${args}
-project: ehrgnn
+project: diffsurv
