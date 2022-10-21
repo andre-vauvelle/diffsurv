@@ -10,7 +10,7 @@ dependencies:
   - pymongo
   - torchmetrics=0.6.0
   - torchvision
-  - cudatoolkit=10.2
+#  - cudatoolkit=10.2
   - pytorch
   - pycairo
   - pygobject
@@ -27,4 +27,7 @@ dependencies:
   - pip
   - pyg
   - zstd
+  - pytest
+  - python-dotenv
+  - dill
 prefix: /home/vauvelle/miniconda3

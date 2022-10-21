@@ -46,8 +46,7 @@ model:
   steepness: 19
   art_lambda: 0.34001037420357133
   distribution: cauchy
-  ignore_censoring: True
-  
+  ignore_censoring: False
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
