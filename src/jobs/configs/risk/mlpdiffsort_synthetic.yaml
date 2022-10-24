@@ -4,7 +4,7 @@ trainer:
       init_args:
         project: diffsurv
         entity: qndre
-        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+        save_dir: /home/rmhivau/diffsurv/wandb/
         tags:
           - mlp
           - synthetic
@@ -13,20 +13,20 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 20
+        patience: 50
         monitor: hp_metric
         min_delta: 0.002
         mode: max
         verbose: True
         check_finite: False
     - class_path: src.callbacks.LogPredictionsCallback
-  max_epochs: 10
+  max_epochs: 15
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
-  default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+  default_root_dir: /home/rmhivau/diffsurv/wandb/
 #  precision: 16
 data:
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
