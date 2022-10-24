@@ -1,3 +1,5 @@
+from typing import Literal
+
 from diffsort import bitonic_network, odd_even_network
 import torch
 from diffsort.functional import execute_sort
@@ -17,7 +19,7 @@ class CustomDiffSortNet(torch.nn.Module):
 
     def __init__(
             self,
-            sorting_network_type: str,
+            sorting_network_type: Literal['odd_even', 'bitonic'],
             size: int,
             steepness: float = 10.0,
             art_lambda: float = 0.25,
