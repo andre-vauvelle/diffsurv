@@ -5,12 +5,14 @@ metric:
   name: val/loss
   goal: minimize
 parameters:
+  model.ignore_censoring:
+    value: True
   model.lr:
     value: 0.003
   model.head_layers:
     value: 1
   model.head_hidden_dim:
-    value: 128
+    value: 1000
   model.hidden_dropout_prob:
     value: 0.1
   model.steepness:
@@ -20,8 +22,10 @@ parameters:
     value: 0.0 # doesn't matter for cauchy
   model.distribution:
     value: cauchy
+  model.sorting_network:
+    value: bitonic
   data.batch_size:
-    value: 64
+    value: 32
 command:
   - ${env}
   - ${interpreter}
@@ -30,6 +34,6 @@ command:
   - "--config"
   - "jobs/configs/risk/mlpdiffsort_synthetic.yaml"
   - "--data.path"
-  - "/lustre/home/rmhivau/diffsurv/data/synthetic/pysurv_square_0.3.pt"
+  - "/home/rmhivau/diffsurv/data/synthetic/pysurv_square_0.1.pt"
   - ${args}
-project: diffsurv
+project: ehrgnn
