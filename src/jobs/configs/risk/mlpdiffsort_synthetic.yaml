@@ -3,8 +3,9 @@ trainer:
     - class_path: src.models.loggers.CustomWandbLogger
       init_args:
         project: diffsurv
-        entity: qndre
-        save_dir: /home/rmhivau/diffsurv/wandb/
+        entity: cardiors
+#        save_dir: /home/rmhivau/diffsurv/wandb/
+        save_dir: /home/vauvelle/pycharm-sftp/diffsurv/
         tags:
           - mlp
           - synthetic
@@ -26,11 +27,13 @@ trainer:
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
-  default_root_dir: /home/rmhivau/diffsurv/wandb/
+#  default_root_dir: /home/rmhivau/diffsurv/wandb/
+  default_root_dir: /home/vauvelle/pycharm-sftp/diffsurv/
 #  precision: 16
 data:
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.3.pt
+#  local_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.1.pt
+  wandb_artifact: 'cardiors/diffsurv/pysurv_square_0.3.pt:v4'
   val_split: 0.2
   batch_size: 16
   num_workers: 1
