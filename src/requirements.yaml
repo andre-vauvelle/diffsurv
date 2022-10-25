@@ -26,4 +26,5 @@ dependencies:
   - pip
   - pyg
   - zstd
+  - pre-commit
 prefix: /home/vauvelle/miniconda3
