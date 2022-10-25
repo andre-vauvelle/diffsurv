@@ -1,4 +1,4 @@
-name: diffsort
+name: diffsurv
 channels:
   - pytorch
   - conda-forge
@@ -10,6 +10,7 @@ dependencies:
   - pymongo
   - torchmetrics=0.6.0
   - torchvision
+#  - cudatoolkit=10.2
   - pytorch
   - pycairo
   - pygobject
@@ -27,4 +28,7 @@ dependencies:
   - pyg
   - zstd
   - pre-commit
+  - pytest
+  - python-dotenv
+  - dill
 prefix: /home/vauvelle/miniconda3

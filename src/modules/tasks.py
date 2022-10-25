@@ -74,7 +74,6 @@ class RiskMixin(pl.LightningModule):
             e_idx = (1 - e).bool()
             p, l, t = logits[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
             metric.update(p, l.int(), t)
-        return loss, predictions, logits, label_times, label_multihot
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()

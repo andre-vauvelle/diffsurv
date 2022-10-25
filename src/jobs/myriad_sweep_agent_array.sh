@@ -1,10 +1,11 @@
 #!/bin/bash -l
 #$ -l mem=64G
-#$ -l h_rt=50:0:0
+#$ -l h_rt=10:0:0
 #$ -l gpu=1
 #$ -S /bin/bash
 #$ -j y
 #$ -N myriad_submit
+#$ -t 1-5
 
 #$ -o /home/vauvelle/diffsurv/src/jobs/logs
 

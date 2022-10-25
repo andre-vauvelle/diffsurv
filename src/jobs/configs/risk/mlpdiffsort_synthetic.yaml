@@ -2,9 +2,10 @@ trainer:
   logger:
     - class_path: src.models.loggers.CustomWandbLogger
       init_args:
-        project: ehrgnn
-        entity: qndre
-        save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+        project: diffsurv
+        entity: cardiors
+#        save_dir: /home/rmhivau/diffsurv/wandb/
+        save_dir: /home/vauvelle/pycharm-sftp/diffsurv/
         tags:
           - mlp
           - synthetic
@@ -13,27 +14,28 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 20
+        patience: 50
         monitor: hp_metric
         min_delta: 0.002
         mode: max
         verbose: True
         check_finite: False
     - class_path: src.callbacks.LogPredictionsCallback
-  max_epochs: 10
+  max_epochs: 15
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
-  default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
+#  default_root_dir: /home/rmhivau/diffsurv/wandb/
+  default_root_dir: /home/vauvelle/pycharm-sftp/diffsurv/
 #  precision: 16
 data:
-#  path: /lustre/home/rmhivau/ehrgnn/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
-#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.3.pt
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.0.pt
+#  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
+#  local_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.1.pt
+  wandb_artifact: 'cardiors/diffsurv/pysurv_square_0.3.pt:v4'
   val_split: 0.2
-  batch_size: 2
+  batch_size: 16
   num_workers: 1
 model:
   head_layers: 2
@@ -43,14 +45,13 @@ model:
   only_covs: True
   cov_size: 3
   hidden_dropout_prob: 0
-  sorting_network: odd_even
+  sorting_network: bitonic
   steepness: 19
-#  art_lambda: 0.34001037420357133
+  art_lambda: 0.34001037420357133
   distribution: cauchy
-  ignore_censoring: True
-  
+  ignore_censoring: False
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
 
-#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/ehrgnn/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
+#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/diffsurv/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt

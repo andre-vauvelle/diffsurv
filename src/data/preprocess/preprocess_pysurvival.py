@@ -9,16 +9,80 @@ from pysurvival.models.simulations import SimulationModel
 from pysurvival.models.semi_parametric import NonLinearCoxPHModel
 from pysurvival.utils.metrics import concordance_index
 from pysurvival.utils.display import integrated_brier_score
-from pysurvival import utils
 from definitions import DATA_DIR
 from omni.common import create_folder
 import wandb
 
 
+def gen_pysurvival(name, N,
+                   survival_distribution='weibull',
+                   risk_type='gaussian',
+                   censored_proportion=0.0,
+                   alpha=0.1,
+                   beta=3.2,
+                   feature_weights=[1.] * 3,
+                   censoring_function='independent', save_artifact=True):
+    #### 2 - Generating the dataset from a nonlinear Weibull parametric model
+    # Initializing the simulation model
+    sim = CustomSimulationModel(survival_distribution=survival_distribution,
+                          risk_type=risk_type,
+                          censored_parameter=10000000,
+                          alpha=alpha, beta=beta)
+
+    # Generating N random samples 
+    dataset = sim.generate_data(num_samples=N, num_features=len(feature_weights), feature_weights=feature_weights)
+    x_covar = dataset.iloc[:, :len(feature_weights)].to_numpy()
+    y_times = dataset.time.to_numpy()
+    y_times_uncensored = dataset.time.to_numpy()
+    risk = dataset.risk.to_numpy()
+
+    censoring_times = np.random.uniform(0, y_times, size=N)
+
+    # Select proportion of the patients to be right-censored using censoring_times
+    if censoring_function == 'independent':
+        # Independent of covariates
+        censoring_indices = np.random.choice(N, size=int(N * censored_proportion), replace=False)
+    elif censoring_function == 'mean':
+        # Censored if mean of covariates over percentile determined by censoring proportion
+        mean_covs = dataset.iloc[:, :len(feature_weights)].mean(1)
+        percentile_cut = np.percentile(mean_covs, int(100 * censored_proportion))
+        censoring_indices = np.array(mean_covs < percentile_cut)
+    else:
+        raise NotImplementedError(f"censoring_function {censoring_function} but must be either 'independent' or 'mean'")
+    y_times[censoring_indices] = censoring_times[censoring_indices]
+    censored_events = np.zeros(N, dtype=bool)
+    censored_events[censoring_indices] = True
+
+    x_covar = torch.Tensor(x_covar).float()
+    y_times = torch.Tensor(y_times).float().unsqueeze(-1)
+    censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
+    print(f"Proportion censored: {censored_events.sum() / N}")
+
+    # create directory for save
+    save_path = os.path.join(DATA_DIR, 'synthetic')
+    create_folder(save_path)
+    data = {
+        'x_covar': x_covar,
+        'y_times': y_times,
+        'censored_events': censored_events,
+        'risk': risk,
+        'y_times_uncensored': y_times_uncensored
+    }
+    torch.save(data, os.path.join(save_path, name))
+    print("Saved risk synthetic dataset to: {}".format(os.path.join(save_path, name)))
+    if save_artifact:
+        config = {'name': name, 'N': N, 'survival_distribution': survival_distribution, 'risk_type': risk_type,
+                  'censored_proportion': censored_proportion, 'alpha': alpha, 'beta': beta,
+                  'feature_weights': feature_weights, 'censoring_function': censoring_function}
+
+        run = wandb.init(job_type='preprocess_synthetic', project='diffsurv', entity="cardiors", config=config)
+        artifact = wandb.Artifact(name, type='dataset', metadata=config)
+        artifact.add_file(os.path.join(save_path, name), name)
+        run.log_artifact(artifact)
+
+
 class CustomSimulationModel(SimulationModel):
-    """Simple extention to also output BX risk scores"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """Just inheriting to get access to pre time function risk"""
 
     def generate_data(self, num_samples=100, num_features=3,
                       feature_weights=None):
@@ -81,12 +145,6 @@ class CustomSimulationModel(SimulationModel):
             feature_weights = self.feature_weights
 
         else:
-            feature_weights = utils.check_data(feature_weights)
-            if num_features != len(feature_weights):
-                error = "The length of feature_weights ({}) "
-                error += "and num_features ({}) are not the same."
-                error = error.format(len(feature_weights), num_features)
-                raise ValueError(error)
             self.feature_weights = feature_weights
 
         # Generating random features
@@ -109,8 +167,8 @@ class CustomSimulationModel(SimulationModel):
 
         # Building dataset
         self.features = columns
-        self.dataset = pd.DataFrame(data=np.c_[X, time, E, BX],
-                                    columns=columns + ['time', 'event', 'risk'])
+        self.dataset = pd.DataFrame(data=np.c_[X, time, E, BX],  # Minor mod here
+                                    columns=columns + ['time', 'event', 'risk'])  # Minor mod here
 
         # Building the time axis and time buckets
         self.times = np.linspace(0., max(self.dataset['time']), self.bins)
@@ -125,83 +183,6 @@ class CustomSimulationModel(SimulationModel):
         print(message_to_print.format(num_samples, sum(E)))
 
         return self.dataset
-
-
-def gen_pysurvival(name, N,
-                   survival_distribution='weibull',
-                   risk_type='gaussian',
-                   censored_proportion=0.0,
-                   alpha=0.1,
-                   beta=3.2,
-                   feature_weights=[1.] * 3,
-                   censoring_function='independent', save_artifact=True):
-    """
-
-    :param name:
-    :param N:
-    :param survival_distribution:
-    :param risk_type:
-    :param censored_proportion:
-    :param alpha: scale parameter (often noted as \lamda)
-    :param beta: shape parameter (often noted as k)
-    :param feature_weights:
-    :param censoring_function:
-    :param save_artifact:
-    :return:
-    """
-    #### 2 - Generating the dataset from a nonlinear Weibull parametric model
-    # Initializing the simulation model
-    sim = CustomSimulationModel(survival_distribution=survival_distribution,
-                                risk_type=risk_type,
-                                censored_parameter=10000000,  # Remove censoring model from pysurival
-                                alpha=alpha, beta=beta)
-
-    # Generating N random samples 
-    dataset = sim.generate_data(num_samples=N, num_features=len(feature_weights), feature_weights=feature_weights)
-    x_covar = dataset.iloc[:, :len(feature_weights)].to_numpy()
-    y_times = dataset.time.to_numpy()
-    risks = dataset.risk.to_numpy()
-
-    censoring_times = np.random.uniform(0, y_times, size=N)
-
-    # Select proportion of the patients to be right-censored using censoring_times
-    if censoring_function == 'independent':
-        # Independent of covariates
-        censoring_indices = np.random.choice(N, size=int(N * censored_proportion), replace=False)
-    elif censoring_function == 'mean':
-        # Censored if mean of covariates over percentile determined by censoring proportion
-        mean_covs = dataset.iloc[:, :len(feature_weights)].mean(1)
-        percentile_cut = np.percentile(mean_covs, int(100 * censored_proportion))
-        censoring_indices = np.array(mean_covs < percentile_cut)
-    else:
-        raise NotImplementedError(f"censoring_function {censoring_function} but must be either 'independent' or 'mean'")
-
-    y_times_uncensored = y_times.copy()
-    y_times[censoring_indices] = censoring_times[censoring_indices]
-    censored_events = np.zeros(N, dtype=bool)
-    censored_events[censoring_indices] = True
-
-    x_covar = torch.Tensor(x_covar).float()
-    y_times = torch.Tensor(y_times).float().unsqueeze(-1)
-    risks = torch.Tensor(risks).float().unsqueeze(-1)
-    y_times_uncensored = torch.Tensor(y_times_uncensored).float().unsqueeze(-1)
-    censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
-    print(f"Proportion censored: {censored_events.sum() / N}")
-
-    # create directory for save
-    save_path = os.path.join(DATA_DIR, 'synthetic')
-    create_folder(save_path)
-    torch.save((x_covar, y_times, censored_events, y_times_uncensored, risks), os.path.join(save_path, name))
-    print("Saved risk synthetic dataset to: {}".format(os.path.join(save_path, name)))
-    if save_artifact:
-        config = {'name': name, 'N': N, 'survival_distribution': survival_distribution, 'risk_type': risk_type,
-                  'censored_proportion': censored_proportion, 'alpha': alpha, 'beta': beta,
-                  'feature_weights': feature_weights, 'censoring_function': censoring_function}
-
-        run = wandb.init(job_type='preprocess_synthetic', project='ehrgnn', config=config)
-        artifact = wandb.Artifact(name, type='dataset', metadata=config)
-        artifact.add_file(os.path.join(save_path, name), name)
-        run.log_artifact(artifact)
 
 
 if __name__ == '__main__':
@@ -230,14 +211,14 @@ if __name__ == '__main__':
     #                    censored_proportion=c,
     #                    alpha=0.1, beta=3.2, feature_weights=[1.] * 3)
 
-    # gen_pysurvival('pysurv_square_weibull_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
-    #                censored_proportion=0.3, alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
+    gen_pysurvival('pysurv_square_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+                   censored_proportion=0.3,
+                   alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
 
-    gen_pysurvival('pysurv_square_weibull_independent_0.0.pt', 32000, survival_distribution='weibull',
-                   risk_type='square',
-                   censored_proportion=0.0, alpha=0.1, beta=3.2, feature_weights=[1.] * 3,
-                   censoring_function='independent')
-    gen_pysurvival('pysurv_square_exp_independent_0.0.pt', 32000, survival_distribution='weibull',
-                   risk_type='square',
-                   censored_proportion=0.0, alpha=0.1, beta=3.2, feature_weights=[1.] * 3,
-                   censoring_function='independent')
+    # gen_pysurvival('pysurv_square_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+    #                censored_proportion=0.3,
+    #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
+    #
+    # gen_pysurvival('pysurv_square_independent_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+    #                censored_proportion=0.3,
+    #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')

@@ -2,7 +2,7 @@ trainer:
   logger:
     - class_path: src.models.loggers.CustomWandbLogger
       init_args:
-        project: ehrgnn
+        project: diffsurv
         entity: qndre
         save_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/wandb/
         tags:
@@ -18,34 +18,31 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
-    - class_path: src.callbacks.LogPredictionsCallback
   max_epochs: 10
   check_val_every_n_epoch: 1
-  val_check_interval: 0.5
+  val_check_interval: 0.2
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
-  default_root_dir: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/
+  default_root_dir: /lustre/home/rmhivau/diffsurv/SAN/models/checkpoints/
 #  precision: 16
 data:
-#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic.pt
-#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/linear_exp_synthetic_no_censoring.pt
-#  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.3.pt
-  path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_weibull_independent_0.0.pt
+#  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
+  path: /lustre/home/rmhivau/diffsurv/data/synthetic/linear_exp_synthetic_no_censoring.pt
   val_split: 0.2
   batch_size: 32
   num_workers: 1
 model:
-  head_layers: 2
+  head_layers: 0
   embedding_dim: 5
   head_hidden_dim: 256
-  lr: 0.001 # from auto lr find
+  lr: 0.0001 # from auto lr find
   only_covs: True
   cov_size: 3
   hidden_dropout_prob: 0
-
+  
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
 
-#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/ehrgnn/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
+#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/diffsurv/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt

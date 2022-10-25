@@ -3,6 +3,8 @@ data/
 !src/data/
 SAN/
 src/wandb/
+src/jobs/logs
+wandb/
 
 # VIM SWAPFILES
 *.swp
