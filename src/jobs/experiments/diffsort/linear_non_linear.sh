@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-# Linear 
+# Linear
 # Non Linear
 python scripts/mlp_synthetic.py fit \
     --config jobs/configs/risk/mlp_synthetic.yaml \
@@ -28,6 +28,3 @@ python scripts/mlpdiffsort_synthetic.py fit \
     --config jobs/configs/risk/mlpdiffsort_synthetic.yaml \
     --data.path /lustre/home/rmhivau/ehrgnn/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt \
     --model.head=1
-
-
-

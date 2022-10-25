@@ -15,7 +15,7 @@ class ModelWithTemperature(nn.Module):
     """
 
     def __init__(self, model, lr=0.01, max_iter=50):
-        super(ModelWithTemperature, self).__init__()
+        super().__init__()
         self.model = model
         self.temperature = nn.Parameter(torch.ones(1) * 1.5)
         self.optimizer = optim.LBFGS([self.temperature], lr=lr, max_iter=max_iter)
@@ -58,7 +58,11 @@ class ModelWithTemperature(nn.Module):
         # Calculate NLL and ECE before temperature scaling
         before_temperature_nll = nll_criterion(logits, labels).item()
         before_temperature_ece = ece_criterion(logits, labels).item()
-        print('Before temperature - NLL: %.3f, ECE: %.3f' % (before_temperature_nll, before_temperature_ece))
+        print(
+            "Before temperature - NLL: {:.3f}, ECE: {:.3f}".format(
+                before_temperature_nll, before_temperature_ece
+            )
+        )
 
         def eval():
             loss = nll_criterion(self.temperature_scale(logits), labels)
@@ -70,8 +74,12 @@ class ModelWithTemperature(nn.Module):
         # Calculate NLL and ECE after temperature scaling
         after_temperature_nll = nll_criterion(self.temperature_scale(logits), labels).item()
         after_temperature_ece = ece_criterion(self.temperature_scale(logits), labels).item()
-        print('Optimal temperature: %.3f' % self.temperature.item())
-        print('After temperature - NLL: %.3f, ECE: %.3f' % (after_temperature_nll, after_temperature_ece))
+        print("Optimal temperature: %.3f" % self.temperature.item())
+        print(
+            "After temperature - NLL: {:.3f}, ECE: {:.3f}".format(
+                after_temperature_nll, after_temperature_ece
+            )
+        )
 
         return self
 
@@ -95,7 +103,7 @@ class _ECELoss(nn.Module):
         """
         n_bins (int): number of confidence interval bins
         """
-        super(_ECELoss, self).__init__()
+        super().__init__()
         bin_boundaries = torch.linspace(0, 1, n_bins + 1)
         self.bin_lowers = bin_boundaries[:-1]
         self.bin_uppers = bin_boundaries[1:]

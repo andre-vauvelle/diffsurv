@@ -27,6 +27,7 @@ dependencies:
   - pip
   - pyg
   - zstd
+  - pre-commit
   - pytest
   - python-dotenv
   - dill

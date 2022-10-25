@@ -23,4 +23,3 @@ python scripts/train_mlp.py fit --config="jobs/configs/default.yaml" --config="$
 date
 
 python scripts/train_mlp.py fit --config="jobs/configs/default.yaml" --config=jobs/configs/mlp.yaml --config="jobs/configs/phecode_phecode100.yaml"
-

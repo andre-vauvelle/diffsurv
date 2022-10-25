@@ -1,60 +1,63 @@
 import os
+import re
 import time
 
-import torch.nn as nn
-import pytorch_pretrained_bert as Bert
 import numpy as np
+import pandas as pd
+import pytorch_lightning as pl
+import pytorch_pretrained_bert as Bert
 import torch
+import torch.nn as nn
 from pytorch_pretrained_bert.modeling import BertPredictionHeadTransform
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from omni.common import create_folder
 
-import numpy as np
-import torch
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader
-import re
-from tqdm import tqdm
-import pandas as pd
-
 
 class BertEmbeddings(nn.Module):
-    """Construct the embeddings from word, segment, age
-    """
+    """Construct the embeddings from word, segment, age"""
 
     def __init__(self, config, feature_dict=None, sparse=True):
-        super(BertEmbeddings, self).__init__()
+        super().__init__()
 
         if feature_dict is None:
-            self.feature_dict = {
-                'word': True,
-                'seg': True,
-                'age': False,
-                'position': True
-            }
+            self.feature_dict = {"word": True, "seg": True, "age": False, "position": True}
         else:
             self.feature_dict = feature_dict
 
-        if feature_dict['word']:
+        if feature_dict["word"]:
             if config.pretrained_embedding_path is None:
-                self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)
+                self.word_embeddings = nn.Embedding(
+                    config.vocab_size, config.hidden_size, padding_idx=0, sparse=sparse
+                )
             else:
                 self.word_embeddings = nn.Embedding.from_pretrained(
-                    embeddings=self._init_pretrained_graph_embedding(config.pretrained_embedding_path),
-                    freeze=config.freeze_pretrained, padding_idx=0)
+                    embeddings=self._init_pretrained_graph_embedding(
+                        config.pretrained_embedding_path
+                    ),
+                    freeze=config.freeze_pretrained,
+                    padding_idx=0,
+                )
 
-        if feature_dict['seg']:
-            self.segment_embeddings = nn.Embedding(config.seg_vocab_size, config.hidden_size, padding_idx=0,
-                                                   sparse=sparse)
+        if feature_dict["seg"]:
+            self.segment_embeddings = nn.Embedding(
+                config.seg_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse
+            )
 
-        if feature_dict['age']:
-            self.age_embeddings = nn.Embedding(config.age_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse)
+        if feature_dict["age"]:
+            self.age_embeddings = nn.Embedding(
+                config.age_vocab_size, config.hidden_size, padding_idx=0, sparse=sparse
+            )
 
-        if feature_dict['position']:
-            self.posi_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size,
-                                                padding_idx=0, sparse=sparse). \
-                from_pretrained(
-                embeddings=self._init_posi_embedding(config.max_position_embeddings, config.hidden_size))
+        if feature_dict["position"]:
+            self.posi_embeddings = nn.Embedding(
+                config.max_position_embeddings, config.hidden_size, padding_idx=0, sparse=sparse
+            ).from_pretrained(
+                embeddings=self._init_posi_embedding(
+                    config.max_position_embeddings, config.hidden_size
+                )
+            )
 
         self.LayerNorm = Bert.modeling.BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -62,15 +65,15 @@ class BertEmbeddings(nn.Module):
     def forward(self, word_ids, age_ids, seg_ids, posi_ids):
         embeddings = self.word_embeddings(word_ids)
 
-        if self.feature_dict['seg']:
+        if self.feature_dict["seg"]:
             segment_embed = self.segment_embeddings(seg_ids)
             embeddings = embeddings + segment_embed
 
-        if self.feature_dict['age']:
+        if self.feature_dict["age"]:
             age_embed = self.age_embeddings(age_ids)
             embeddings = embeddings + age_embed
 
-        if self.feature_dict['position']:
+        if self.feature_dict["position"]:
             posi_embeddings = self.posi_embeddings(posi_ids)
             embeddings = embeddings + posi_embeddings
 
@@ -107,13 +110,20 @@ class BertEmbeddings(nn.Module):
 
 class BertModel(Bert.modeling.BertPreTrainedModel):
     def __init__(self, config, feature_dict):
-        super(BertModel, self).__init__(config)
+        super().__init__(config)
         self.embed = BertEmbeddings(config=config, feature_dict=feature_dict)
         self.encoder = Bert.modeling.BertEncoder(config=config)
         self.pooler = Bert.modeling.BertPooler(config)
 
-    def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None,
-                output_all_encoded_layers=True):
+    def forward(
+        self,
+        input_ids,
+        age_ids=None,
+        seg_ids=None,
+        posi_ids=None,
+        attention_mask=None,
+        output_all_encoded_layers=True,
+    ):
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
         if age_ids is None:
@@ -135,13 +145,17 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         # positions we want to attend and -10000.0 for masked positions.
         # Since we are adding it to the raw scores before the softmax, this is
         # effectively the same as removing these entirely.
-        extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
+        extended_attention_mask = extended_attention_mask.to(
+            dtype=next(self.parameters()).dtype
+        )  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
         embedding_output = self.embed(input_ids, age_ids, seg_ids, posi_ids)
-        encoded_layers = self.encoder(embedding_output,
-                                      extended_attention_mask,
-                                      output_all_encoded_layers=output_all_encoded_layers)
+        encoded_layers = self.encoder(
+            embedding_output,
+            extended_attention_mask,
+            output_all_encoded_layers=output_all_encoded_layers,
+        )
         sequence_output = encoded_layers[-1]
         pooled_output = self.pooler(sequence_output)
         if not output_all_encoded_layers:
@@ -151,14 +165,15 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
 
 class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
     def __init__(self, config, feature_dict):
-        super(BertForMaskedLM, self).__init__(config, feature_dict)
+        super().__init__(config, feature_dict)
         self.bert = BertModel(config, feature_dict)
         self.cls = Bert.modeling.BertOnlyMLMHead(config, self.bert.embed.word_embeddings.weight)
         # self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None):
-        sequence_output, _ = self.bert(input_ids, age_ids, seg_ids, posi_ids, attention_mask,
-                                       output_all_encoded_layers=False)
+        sequence_output, _ = self.bert(
+            input_ids, age_ids, seg_ids, posi_ids, attention_mask, output_all_encoded_layers=False
+        )
         prediction_scores = self.cls(sequence_output)
 
         return prediction_scores
@@ -170,21 +185,23 @@ class CustomBertLMPredictionHead(nn.Module):
     """
 
     def __init__(self, config, bert_model_embedding_weights):
-        super(CustomBertLMPredictionHead, self).__init__()
+        super().__init__()
         self.transform = BertPredictionHeadTransform(config)
 
         if config.shared_lm_input_output_weights:
             # The output weights are the same as the input embeddings, but there is
             # an output-only bias for each token.
-            self.decoder = nn.Linear(bert_model_embedding_weights.size(1),
-                                     bert_model_embedding_weights.size(0),
-                                     bias=False)
+            self.decoder = nn.Linear(
+                bert_model_embedding_weights.size(1),
+                bert_model_embedding_weights.size(0),
+                bias=False,
+            )
             self.decoder.weight = bert_model_embedding_weights
             self.bias = nn.Parameter(torch.zeros(bert_model_embedding_weights.size(0)))
         else:
-            self.decoder = nn.Linear(bert_model_embedding_weights.size(1),
-                                     config.output_dim,
-                                     bias=False)
+            self.decoder = nn.Linear(
+                bert_model_embedding_weights.size(1), config.output_dim, bias=False
+            )
             self.bias = nn.Parameter(torch.zeros(config.output_dim))
 
     def forward(self, hidden_states):

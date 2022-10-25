@@ -48,8 +48,3 @@ qsub -N k15bert_BIG_weighted jobs/submit_big.sh scripts/bert_risk.py fit \
   --model.lr=0.0001 \
   --model.num_hidden_layers=3 \
   --model.use_weighted_loss=True
-
-
-
-
-

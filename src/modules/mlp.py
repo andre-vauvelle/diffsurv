@@ -1,15 +1,15 @@
-from typing import Tuple, Any
+from typing import Any, Tuple
 
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as f
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities import rank_zero_warn
 from torch import nn
-from torchmetrics import MetricCollection, AveragePrecision, Precision, Accuracy, AUROC
-import pandas as pd
+from torchmetrics import AUROC, Accuracy, AveragePrecision, MetricCollection, Precision
 
-from data.preprocess.utils import vocab_omop_embedding, SYMBOL_IDX
+from data.preprocess.utils import SYMBOL_IDX, vocab_omop_embedding
 from definitions import TENSORBOARD_DIR
 from models.heads import PredictionHead
 from models.metrics import CIndex
@@ -21,14 +21,22 @@ from omni.common import safe_string
 
 
 class MultilayerBase(BaseModel):
-    def __init__(self,
-                 input_dim=1390, output_dim=1390,
-                 embedding_dim=128,
-                 lr=1e-4,
-                 head_hidden_dim=256, head_layers=1, hidden_dropout_prob=0.2,
-                 pretrained_embedding_path=None, freeze_pretrained=False, count=True,
-                 cov_size=2, only_covs=False,
-                 **kwargs):
+    def __init__(
+        self,
+        input_dim=1390,
+        output_dim=1390,
+        embedding_dim=128,
+        lr=1e-4,
+        head_hidden_dim=256,
+        head_layers=1,
+        hidden_dropout_prob=0.2,
+        pretrained_embedding_path=None,
+        freeze_pretrained=False,
+        count=True,
+        cov_size=2,
+        only_covs=False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.lr = lr
 
@@ -38,22 +46,33 @@ class MultilayerBase(BaseModel):
         self.only_covs = only_covs
 
         if pretrained_embedding_path is None:
-            self.embed = nn.EmbeddingBag(num_embeddings=input_dim, embedding_dim=embedding_dim,
-                                         padding_idx=SYMBOL_IDX['PAD'],
-                                         mode="mean", sparse=True)
+            self.embed = nn.EmbeddingBag(
+                num_embeddings=input_dim,
+                embedding_dim=embedding_dim,
+                padding_idx=SYMBOL_IDX["PAD"],
+                mode="mean",
+                sparse=True,
+            )
         else:
             # Use preprocess_ukb_omop.py to preprocess
             pretrained_embedding = torch.load(pretrained_embedding_path).float()
             # pretrained_embedding = pd.read_feather(pretrained_embedding_path)
-            self.embed = nn.EmbeddingBag.from_pretrained(pretrained_embedding, freeze=freeze_pretrained, sparse=True)
+            self.embed = nn.EmbeddingBag.from_pretrained(
+                pretrained_embedding, freeze=freeze_pretrained, sparse=True
+            )
 
         if only_covs:
             head_input_dim = self.cov_size
         else:
             head_input_dim = embedding_dim + self.cov_size
 
-        self.head = PredictionHead(in_features=head_input_dim, out_features=output_dim,
-                                   hidden_dim=head_hidden_dim, n_layers=head_layers, dropout=hidden_dropout_prob)
+        self.head = PredictionHead(
+            in_features=head_input_dim,
+            out_features=output_dim,
+            hidden_dim=head_hidden_dim,
+            n_layers=head_layers,
+            dropout=hidden_dropout_prob,
+        )
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -62,13 +81,13 @@ class MultilayerBase(BaseModel):
         metrics = MetricCollection(
             [
                 # AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
-                Precision(compute_on_step=False, average='micro'),
+                Precision(compute_on_step=False, average="micro"),
                 # Accuracy(compute_on_step=False, average='micro'),
                 # AUROC(num_classes=self.output_dim, compute_on_step=False)
             ]
         )
 
-        self.valid_metrics = metrics.clone(prefix='val/')
+        self.valid_metrics = metrics.clone(prefix="val/")
         self.save_hyperparameters()
 
     def forward(self, idx, covariates=None) -> torch.Tensor:
@@ -84,14 +103,14 @@ class MultilayerBase(BaseModel):
         return logits
 
     def _shared_eval_step(self, batch, batch_idx):
-        token_idx = batch['token_idx']
+        token_idx = batch["token_idx"]
         # age_idx = batch['age_idx']
         # position = batch['position']
         # segment = batch['segment']
         # mask = batch['mask']
-        covariates = batch['covariates']
-        label_multihot = batch['labels']
-        label_times = batch['label_times']
+        covariates = batch["covariates"]
+        label_multihot = batch["labels"]
+        label_times = batch["label_times"]
         # censorings = batch['censorings']
         # exclusions = batch['exclusions']
 
@@ -133,12 +152,12 @@ class MultilayerMLM(MultilayerBase):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         loss, logits_expanded, mask_labels_expanded = self._shared_eval_step(batch, batch_idx)
-        self.log('train/loss', loss)
+        self.log("train/loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, logits_expanded, mask_labels_expanded = self._shared_eval_step(batch, batch_idx)
-        self.log('val/loss', loss, prog_bar=True)
+        self.log("val/loss", loss, prog_bar=True)
 
         predictions = f.softmax(logits_expanded.view(-1, self.output_dim), dim=1)
         keep = mask_labels_expanded.view(-1) != -1
@@ -151,7 +170,7 @@ class MultilayerMLM(MultilayerBase):
         logits = self(token_idx)
         expanded_logits = logits.repeat(mask_labels.shape[1], 1)
         loss = self.loss_func(expanded_logits, mask_labels.view(-1))
-        self.log('test/loss', loss, prog_bar=True)
+        self.log("test/loss", loss, prog_bar=True)
 
         predictions = f.softmax(expanded_logits.view(-1, self.input_dim), dim=1)
         keep = mask_labels.view(-1) != -1

@@ -15,4 +15,3 @@ module load compilers/gnu/10.2.0
 module load cuda/11.3.1/gnu-10.2.0
 
 conda activate ehrgnn
-

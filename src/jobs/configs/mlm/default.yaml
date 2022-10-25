@@ -10,4 +10,3 @@ trainer:
   enable_checkpointing: True
   num_sanity_val_steps: -1
   accumulate_grad_batches: 4
-

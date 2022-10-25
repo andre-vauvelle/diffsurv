@@ -1,37 +1,45 @@
 import os
 from typing import Optional
 
-import pytorch_lightning as pl
 import pandas as pd
+import pytorch_lightning as pl
+import torch
 import wandb
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data.datasets import DatasetMLM, DatasetAssessmentRiskPredict, DatasetSyntheticRisk, TensorDataset, \
-    DatasetNextPredict
+from data.datasets import (
+    DatasetAssessmentRiskPredict,
+    DatasetMLM,
+    DatasetNextPredict,
+    DatasetSyntheticRisk,
+    TensorDataset,
+)
 from definitions import DATA_DIR
 from omni.common import load_pickle, save_pickle
-import torch
 
 
 class AbstractDataModule(pl.LightningDataModule):
-    def __init__(self,
-                 token_col='phecode',
-                 label_col='phecode',
-                 token_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab.pkl'),
-                 label_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab.pkl'),
-                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'age_vocab_90.pkl'),
-                 train_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_train.parquet'),
-                 val_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_val.parquet'),
-                 test_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_test.parquet'),
-                 covariates_path=os.path.join(
-                     os.path.join(DATA_DIR, 'processed', 'covariates', 'eid_covariates.parquet')),
-                 batch_size=32,
-                 max_len_seq=256,
-                 num_workers=1,
-                 used_covs=('age_ass', 'sex'),
-                 debug=True):
+    def __init__(
+        self,
+        token_col="phecode",
+        label_col="phecode",
+        token_vocab_path=os.path.join(DATA_DIR, "processed", "omop", "phecode_vocab.pkl"),
+        label_vocab_path=os.path.join(DATA_DIR, "processed", "omop", "phecode_vocab.pkl"),
+        age_vocab_path=os.path.join(DATA_DIR, "processed", "omop", "age_vocab_90.pkl"),
+        train_data_path=os.path.join(DATA_DIR, "processed", "omop", "phe_train.parquet"),
+        val_data_path=os.path.join(DATA_DIR, "processed", "omop", "phe_val.parquet"),
+        test_data_path=os.path.join(DATA_DIR, "processed", "omop", "phe_test.parquet"),
+        covariates_path=os.path.join(
+            os.path.join(DATA_DIR, "processed", "covariates", "eid_covariates.parquet")
+        ),
+        batch_size=32,
+        max_len_seq=256,
+        num_workers=1,
+        used_covs=("age_ass", "sex"),
+        debug=True,
+    ):
         super().__init__()
         self.token_col = token_col
         self.label_col = label_col
@@ -49,8 +57,8 @@ class AbstractDataModule(pl.LightningDataModule):
 
         self.covariates_path = covariates_path
         self.used_covs = used_covs
-        self.input_dim = len(list(self.token_vocab['token2idx'].keys()))
-        self.output_dim = len(list(self.label_vocab['token2idx'].keys()))
+        self.input_dim = len(list(self.token_vocab["token2idx"].keys()))
+        self.output_dim = len(list(self.label_vocab["token2idx"].keys()))
         self.debug = debug
 
     def train_dataloader(self):
@@ -70,80 +78,120 @@ class AbstractDataModule(pl.LightningDataModule):
 
 
 class DataModuleMLM(AbstractDataModule):
-    def __init__(self,
-                 token_col='phecode',
-                 label_col='phecode',
-                 token_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab_top100_105.pkl'),
-                 label_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phecode_vocab_top100_105.pkl'),
-                 age_vocab_path=os.path.join(DATA_DIR, 'processed', 'omop', 'age_vocab_89.pkl'),
-                 train_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_train.parquet'),
-                 val_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_val.parquet'),
-                 test_data_path=os.path.join(DATA_DIR, 'processed', 'omop', 'phe_test.parquet'),
-                 batch_size=32,
-                 max_len_seq=256,
-                 num_workers=1,
-                 used_covs=('age_ass', 'sex'),
-                 debug=False,
-                 mask_prob=0.2):
-        super().__init__(token_col=token_col, label_col=label_col, token_vocab_path=token_vocab_path,
-                         label_vocab_path=label_vocab_path, age_vocab_path=age_vocab_path,
-                         train_data_path=train_data_path, val_data_path=val_data_path, test_data_path=test_data_path,
-                         batch_size=batch_size, max_len_seq=max_len_seq, num_workers=num_workers, used_covs=used_covs,
-                         debug=debug)
+    def __init__(
+        self,
+        token_col="phecode",
+        label_col="phecode",
+        token_vocab_path=os.path.join(
+            DATA_DIR, "processed", "omop", "phecode_vocab_top100_105.pkl"
+        ),
+        label_vocab_path=os.path.join(
+            DATA_DIR, "processed", "omop", "phecode_vocab_top100_105.pkl"
+        ),
+        age_vocab_path=os.path.join(DATA_DIR, "processed", "omop", "age_vocab_89.pkl"),
+        train_data_path=os.path.join(DATA_DIR, "processed", "omop", "phe_train.parquet"),
+        val_data_path=os.path.join(DATA_DIR, "processed", "omop", "phe_val.parquet"),
+        test_data_path=os.path.join(DATA_DIR, "processed", "omop", "phe_test.parquet"),
+        batch_size=32,
+        max_len_seq=256,
+        num_workers=1,
+        used_covs=("age_ass", "sex"),
+        debug=False,
+        mask_prob=0.2,
+    ):
+        super().__init__(
+            token_col=token_col,
+            label_col=label_col,
+            token_vocab_path=token_vocab_path,
+            label_vocab_path=label_vocab_path,
+            age_vocab_path=age_vocab_path,
+            train_data_path=train_data_path,
+            val_data_path=val_data_path,
+            test_data_path=test_data_path,
+            batch_size=batch_size,
+            max_len_seq=max_len_seq,
+            num_workers=num_workers,
+            used_covs=used_covs,
+            debug=debug,
+        )
         self.mask_prob = mask_prob
 
     def train_dataloader(self):
         train_data = pd.read_feather(self.train_data_path)
         train_data = train_data.head(10_000) if self.debug else train_data
-        train_dataset = DatasetMLM(train_data, self.token_vocab['token2idx'], self.label_vocab['token2idx'],
-                                   self.age_vocab['token2idx'],
-                                   max_len=self.max_len_seq, token_col=self.token_col, label_col=self.label_col,
-                                   mask_prob=self.mask_prob)
+        train_dataset = DatasetMLM(
+            train_data,
+            self.token_vocab["token2idx"],
+            self.label_vocab["token2idx"],
+            self.age_vocab["token2idx"],
+            max_len=self.max_len_seq,
+            token_col=self.token_col,
+            label_col=self.label_col,
+            mask_prob=self.mask_prob,
+        )
         return DataLoader(train_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def val_dataloader(self):
         val_data = pd.read_feather(self.val_data_path)
         val_data = val_data.head(1_000) if self.debug else val_data
-        val_dataset = DatasetMLM(val_data, self.token_vocab['token2idx'], self.label_vocab['token2idx'],
-                                 self.age_vocab['token2idx'],
-                                 max_len=self.max_len_seq, token_col=self.token_col, label_col=self.label_col,
-                                 mask_prob=self.mask_prob)
+        val_dataset = DatasetMLM(
+            val_data,
+            self.token_vocab["token2idx"],
+            self.label_vocab["token2idx"],
+            self.age_vocab["token2idx"],
+            max_len=self.max_len_seq,
+            token_col=self.token_col,
+            label_col=self.label_col,
+            mask_prob=self.mask_prob,
+        )
         return DataLoader(val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
         test_data = pd.read_feather(self.test_data_path)
         test_data = test_data.head(1_000) if self.debug else test_data
-        test_dataset = DatasetMLM(test_data, self.token_vocab['token2idx'], self.label_vocab['token2idx'],
-                                  self.age_vocab['token2idx'],
-                                  max_len=self.max_len_seq, token_col=self.token_col, label_col=self.label_col,
-                                  mask_prob=self.mask_prob)
+        test_dataset = DatasetMLM(
+            test_data,
+            self.token_vocab["token2idx"],
+            self.label_vocab["token2idx"],
+            self.age_vocab["token2idx"],
+            max_len=self.max_len_seq,
+            token_col=self.token_col,
+            label_col=self.label_col,
+            mask_prob=self.mask_prob,
+        )
         return DataLoader(test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
 
 
 class DataModuleAssessmentRiskPredict(AbstractDataModule):
-    def __init__(self,
-                 token_col='phecode',
-                 label_col='phecode',
-                 token_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phecode_vocab_top100_105.pkl'),
-                 label_vocab_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phecode_vocab_top100_105.pkl'),
-                 age_vocab_path='/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/age_vocab_90.pkl',
-                 train_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_train.feather'),
-                 val_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_val.feather'),
-                 test_data_path=os.path.join(DATA_DIR, 'processed', 'in_gnn', 'phe_test.feather'),
-                 covariates_path=os.path.join(
-                     os.path.join(DATA_DIR, 'processed', 'covariates', 'patient_base.parquet')),
-                 batch_size=32,
-                 max_len_seq=256,
-                 min_length=5,
-                 num_workers=1,
-                 used_covs=('age_ass', 'sex'),
-                 task='risk',
-                 init_setup=False,
-                 debug=False,
-                 drop_unk=True,
-                 weightings_path=None,
-                 incidence_grouping_path=None,
-                 ):
+    def __init__(
+        self,
+        token_col="phecode",
+        label_col="phecode",
+        token_vocab_path=os.path.join(
+            DATA_DIR, "processed", "in_gnn", "phecode_vocab_top100_105.pkl"
+        ),
+        label_vocab_path=os.path.join(
+            DATA_DIR, "processed", "in_gnn", "phecode_vocab_top100_105.pkl"
+        ),
+        age_vocab_path="/SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/in_gnn/age_vocab_90.pkl",
+        train_data_path=os.path.join(DATA_DIR, "processed", "in_gnn", "phe_train.feather"),
+        val_data_path=os.path.join(DATA_DIR, "processed", "in_gnn", "phe_val.feather"),
+        test_data_path=os.path.join(DATA_DIR, "processed", "in_gnn", "phe_test.feather"),
+        covariates_path=os.path.join(
+            os.path.join(DATA_DIR, "processed", "covariates", "patient_base.parquet")
+        ),
+        batch_size=32,
+        max_len_seq=256,
+        min_length=5,
+        num_workers=1,
+        used_covs=("age_ass", "sex"),
+        task="risk",
+        init_setup=False,
+        debug=False,
+        drop_unk=True,
+        weightings_path=None,
+        incidence_grouping_path=None,
+    ):
         """
 
         :param token_col:
@@ -164,9 +212,22 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         :param drop_unk:
         :param weightings_path:
         """
-        super().__init__(token_col, label_col, token_vocab_path, label_vocab_path, age_vocab_path,
-                         train_data_path, val_data_path, test_data_path, covariates_path, batch_size, max_len_seq,
-                         num_workers, used_covs=used_covs, debug=debug)
+        super().__init__(
+            token_col,
+            label_col,
+            token_vocab_path,
+            label_vocab_path,
+            age_vocab_path,
+            train_data_path,
+            val_data_path,
+            test_data_path,
+            covariates_path,
+            batch_size,
+            max_len_seq,
+            num_workers,
+            used_covs=used_covs,
+            debug=debug,
+        )
         self.task = task
         self.min_length = min_length
         if init_setup:
@@ -174,7 +235,9 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
             grouping_labels, weightings = self.init_setup(weightings_path, incidence_grouping_path)
             self.grouping_labels = grouping_labels
         else:
-            self.grouping_labels = load_pickle(os.path.join(DATA_DIR, 'processed', 'incidence_groupings.pkl'))
+            self.grouping_labels = load_pickle(
+                os.path.join(DATA_DIR, "processed", "incidence_groupings.pkl")
+            )
             weightings = torch.load(weightings_path) if weightings_path else None
 
         self.drop_unk = drop_unk
@@ -184,10 +247,13 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
 
     def init_setup(self, weightings_path, incidence_grouping_path):
         dataset = self.get_dataset(self.train_data_path, self.covariates_path)
-        print('Initialising grouping and weighting')
-        data = [dataset.__getitem__(i) for i in tqdm(range(len(dataset)), total=len(dataset), desc='Extracting data')]
+        print("Initialising grouping and weighting")
+        data = [
+            dataset.__getitem__(i)
+            for i in tqdm(range(len(dataset)), total=len(dataset), desc="Extracting data")
+        ]
 
-        labels = [x['labels'] for x in data]
+        labels = [x["labels"] for x in data]
         labels = torch.stack(labels).cpu()
         weightings = self.get_weightings(labels, weightings_path)
         grouping_labels = self.get_incidence_groupings(labels, incidence_grouping_path)
@@ -205,7 +271,7 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         labels_counts = labels.sum(dim=0)
         class_weights = (labels_counts + min_count) / ((labels_counts + min_count).sum(dim=0))
         torch.save(class_weights, weightings_path)
-        print("Weightings saved to {}".format(weightings_path))
+        print(f"Weightings saved to {weightings_path}")
         return class_weights
 
     def get_incidence_groupings(self, labels, incidence_grouping_path):
@@ -216,11 +282,11 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         """
         # ratio of total patients with each label, i.e. \ge 1 in 1000 patients have this label, bounds (lower, upper)
         grouping_dict = {
-            'all': (-1, float('inf')),
-            '>1:10': (0.1, float('inf')),
-            '>1:100': (0.01, 0.1),
-            '>1:1000': (0.001, 0.01),
-            '<1:1000': (-1, 0.001),
+            "all": (-1, float("inf")),
+            ">1:10": (0.1, float("inf")),
+            ">1:100": (0.01, 0.1),
+            ">1:1000": (0.001, 0.01),
+            "<1:1000": (-1, 0.001),
         }
         grouping_labels = {}
         class_weights = labels.mean(axis=0)
@@ -230,7 +296,7 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
             idx = torch.logical_and(lower, upper)
             int_idx = torch.arange(0, idx.shape[0])
             int_idx = int_idx[idx]
-            grouping_l = [self.label_vocab['idx2token'][int(i)] for i in int_idx]
+            grouping_l = [self.label_vocab["idx2token"][int(i)] for i in int_idx]
             grouping_labels.update({grouping_name: grouping_l})
         save_pickle(grouping_labels, incidence_grouping_path)
         return grouping_labels
@@ -239,35 +305,41 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
         data = pd.read_feather(stage_path)
         data = data.query(f"length > {self.min_length}")
         covariates = pd.read_parquet(covariates_path)
-        if self.task == 'next':
-            dataset = DatasetNextPredict(data,
-                                         self.token_vocab['token2idx'],
-                                         self.label_vocab['token2idx'],
-                                         self.age_vocab['token2idx'],
-                                         max_len=self.max_len_seq,
-                                         token_col=self.token_col,
-                                         label_col=self.label_col,
-                                         covariates=covariates,
-                                         used_covs=self.used_covs,
-                                         drop_unk=self.drop_unk)
-        elif self.task == 'risk':
-            dataset = DatasetAssessmentRiskPredict(data,
-                                                   self.token_vocab['token2idx'],
-                                                   self.label_vocab['token2idx'],
-                                                   self.age_vocab['token2idx'],
-                                                   max_len=self.max_len_seq,
-                                                   token_col=self.token_col,
-                                                   label_col=self.label_col,
-                                                   covariates=covariates,
-                                                   used_covs=self.used_covs,
-                                                   drop_unk=self.drop_unk)
+        if self.task == "next":
+            dataset = DatasetNextPredict(
+                data,
+                self.token_vocab["token2idx"],
+                self.label_vocab["token2idx"],
+                self.age_vocab["token2idx"],
+                max_len=self.max_len_seq,
+                token_col=self.token_col,
+                label_col=self.label_col,
+                covariates=covariates,
+                used_covs=self.used_covs,
+                drop_unk=self.drop_unk,
+            )
+        elif self.task == "risk":
+            dataset = DatasetAssessmentRiskPredict(
+                data,
+                self.token_vocab["token2idx"],
+                self.label_vocab["token2idx"],
+                self.age_vocab["token2idx"],
+                max_len=self.max_len_seq,
+                token_col=self.token_col,
+                label_col=self.label_col,
+                covariates=covariates,
+                used_covs=self.used_covs,
+                drop_unk=self.drop_unk,
+            )
         else:
             raise ValueError(f"Chosen {self.task} but only ['next', 'risk'] allowed")
         return dataset
 
     def train_dataloader(self):
         train_dataset = self.get_dataset(self.train_data_path, self.covariates_path)
-        return DataLoader(train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+        return DataLoader(
+            train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True
+        )
 
     def val_dataloader(self):
         val_dataset = self.get_dataset(self.val_data_path, self.covariates_path)
@@ -285,13 +357,14 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         :param local_path: local path to data, only used if there is no wandb_artifact...
     """
 
-    def __init__(self,
-                 wandb_artifact: Optional[str] = 'qndre/diffsurv/pysurv_square_0.3.pt:v0',
-                 local_path: Optional[str] = None,
-                 val_split=0.2,
-                 batch_size=32,
-                 num_workers=1,
-                 ):
+    def __init__(
+        self,
+        wandb_artifact: Optional[str] = "qndre/diffsurv/pysurv_square_0.3.pt:v0",
+        local_path: Optional[str] = None,
+        val_split=0.2,
+        batch_size=32,
+        num_workers=1,
+    ):
         super().__init__()
         self.wandb_artifact = wandb_artifact
         self.val_split = val_split
@@ -300,7 +373,7 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         if wandb_artifact is not None:
             api = wandb.Api()
             artifact = api.artifact(self.wandb_artifact)
-            wandb_dir = artifact.download(root=f'../data/wandb/{wandb_artifact}')
+            wandb_dir = artifact.download(root=f"../data/wandb/{wandb_artifact}")
             wandb_path = os.listdir(wandb_dir)[0]
             self.path = os.path.join(wandb_dir, wandb_path)
         elif local_path is not None:
@@ -308,28 +381,47 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         else:
             raise Exception("Needs either local_path or wandb_artifact... Both are None")
         data = torch.load(os.path.join(self.path))
-        self.input_dim = data['x_covar'].shape[1]
-        self.output_dim = data['y_times'].shape[1]
-        self.label_vocab = {'token2idx': {'event0': 0}, 'idx2token': {0: 'event0'}}
-        self.grouping_labels = {'all': ['event0']}
+        self.input_dim = data["x_covar"].shape[1]
+        self.output_dim = data["y_times"].shape[1]
+        self.label_vocab = {"token2idx": {"event0": 0}, "idx2token": {0: "event0"}}
+        self.grouping_labels = {"all": ["event0"]}
 
     def train_dataloader(self):
         data = torch.load(os.path.join(self.path))
-        x_covar, y_times, censored_events = data['x_covar'], data['y_times'], data['censored_events']
+        x_covar, y_times, censored_events = (
+            data["x_covar"],
+            data["y_times"],
+            data["censored_events"],
+        )
         n_patients = x_covar.shape[0]
         n_training_patients = int(n_patients * (1 - self.val_split))
-        train_datatset = DatasetSyntheticRisk(x_covar[:n_training_patients], y_times[:n_training_patients],
-                                              censored_events[:n_training_patients])
-        return DataLoader(train_datatset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True,
-                          shuffle=True)
+        train_datatset = DatasetSyntheticRisk(
+            x_covar[:n_training_patients],
+            y_times[:n_training_patients],
+            censored_events[:n_training_patients],
+        )
+        return DataLoader(
+            train_datatset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            drop_last=True,
+            shuffle=True,
+        )
 
     def val_dataloader(self):
         data = torch.load(os.path.join(self.path))
-        x_covar, y_times, censored_events = data['x_covar'], data['y_times'], data['censored_events']
+        x_covar, y_times, censored_events = (
+            data["x_covar"],
+            data["y_times"],
+            data["censored_events"],
+        )
         n_patients = x_covar.shape[0]
         n_validation_patients = int(n_patients * self.val_split)
-        val_datatset = DatasetSyntheticRisk(x_covar[-n_validation_patients:], y_times[-n_validation_patients:],
-                                            censored_events[-n_validation_patients:])
+        val_datatset = DatasetSyntheticRisk(
+            x_covar[-n_validation_patients:],
+            y_times[-n_validation_patients:],
+            censored_events[-n_validation_patients:],
+        )
         return DataLoader(val_datatset, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def predict_dataloader(self) -> EVAL_DATALOADERS:
