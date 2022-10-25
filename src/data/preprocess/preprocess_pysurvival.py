@@ -98,10 +98,14 @@ if __name__ == '__main__':
     #                    censored_proportion=c,
     #                    alpha=0.1, beta=3.2, feature_weights=[1.] * 3)
 
-    gen_pysurvival('pysurv_square_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+    gen_pysurvival('pysurv_square_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
                    censored_proportion=0.3,
                    alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
 
-    gen_pysurvival('pysurv_square_independent_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
-                   censored_proportion=0.3,
-                   alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')
+    # gen_pysurvival('pysurv_square_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+    #                censored_proportion=0.3,
+    #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
+    #
+    # gen_pysurvival('pysurv_square_independent_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
+    #                censored_proportion=0.3,
+    #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')
