@@ -68,7 +68,13 @@ def gen_synthetic_risk_dataset(n_patients=30_000, n_covariates=3, hazards=(100, 
     # create directory for save
     save_path = os.path.join(DATA_DIR, 'synthetic')
     create_folder(save_path)
-    torch.save((x_covar, y_times, censored_events), os.path.join(save_path, name))
+    data = {
+        "x_covar": x_covar,
+        "y_times": y_times,
+        "censored_events": censored_events,
+        "alpha_scales": alpha_scales,
+    }
+    torch.save(data, os.path.join(save_path, name))
     print("Saved risk synthetic dataset to: {}".format(os.path.join(save_path, name)))
 
 

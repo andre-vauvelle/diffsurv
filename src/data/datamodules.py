@@ -307,14 +307,15 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
             self.path = local_path
         else:
             raise Exception("Needs either local_path or wandb_artifact... Both are None")
-        (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
-        self.input_dim = x_covar.shape[1]
-        self.output_dim = y_times.shape[1]
+        data = torch.load(os.path.join(self.path))
+        self.input_dim = data['x_covar'].shape[1]
+        self.output_dim = data['y_times'].shape[1]
         self.label_vocab = {'token2idx': {'event0': 0}, 'idx2token': {0: 'event0'}}
         self.grouping_labels = {'all': ['event0']}
 
     def train_dataloader(self):
-        (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
+        data = torch.load(os.path.join(self.path))
+        x_covar, y_times, censored_events = data['x_covar'], data['y_times'], data['censored_events']
         n_patients = x_covar.shape[0]
         n_training_patients = int(n_patients * (1 - self.val_split))
         train_datatset = DatasetSyntheticRisk(x_covar[:n_training_patients], y_times[:n_training_patients],
@@ -323,7 +324,8 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
                           shuffle=True)
 
     def val_dataloader(self):
-        (x_covar, y_times, censored_events) = torch.load(os.path.join(self.path))
+        data = torch.load(os.path.join(self.path))
+        x_covar, y_times, censored_events = data['x_covar'], data['y_times'], data['censored_events']
         n_patients = x_covar.shape[0]
         n_validation_patients = int(n_patients * self.val_split)
         val_datatset = DatasetSyntheticRisk(x_covar[-n_validation_patients:], y_times[-n_validation_patients:],
