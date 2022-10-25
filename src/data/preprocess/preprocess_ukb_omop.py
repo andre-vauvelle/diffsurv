@@ -22,7 +22,7 @@ if __name__ == '__main__':
     for embeddings_path in embeddings_path_store:
         save_path = embeddings_path[:-8] + '.pt' if not in_gnn else embeddings_path[:-8] + '_in_gnn.pt'
 
-        concept_path = '/home/vauvelle/pycharm-sftp/ehrgnn/data/athena/CONCEPT.csv'
+        concept_path = '/home/vauvelle/pycharm-sftp/diffsurv/data/athena/CONCEPT.csv'
 
         embedding = pd.read_feather(embeddings_path)
         # concept = pd.read_csv(concept_path, sep='\t')

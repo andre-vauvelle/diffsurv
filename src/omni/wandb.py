@@ -8,7 +8,7 @@ def change_name_run():
     run_ids = ['2p6j9jlo', '1m1g5beu', 'g4uxng4x']
     name = run_ids[0]
     def change_name(run_id):
-        run = api.run("qndre/ehrgnn/{}".format(run_id))
+        run = api.run("qndre/diffsurv/{}".format(run_id))
         names = list(run.summary.keys())
         for n in names:
             if not re.match(r'(^_)', n):

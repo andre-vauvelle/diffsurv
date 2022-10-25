@@ -79,23 +79,6 @@ class CIndex(torchmetrics.Metric):
             )
 
 
-# class QuantilePerformance(torchmetrics.Metric):
-#     def __init__(self, dist_sync_on_step=False):
-#         super().__init__(dist_sync_on_step=dist_sync_on_step)
-#
-#         self.add_state("predicted_perm", default=[], dist_reduce_fx="cat")
-#         self.add_state("events", default=[], dist_reduce_fx="cat")
-#         self.add_state("times", default=[], dist_reduce_fx="cat")
-#
-#     def update(self, predicted_perm: torch.Tensor, events: torch.Tensor, times: torch.Tensor):
-#         self.predicted_perm.append(predicted_perm)
-#         self.events.append(events)
-#         self.times.append(times)
-#
-#     def compute(self):
-
-
-
 if __name__ == '__main__':
     test_vector = torch.Tensor([5, 6, 3, 9])
     kendall_embedding_loop(test_vector)
