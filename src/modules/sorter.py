@@ -1,7 +1,7 @@
 from typing import Literal
 
-from diffsort import bitonic_network, odd_even_network
 import torch
+from diffsort import bitonic_network, odd_even_network
 from diffsort.functional import execute_sort
 
 
@@ -18,26 +18,33 @@ class CustomDiffSortNet(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            sorting_network_type: Literal['odd_even', 'bitonic'],
-            size: int,
-            steepness: float = 10.0,
-            art_lambda: float = 0.25,
-            interpolation_type: str = None,
-            distribution: str = 'cauchy',
+        self,
+        sorting_network_type: Literal["odd_even", "bitonic"],
+        size: int,
+        steepness: float = 10.0,
+        art_lambda: float = 0.25,
+        interpolation_type: str = None,
+        distribution: str = "cauchy",
     ):
-        super(CustomDiffSortNet, self).__init__()
+        super().__init__()
         self.sorting_network_type = sorting_network_type
         self.size = size
 
         # Register the sorting network in the module buffer.
-        self._sorting_network_structure = self._setup_sorting_network_structure(sorting_network_type, size)
+        self._sorting_network_structure = self._setup_sorting_network_structure(
+            sorting_network_type, size
+        )
         self._register_sorting_network(self._sorting_network_structure)
 
         if interpolation_type is not None:
-            assert distribution is None or distribution == 'cauchy' or distribution == interpolation_type, (
-                'Two different distributions have been set (distribution={} and interpolation_type={}); however, '
-                'they have the same interpretation and interpolation_type is a deprecated argument'.format(
+            assert (
+                distribution is None
+                or distribution == "cauchy"
+                or distribution == interpolation_type
+            ), (
+                "Two different distributions have been set (distribution={} and"
+                " interpolation_type={}); however, they have the same interpretation and"
+                " interpolation_type is a deprecated argument".format(
                     distribution, interpolation_type
                 )
             )
@@ -50,21 +57,24 @@ class CustomDiffSortNet(torch.nn.Module):
     def forward(self, vectors):
         assert len(vectors.shape) == 2
         assert vectors.shape[1] == self.size
-        sorted_out, predicted_permutation = self.sort(vectors, self.steepness, self.art_lambda, self.distribution)
+        sorted_out, predicted_permutation = self.sort(
+            vectors, self.steepness, self.art_lambda, self.distribution
+        )
         return sorted_out, predicted_permutation
 
     def _setup_sorting_network_structure(self, network_type, n):
-        """Setup the sorting network structure. Used for registering the sorting network in the module buffer."""
+        """Setup the sorting network structure. Used for registering the sorting network in the module buffer.
+        """
 
         def matrix_to_torch(m):
             return [[torch.from_numpy(matrix).float() for matrix in matrix_set] for matrix_set in m]
 
-        if network_type == 'bitonic':
+        if network_type == "bitonic":
             m = matrix_to_torch(bitonic_network(n))
-        elif network_type == 'odd_even':
+        elif network_type == "odd_even":
             m = matrix_to_torch(odd_even_network(n))
         else:
-            raise NotImplementedError('Sorting network `{}` unknown.'.format(network_type))
+            raise NotImplementedError(f"Sorting network `{network_type}` unknown.")
 
         return m
 
@@ -72,7 +82,7 @@ class CustomDiffSortNet(torch.nn.Module):
         """Register the sorting network in the module buffer."""
         for i, matrix_set in enumerate(m):
             for j, matrix in enumerate(matrix_set):
-                self.register_buffer(f'sorting_network_{i}_{j}', matrix)
+                self.register_buffer(f"sorting_network_{i}_{j}", matrix)
 
     def get_sorting_network(self):
         """Return the sorting network from the module buffer."""
@@ -81,11 +91,12 @@ class CustomDiffSortNet(torch.nn.Module):
             yield (self.__getattr__(f"sorting_network_{i}_{j}") for j, _ in enumerate(m[i]))
 
     def sort(
-            self,
-            vectors: torch.Tensor,
-            steepness: float = 10.0,
-            art_lambda: float = 0.25,
-            distribution: str = 'cauchy'):
+        self,
+        vectors: torch.Tensor,
+        steepness: float = 10.0,
+        art_lambda: float = 0.25,
+        distribution: str = "cauchy",
+    ):
         """Sort a matrix along axis 1 using differentiable sorting networks. Return the permutation matrix.
 
         Positional arguments:
@@ -98,8 +109,8 @@ class CustomDiffSortNet(torch.nn.Module):
         distribution -- how to interpolate when swapping two numbers; (default 'cauchy')
         """
         assert self.sorting_network_0_0.device == vectors.device, (
-            f"The sorting network is on device {self.sorting_network_0_0.device} while the vectors are on device"
-            f" {vectors.device}, but they both need to be on the same device."
+            f"The sorting network is on device {self.sorting_network_0_0.device} while the vectors"
+            f" are on device {vectors.device}, but they both need to be on the same device."
         )
         sorting_network = self.get_sorting_network()
         return execute_sort(
@@ -107,5 +118,5 @@ class CustomDiffSortNet(torch.nn.Module):
             vectors=vectors,
             steepness=steepness,
             art_lambda=art_lambda,
-            distribution=distribution
+            distribution=distribution,
         )

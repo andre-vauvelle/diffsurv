@@ -1,19 +1,18 @@
-import torchvision
-from pytorch_lightning.callbacks import Callback
-import torch
 import matplotlib.pyplot as plt
+import torch
+import torchvision
+import wandb
+from pytorch_lightning.callbacks import Callback
 
 from omni.visualize import torch_show
-import wandb
 
 
 class LogPredictionsCallback(Callback):
-
     def on_validation_batch_end(
-            self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+    ):
         """Called when the validation batch ends."""
         if not batch_idx % 20:
-
             wandb_logger = trainer.logger
 
             # `outputs` comes from `LightningModule.validation_step`
@@ -21,7 +20,7 @@ class LogPredictionsCallback(Callback):
 
             # Let's log 20 sample image predictions from first batch
 
-            label_times = batch['label_times']
+            label_times = batch["label_times"]
 
             idx = torch.argsort(label_times.squeeze(), descending=False)
             perm_ascending = torch.nn.functional.one_hot(idx).transpose(-2, -1).float()
@@ -30,8 +29,11 @@ class LogPredictionsCallback(Callback):
 
             captions = ["Soft Permutation", "Predicted Permutation"]
 
-            wandb_logger.log_image(key=f'batch:{batch_idx}', images=[perm_ground_truth_asc, perm_prediction_asc],
-                                   caption=captions)
+            wandb_logger.log_image(
+                key=f"batch:{batch_idx}",
+                images=[perm_ground_truth_asc, perm_prediction_asc],
+                caption=captions,
+            )
 
             # lt_dist = torch.nn.functional.normalize(label_times.squeeze()[idx], dim=0)
             # pred_dist = torch.nn.functional.normalize(predictions[idx], dim=0)

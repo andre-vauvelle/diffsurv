@@ -13,4 +13,3 @@ data:
 #  weightings_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/weightings_x.pl
   incidence_grouping_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/incidence_groupings_x.pkl
   drop_unk: True
-

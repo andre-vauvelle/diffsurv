@@ -1,8 +1,8 @@
+import pdb
+
+import diffsort
 import numpy as np
 import torch
-
-import pdb
-import diffsort
 
 from modules.sorter import CustomDiffSortNet
 
@@ -21,8 +21,7 @@ class SortingCrossEntropyLoss(torch.nn.Module):
     Cross entropy loss is applied using between estimated and true permutation matrices.
     """
 
-    def __init__(self, sorter,
-                 eps=1e-6, weightings=None, ignore_censoring=False):
+    def __init__(self, sorter, eps=1e-6, weightings=None, ignore_censoring=False):
         super().__init__()
         self.eps = eps
         self.weightings = weightings
@@ -102,7 +101,9 @@ class SortingCrossEntropyLoss(torch.nn.Module):
             # events
             else:
                 # assign uniform probability to an event and all censored events with shorted time,
-                perm_matrix[i, event_counts:i + 1] = 1 / (perm_matrix[i, event_counts:i + 1].shape[0])
+                perm_matrix[i, event_counts : i + 1] = 1 / (
+                    perm_matrix[i, event_counts : i + 1].shape[0]
+                )
                 event_counts += 1
 
         # permute to match the order of the input
@@ -118,19 +119,23 @@ def test_diff_sort_loss_get_soft_perm():
     test_durations = torch.Tensor([1, 3, 2, 4, 5, 6, 7])
     logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
 
-    required_perm_matrix = torch.Tensor([[1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7],
-                                         [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-                                         [1 / 2, 1 / 2, 0, 0, 0, 0, 0],
-                                         [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-                                         [0, 1 / 4, 1 / 4, 1 / 4, 1 / 4, 0, 0],
-                                         [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
-                                         [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5]])
+    required_perm_matrix = torch.Tensor(
+        [
+            [1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7],
+            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+            [1 / 2, 1 / 2, 0, 0, 0, 0, 0],
+            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+            [0, 1 / 4, 1 / 4, 1 / 4, 1 / 4, 0, 0],
+            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
+            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
+        ]
+    )
     required_perm_matrix = required_perm_matrix.unsqueeze(0)
 
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    sorter = CustomDiffSortNet(sorting_network_type='bitonic', size=7)
+    sorter = CustomDiffSortNet(sorting_network_type="bitonic", size=7)
     loss = SortingCrossEntropyLoss(sorter)
 
     true_perm_matrix = loss._get_soft_perm(test_events[:, 0], test_durations[:, 0])
@@ -147,11 +152,11 @@ class CustomBCEWithLogitsLoss(torch.nn.BCEWithLogitsLoss):
 
 
 class CoxPHLoss(torch.nn.Module):
-    def __init__(self, weightings=None, method='ranked_list'):
+    def __init__(self, weightings=None, method="ranked_list"):
         super().__init__()
         self.method = method
         if weightings is not None:
-            self.register_buffer('weightings', weightings)
+            self.register_buffer("weightings", weightings)
         else:
             self.weightings = weightings
 
@@ -170,12 +175,14 @@ class CoxPHLoss(torch.nn.Module):
         losses = []
         for i in range(logh.shape[1]):
             lh, d, e = logh[:, i], durations[:, i], events[:, i]
-            if self.method == 'efron':
+            if self.method == "efron":
                 loss = self._efron_loss(lh, d, e, eps)
-            elif self.method == 'ranked_list':
+            elif self.method == "ranked_list":
                 loss = self._loss_ranked_list(lh, d, e, eps)
             else:
-                raise ValueError('Unknown method: {}, choose one of ["efron", "ranked_list"]'.format(self.method))
+                raise ValueError(
+                    f'Unknown method: {self.method}, choose one of ["efron", "ranked_list"]'
+                )
             losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
@@ -234,9 +241,9 @@ def tgt_equal_tgt(time):
     """
     t_i = time.astype(np.float32).reshape(1, -1)
     t_j = time.astype(np.float32).reshape(-1, 1)
-    tied_matrix = np.where(t_i == t_j, 1., 0.).astype(np.float32)
+    tied_matrix = np.where(t_i == t_j, 1.0, 0.0).astype(np.float32)
 
-    assert (tied_matrix.ndim == 2)
+    assert tied_matrix.ndim == 2
     block_sizes = np.sum(tied_matrix, axis=1)
     block_index = np.sum(tied_matrix - np.triu(tied_matrix), axis=1)
 
@@ -258,7 +265,7 @@ def tgt_leq_tgt(time):
     """
     t_i = time.astype(np.float32).reshape(1, -1)
     t_j = time.astype(np.float32).reshape(-1, 1)
-    tril = np.where(t_i <= t_j, 1., 0.).astype(np.float32)
+    tril = np.where(t_i <= t_j, 1.0, 0.0).astype(np.float32)
     return tril
 
 
@@ -317,5 +324,5 @@ def cox_loss_ties(pred, cens, tril, tied_matrix):
     return loss
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_diff_sort_loss_get_soft_perm()

@@ -1,8 +1,8 @@
 import numba
 import numpy as np
 import pandas as pd
-import torchmetrics
 import torch
+import torchmetrics
 
 
 @numba.njit(parallel=False, nogil=True)
@@ -21,7 +21,7 @@ def cindex(events, event_times, predictions):
             if events[i] and events[j]:
                 n_comparable += 1
                 n_concordant += (event_times[i] > event_times[j]) == (
-                        predictions[i] > predictions[j]
+                    predictions[i] > predictions[j]
                 )
             elif events[i]:
                 n_comparable += 1
@@ -48,7 +48,7 @@ def kendall_embedding_loop(vector):
 
 
 class CIndex(torchmetrics.Metric):
-    def __init__(self, dist_sync_on_step=False, method='loop'):
+    def __init__(self, dist_sync_on_step=False, method="loop"):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.method = method
 
@@ -64,10 +64,9 @@ class CIndex(torchmetrics.Metric):
     def compute(self):
         # this version is much faster, but doesn't handle ties correctly.
         # numba doesn't handle half precision correctly, so we use float32
-        if self.method == 'kendall':
+        if self.method == "kendall":
             NotImplemented
         else:
-
             return torch.Tensor(
                 [
                     cindex(
@@ -79,6 +78,6 @@ class CIndex(torchmetrics.Metric):
             )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_vector = torch.Tensor([5, 6, 3, 9])
     kendall_embedding_loop(test_vector)

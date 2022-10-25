@@ -1,4 +1,4 @@
-from torch import nn, autocast
+from torch import autocast, nn
 
 
 class PredictionHead(nn.Module):
@@ -6,8 +6,16 @@ class PredictionHead(nn.Module):
     Prediction MLP head for the model.
     """
 
-    def __init__(self, in_features, out_features, hidden_dim, n_layers, act_fn=nn.LeakyReLU, dropout=0.2,
-                 norm=nn.LayerNorm):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        hidden_dim,
+        n_layers,
+        act_fn=nn.LeakyReLU,
+        dropout=0.2,
+        norm=nn.LayerNorm,
+    ):
         super().__init__()
         if n_layers > 0:
             sequence = [nn.Linear(in_features, hidden_dim), act_fn()]
@@ -21,7 +29,10 @@ class PredictionHead(nn.Module):
             sequence.append(nn.Dropout(dropout))
             sequence.append(nn.Linear(in_features=hidden_dim, out_features=out_features))
         else:
-            sequence = [nn.Dropout(dropout), nn.Linear(in_features=in_features, out_features=out_features)]
+            sequence = [
+                nn.Dropout(dropout),
+                nn.Linear(in_features=in_features, out_features=out_features),
+            ]
         self.layers = nn.Sequential(*sequence)
         self.act_fn = act_fn
 

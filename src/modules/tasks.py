@@ -1,34 +1,42 @@
 import importlib
+import pdb
 
+import pytorch_lightning as pl
 import torch
 import torchvision.utils
 from diffsort import diffsort
 from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
 
-import pytorch_lightning as pl
 from models.metrics import CIndex
-from omni.common import safe_string, unsafe_string
-from modules.loss import CoxPHLoss, SortingCrossEntropyLoss, CustomBCEWithLogitsLoss
+from modules.loss import CoxPHLoss, CustomBCEWithLogitsLoss, SortingCrossEntropyLoss
 from modules.sorter import CustomDiffSortNet
-import pdb
+from omni.common import safe_string, unsafe_string
 
 
 class RiskMixin(pl.LightningModule):
-    def __init__(self, grouping_labels, label_vocab, task='risk', weightings=None, use_weighted_loss=False, **kwargs):
+    def __init__(
+        self,
+        grouping_labels,
+        label_vocab,
+        task="risk",
+        weightings=None,
+        use_weighted_loss=False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
 
-        c_index_metric_names = list(self.label_vocab['token2idx'].keys())
+        c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
-            {'c_index/' + safe_string(name): CIndex() for name in c_index_metric_names}
+            {"c_index/" + safe_string(name): CIndex() for name in c_index_metric_names}
         )
-        self.valid_cindex = c_index_metrics.clone(prefix='val/')
+        self.valid_cindex = c_index_metrics.clone(prefix="val/")
 
-        if task == 'risk':
+        if task == "risk":
             self.loss_func = CoxPHLoss()
-        elif task == 'next':
+        elif task == "next":
             self.loss_func = CustomBCEWithLogitsLoss()
 
         if weightings is not None:
@@ -46,7 +54,7 @@ class RiskMixin(pl.LightningModule):
         else:
             loss = self.loss_func(logits, label_multihot, label_times)
 
-        self.log('train/loss', loss, prog_bar=True)
+        self.log("train/loss", loss, prog_bar=True)
 
         return loss
 
@@ -59,17 +67,17 @@ class RiskMixin(pl.LightningModule):
             loss = self.loss_func(logits, label_multihot, label_times)
 
         if not torch.isnan(loss):
-            self.log('val/loss', loss, prog_bar=True)
+            self.log("val/loss", loss, prog_bar=True)
 
         predictions = torch.sigmoid(logits)
         self.valid_metrics.update(predictions, label_multihot.int())
-        label_times = batch['label_times']
-        exclusions = batch['exclusions']
+        label_times = batch["label_times"]
+        exclusions = batch["exclusions"]
 
         # c-index is applied per label
         for name, metric in self.valid_cindex.items():
             # idx = self._groping_idx[name]
-            idx = self.label_vocab['token2idx'][unsafe_string(name.split('/')[-1])]
+            idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
             e = exclusions[:, idx]  # exclude patients with prior history of event
             e_idx = (1 - e).bool()
             p, l, t = logits[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
@@ -83,11 +91,13 @@ class RiskMixin(pl.LightningModule):
         self._group_cindex(output)
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
-        self.log('hp_metric', output['val/c_index/all'], prog_bar=True)
+        self.log("hp_metric", output["val/c_index/all"], prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
-        rank_zero_warn("`test_step` must be implemented to be used with the Lightning Trainer testing")
+        rank_zero_warn(
+            "`test_step` must be implemented to be used with the Lightning Trainer testing"
+        )
 
     def _group_cindex(self, output):
         """
@@ -100,14 +110,14 @@ class RiskMixin(pl.LightningModule):
             values = []
             for label in labels:
                 try:
-                    v = output['val/c_index/' + safe_string(label)]
+                    v = output["val/c_index/" + safe_string(label)]
                     if not torch.isnan(v):
                         values.append(v)
                 except KeyError:
                     pass
             if len(values) > 0:
                 average_value = sum(values) / len(values)
-                output.update({'val/c_index/' + safe_string(name): average_value})
+                output.update({"val/c_index/" + safe_string(name): average_value})
 
 
 class SortingRiskMixin(RiskMixin):
@@ -115,9 +125,17 @@ class SortingRiskMixin(RiskMixin):
     #TODO: possible refactor to avoid this
     """
 
-    def __init__(self, sorting_network="bitonic", steepness=30, art_lambda=0.2, distribution='cauchy',
-                 sorter_size=128, ignore_censoring=False,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        sorting_network="bitonic",
+        steepness=30,
+        art_lambda=0.2,
+        distribution="cauchy",
+        sorter_size=128,
+        ignore_censoring=False,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.sorter_size = sorter_size
 
@@ -157,25 +175,27 @@ class SortingRiskMixin(RiskMixin):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
         loss, _, _, _ = self.sorting_step(logits, label_multihot, label_times)
 
-        self.log('train/loss', loss, prog_bar=True)
+        self.log("train/loss", loss, prog_bar=True)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
-        loss, predictions, perm_prediction, perm_ground_truth = self.sorting_step(logits, label_multihot, label_times)
+        loss, predictions, perm_prediction, perm_ground_truth = self.sorting_step(
+            logits, label_multihot, label_times
+        )
 
-        self.log('val/loss', loss, prog_bar=True)
+        self.log("val/loss", loss, prog_bar=True)
 
         self.valid_metrics.update(predictions, label_multihot.int())
         # label_times = batch['label_times']
-        exclusions = batch['exclusions']
+        exclusions = batch["exclusions"]
 
         # c-index is applied per label
         for name, metric in self.valid_cindex.items():
             # idx = self._groping_idx[name]
-            idx = self.label_vocab['token2idx'][unsafe_string(name.split('/')[-1])]
+            idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
             e = exclusions[:, idx]  # exclude patients with prior history of event
             e_idx = (1 - e).bool()
             p, l, t = predictions[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
@@ -191,11 +211,13 @@ class SortingRiskMixin(RiskMixin):
         self._group_cindex(output)
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
-        self.log('hp_metric', output['val/c_index/all'], prog_bar=True)
+        self.log("hp_metric", output["val/c_index/all"], prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
-        rank_zero_warn("`test_step` must be implemented to be used with the Lightning Trainer testing")
+        rank_zero_warn(
+            "`test_step` must be implemented to be used with the Lightning Trainer testing"
+        )
 
 
 def _get_soft_perm(events, d):
@@ -239,7 +261,9 @@ def _get_soft_perm(events, d):
         # events
         else:
             # assign uniform probability to an event and all censored events with shorted time,
-            perm_matrix[i, event_counts:i + 1] = 1 / (perm_matrix[i, event_counts:i + 1].shape[0])
+            perm_matrix[i, event_counts : i + 1] = 1 / (
+                perm_matrix[i, event_counts : i + 1].shape[0]
+            )
             event_counts += 1
 
     # permute to match the order of the input
@@ -255,13 +279,17 @@ def test_diff_sort_loss_get_soft_perm():
     test_durations = torch.Tensor([1, 3, 2, 4, 5, 6, 7])
     # logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
 
-    required_perm_matrix = torch.Tensor([[1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7],
-                                         [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-                                         [1 / 2, 1 / 2, 0, 0, 0, 0, 0],
-                                         [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-                                         [0, 1 / 4, 1 / 4, 1 / 4, 1 / 4, 0, 0],
-                                         [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
-                                         [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5]])
+    required_perm_matrix = torch.Tensor(
+        [
+            [1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7],
+            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+            [1 / 2, 1 / 2, 0, 0, 0, 0, 0],
+            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+            [0, 1 / 4, 1 / 4, 1 / 4, 1 / 4, 0, 0],
+            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
+            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
+        ]
+    )
     required_perm_matrix = required_perm_matrix.unsqueeze(0)
 
     test_events = test_events.unsqueeze(-1)
