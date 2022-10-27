@@ -1,11 +1,9 @@
 trainer:
   logger:
-    - class_path: src.models.loggers.CustomWandbLogger
+    - class_path: models.loggers.CustomWandbLogger
       init_args:
         project: diffsurv
         entity: cardiors
-#        save_dir: /home/rmhivau/diffsurv/wandb/
-        save_dir: /home/vauvelle/pycharm-sftp/diffsurv/
         tags:
           - mlp
           - synthetic
@@ -20,15 +18,14 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
-    - class_path: src.callbacks.LogPredictionsCallback
-  max_epochs: 15
+#    - class_path: src.callbacks.LogPredictionsCallback
+  max_epochs: 20
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 #  default_root_dir: /home/rmhivau/diffsurv/wandb/
-  default_root_dir: /home/vauvelle/pycharm-sftp/diffsurv/
 #  precision: 16
 data:
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt

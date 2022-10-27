@@ -1,14 +1,14 @@
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-import wandb
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+import wandb
 from data.datasets import (
     DatasetAssessmentRiskPredict,
     DatasetMLM,
@@ -338,7 +338,10 @@ class DataModuleAssessmentRiskPredict(AbstractDataModule):
     def train_dataloader(self):
         train_dataset = self.get_dataset(self.train_data_path, self.covariates_path)
         return DataLoader(
-            train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True
+            train_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=True,
         )
 
     def val_dataloader(self):
@@ -386,43 +389,50 @@ class DataModuleSytheticRisk(pl.LightningDataModule):
         self.label_vocab = {"token2idx": {"event0": 0}, "idx2token": {0: "event0"}}
         self.grouping_labels = {"all": ["event0"]}
 
-    def train_dataloader(self):
+    def get_dataloader(self, stage: Literal["train", "val"]):
         data = torch.load(os.path.join(self.path))
-        x_covar, y_times, censored_events = (
+        x_covar, y_times, censored_events, risk = (
             data["x_covar"],
             data["y_times"],
             data["censored_events"],
+            data["risk"],
         )
+
         n_patients = x_covar.shape[0]
-        n_training_patients = int(n_patients * (1 - self.val_split))
-        train_datatset = DatasetSyntheticRisk(
-            x_covar[:n_training_patients],
-            y_times[:n_training_patients],
-            censored_events[:n_training_patients],
-        )
+        if stage == "train":
+            n_training_patients = int(n_patients * (1 - self.val_split))
+            dataset = DatasetSyntheticRisk(
+                x_covar[:n_training_patients],
+                y_times[:n_training_patients],
+                censored_events[:n_training_patients],
+                risk[:n_training_patients],
+            )
+        elif stage == "val":
+            n_validation_patients = int(n_patients * self.val_split)
+            dataset = DatasetSyntheticRisk(
+                x_covar[-n_validation_patients:],
+                y_times[-n_validation_patients:],
+                censored_events[-n_validation_patients:],
+                risk[-n_validation_patients:],
+            )
+        else:
+            raise Exception("Stage must be either 'train' or 'val' ")
+
         return DataLoader(
-            train_datatset,
+            dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             drop_last=True,
             shuffle=True,
         )
 
+    def train_dataloader(self):
+        train_dataloader = self.get_dataloader(stage="train")
+        return train_dataloader
+
     def val_dataloader(self):
-        data = torch.load(os.path.join(self.path))
-        x_covar, y_times, censored_events = (
-            data["x_covar"],
-            data["y_times"],
-            data["censored_events"],
-        )
-        n_patients = x_covar.shape[0]
-        n_validation_patients = int(n_patients * self.val_split)
-        val_datatset = DatasetSyntheticRisk(
-            x_covar[-n_validation_patients:],
-            y_times[-n_validation_patients:],
-            censored_events[-n_validation_patients:],
-        )
-        return DataLoader(val_datatset, batch_size=self.batch_size, num_workers=self.num_workers)
+        val_dataloader = self.get_dataloader(stage="val")
+        return val_dataloader
 
     def predict_dataloader(self) -> EVAL_DATALOADERS:
         return self.val_dataloader()

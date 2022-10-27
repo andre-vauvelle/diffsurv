@@ -59,7 +59,7 @@ class CIndex(torchmetrics.Metric):
     def update(self, logits: torch.Tensor, events: torch.Tensor, times: torch.Tensor):
         self.logits.append(logits)
         self.events.append(events)
-        self.times.append(times)
+        self.times.append(times.flatten())
 
     def compute(self):
         # this version is much faster, but doesn't handle ties correctly.
@@ -72,7 +72,7 @@ class CIndex(torchmetrics.Metric):
                     cindex(
                         torch.cat(self.events).cpu().float().numpy(),
                         torch.cat(self.times).cpu().float().numpy(),
-                        1 - torch.cat(self.logits).cpu().float().numpy(),
+                        1 - torch.cat(self.logits).cpu().float().numpy(),  # just - x  not 1 - x?
                     )
                 ]
             )
