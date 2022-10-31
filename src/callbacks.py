@@ -1,12 +1,13 @@
-from typing import Optional
 import os
+from typing import Optional
 
 import pandas as pd
 import torch
-import wandb
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.loggers import WandbLogger
 from tqdm import tqdm
 
+import wandb
 from definitions import RESULTS_DIR
 from models.loggers import CustomWandbLogger
 from omni.common import _create_folder_if_not_exist
@@ -18,9 +19,7 @@ class OnTrainEndResults(Callback):
     def __init__(self, save_dir: Optional[str] = None):
         self.save_dir = save_dir
 
-    def on_fit_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ) -> None:
+    def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         dataloader = trainer.val_dataloaders[0]
         store = []
         for batch in tqdm(iter(dataloader)):
@@ -48,22 +47,17 @@ class OnTrainEndResults(Callback):
         results = pd.DataFrame(store)
         results_df = results.explode(list(results.columns), ignore_index=True)
 
-        # if trainer.logger:
-        #     wandb_logger: CustomWandbLogger = trainer.logger
-        #     wandb_logger.log_table(results)
-
-        logger =trainer.logger
-        if isinstance(logger, CustomWandbLogger):
-            exp: wandb.sdk.wandb_run.Run = logger.experiment[0]
-            path = os.path.join(RESULTS_DIR, self.save_dir, exp._run_id, 'results.parquet')
-
-            exp.log_artifact(path, type='dataset')
-        else:
-            path = os.path.join(RESULTS_DIR, self.save_dir, 'results.parquet')
+        logger = trainer.logger
+        if isinstance(logger, WandbLogger):
+            exp: wandb.sdk.wandb_run.Run = logger.experiment
+            path = os.path.join(RESULTS_DIR, self.save_dir, str(exp._run_id) + "_results.parquet")
             _create_folder_if_not_exist(path)
-
-        results_df.to_parquet(path)
-
+            results_df.to_parquet(path)
+            exp.log_artifact(path, type="dataset")
+        else:
+            path = os.path.join(RESULTS_DIR, self.save_dir, "results.parquet")
+            _create_folder_if_not_exist(path)
+            results_df.to_parquet(path)
 
 
 class LogPredictionsCallback(Callback):
