@@ -8,11 +8,12 @@ parameters:
   model.ignore_censoring:
     value: True
   model.lr:
-    value: 0.003
+    min: 0.0001
+    max: 0.03
   model.head_layers:
-    value: 1
+    value: 2
   model.head_hidden_dim:
-    value: 1000
+    value: 1024
   model.hidden_dropout_prob:
     value: 0.1
   model.steepness:
@@ -25,7 +26,7 @@ parameters:
   model.sorting_network:
     value: bitonic
   data.batch_size:
-    value: 32
+    value: 64
 command:
   - ${env}
   - ${interpreter}
@@ -33,7 +34,8 @@ command:
   - fit
   - "--config"
   - "jobs/configs/risk/mlpdiffsort_synthetic.yaml"
-  - "--data.path"
-  - "/home/rmhivau/diffsurv/data/synthetic/pysurv_square_0.1.pt"
+  - "--data.wandb_artifact"
+  - "cardiors/diffsurv/pysurv_square_0.3.pt:v4"
   - ${args}
-project: ehrgnn
+project: diffsurv
+entity: cardiors

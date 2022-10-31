@@ -16,3 +16,14 @@ cd /path/to/diffsurv/src/
 conda activate diffsurv
 python scripts/mlpdiffsort_synthetic.py --config jobs/configs/risk/mlpdiffsort_synthetic.yaml
 ```
+
+## Run Sweeps
+
+```{bash}
+wandb sweep jobs/configs/risk/sweeps/mlpdiffsort_synthetic_sweep.yaml
+conda activate diffsurv
+wandb agent <sweep-id>
+```
+
+### Wandb 
+[wandb project](https://wandb.ai/cardiors/diffsurv)

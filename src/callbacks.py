@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import torch
 import torchvision
-import wandb
 from pytorch_lightning.callbacks import Callback
 
+import wandb
 from omni.visualize import torch_show
 
 
@@ -12,7 +12,7 @@ class LogPredictionsCallback(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         """Called when the validation batch ends."""
-        if not batch_idx % 20:
+        if not batch_idx % 200:
             wandb_logger = trainer.logger
 
             # `outputs` comes from `LightningModule.validation_step`
@@ -46,4 +46,4 @@ class LogPredictionsCallback(Callback):
             # plt.show()
 
 
-log_predictions_callback = LogPredictionsCallback()
+# log_predictions_callback = LogPredictionsCallback()

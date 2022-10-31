@@ -34,6 +34,12 @@ class RiskMixin(pl.LightningModule):
         )
         self.valid_cindex = c_index_metrics.clone(prefix="val/")
 
+        c_index_metric_names = list(self.label_vocab["token2idx"].keys())
+        c_index_metrics = MetricCollection(
+            {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
+        )
+        self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
+
         if task == "risk":
             self.loss_func = CoxPHLoss()
         elif task == "next":
@@ -58,6 +64,19 @@ class RiskMixin(pl.LightningModule):
 
         return loss
 
+    def log_cindex(self, cindex: MetricCollection, exclusions, logits, label_multihot, label_times):
+        for name, metric in cindex.items():
+            # idx = self._groping_idx[name]
+            idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
+            e = exclusions[:, idx]  # exclude patients with prior history of event
+            e_idx = (1 - e).bool()
+            p, l, t = (
+                logits[e_idx, idx],
+                label_multihot[e_idx, idx],
+                label_times[e_idx, idx],
+            )
+            metric.update(p, l.int(), t)
+
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
         # calc and use weighted loss
@@ -74,24 +93,34 @@ class RiskMixin(pl.LightningModule):
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
 
-        # c-index is applied per label
-        for name, metric in self.valid_cindex.items():
-            # idx = self._groping_idx[name]
-            idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
-            e = exclusions[:, idx]  # exclude patients with prior history of event
-            e_idx = (1 - e).bool()
-            p, l, t = logits[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
-            metric.update(p, l.int(), t)
+        # c-index is applied per label, collect inputs
+        self.log_cindex(self.valid_cindex, exclusions, logits, label_multihot, label_times)
+        all_observed = torch.ones_like(label_multihot)
+        self.log_cindex(
+            self.valid_cindex_risk,
+            exclusions,
+            logits,
+            all_observed,
+            batch["risk"],
+        )
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
         self.valid_metrics.reset()
         self.log_dict(output, prog_bar=False)
+
+        # Get calc cindex metric with collected inputs
         output = self.valid_cindex.compute()
-        self._group_cindex(output)
+        self._group_cindex(output, key="val/c_index/")
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
         self.log("hp_metric", output["val/c_index/all"], prog_bar=True)
+
+        output = self.valid_cindex_risk.compute()
+        self._group_cindex(output, key="val/c_index_risk/")
+        self.valid_cindex_risk.reset()
+        self.log_dict(output, prog_bar=False)
+        self.log("hp_metric", output["val/c_index_risk/all"], prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
@@ -99,7 +128,7 @@ class RiskMixin(pl.LightningModule):
             "`test_step` must be implemented to be used with the Lightning Trainer testing"
         )
 
-    def _group_cindex(self, output):
+    def _group_cindex(self, output, key="val/c_index/"):
         """
         Group c-index by label
         :param output:
@@ -110,14 +139,14 @@ class RiskMixin(pl.LightningModule):
             values = []
             for label in labels:
                 try:
-                    v = output["val/c_index/" + safe_string(label)]
+                    v = output[key + safe_string(label)]
                     if not torch.isnan(v):
                         values.append(v)
                 except KeyError:
                     pass
             if len(values) > 0:
                 average_value = sum(values) / len(values)
-                output.update({"val/c_index/" + safe_string(name): average_value})
+                output.update({key + safe_string(name): average_value})
 
 
 class SortingRiskMixin(RiskMixin):
@@ -192,32 +221,18 @@ class SortingRiskMixin(RiskMixin):
         # label_times = batch['label_times']
         exclusions = batch["exclusions"]
 
-        # c-index is applied per label
-        for name, metric in self.valid_cindex.items():
-            # idx = self._groping_idx[name]
-            idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
-            e = exclusions[:, idx]  # exclude patients with prior history of event
-            e_idx = (1 - e).bool()
-            p, l, t = predictions[e_idx, idx], label_multihot[e_idx, idx], label_times[e_idx, idx]
-            metric.update(-1 * p, l.int(), t)  # -1 due to inverse risk/logit vs coxph
+        # c-index is applied per label, collect inputs
+        self.log_cindex(self.valid_cindex, exclusions, logits, label_multihot, label_times)
+        all_observed = torch.ones_like(label_multihot)
+        self.log_cindex(
+            self.valid_cindex_risk,
+            exclusions,
+            logits,
+            all_observed,
+            batch["risk"],
+        )
 
         return loss, predictions, perm_prediction, perm_ground_truth
-
-    def on_validation_epoch_end(self) -> None:
-        output = self.valid_metrics.compute()
-        self.valid_metrics.reset()
-        self.log_dict(output, prog_bar=True)
-        output = self.valid_cindex.compute()
-        self._group_cindex(output)
-        self.valid_cindex.reset()
-        self.log_dict(output, prog_bar=False)
-        self.log("hp_metric", output["val/c_index/all"], prog_bar=True)
-
-    def test_step(self, batch, batch_idx):
-        # TODO: implement
-        rank_zero_warn(
-            "`test_step` must be implemented to be used with the Lightning Trainer testing"
-        )
 
 
 def _get_soft_perm(events, d):

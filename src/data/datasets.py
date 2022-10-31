@@ -158,10 +158,11 @@ class AbstractDataset(Dataset):
 
 
 class DatasetSyntheticRisk(Dataset):
-    def __init__(self, x_covar, y_times, censored_events):
+    def __init__(self, x_covar, y_times, censored_events, risk):
         self.x_covar = x_covar
         self.y_times = y_times
         self.censored_events = censored_events
+        self.risk = risk
 
     def __getitem__(self, index):
         covariates = self.x_covar[index]
@@ -174,7 +175,11 @@ class DatasetSyntheticRisk(Dataset):
         future_label_multihot = 1 - self.censored_events[index]
         future_label_times = self.y_times[index]
         censorings = self.censored_events[index]
+        risk = self.risk[index]
         exclusions = torch.zeros_like(censorings)
+
+        if not isinstance(risk, np.ndarray):
+            risk = np.array(risk).reshape(-1, 1)
 
         output = {
             # labels
@@ -182,6 +187,7 @@ class DatasetSyntheticRisk(Dataset):
             "label_times": future_label_times,
             "censorings": censorings,
             "exclusions": exclusions,
+            "risk": risk,
             # input
             "token_idx": token_idx,
             "age_idx": age_idx,
