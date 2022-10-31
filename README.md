@@ -24,3 +24,6 @@ wandb sweep jobs/configs/risk/sweeps/mlpdiffsort_synthetic_sweep.yaml
 conda activate diffsurv
 wandb agent <sweep-id>
 ```
+
+### Wandb 
+[wandb project](https://wandb.ai/cardiors/diffsurv)
