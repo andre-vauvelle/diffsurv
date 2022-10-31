@@ -1,10 +1,69 @@
-import matplotlib.pyplot as plt
-import torch
-import torchvision
-from pytorch_lightning.callbacks import Callback
+from typing import Optional
+import os
 
+import pandas as pd
+import torch
 import wandb
-from omni.visualize import torch_show
+from pytorch_lightning.callbacks import Callback
+from tqdm import tqdm
+
+from definitions import RESULTS_DIR
+from models.loggers import CustomWandbLogger
+from omni.common import _create_folder_if_not_exist
+
+
+class OnTrainEndResults(Callback):
+    """Get results on training end!"""
+
+    def __init__(self, save_dir: Optional[str] = None):
+        self.save_dir = save_dir
+
+    def on_fit_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        dataloader = trainer.val_dataloaders[0]
+        store = []
+        for batch in tqdm(iter(dataloader)):
+            batch: dict
+            outputs = pl_module(0, covariates=batch["covariates"])
+
+            batch.update({"logits": outputs})
+
+            # Let's get things in a friendly format for pandas dataframe..
+            numpy_batch = {}
+            for k, v in batch.items():
+                # Detach from graph and make sure on cpu
+                new_v = v.detach().cpu()
+                if k != "covariates":
+                    new_v = new_v.flatten()
+                    numpy_batch[k] = new_v.numpy().tolist()
+                # Covariates have multiple dim so should not be flattened
+                else:
+                    dim = new_v.shape[1]
+                    for i in range(dim):
+                        numpy_batch[k + f"_{i}"] = new_v[:, i].numpy().tolist()
+
+            store.append(numpy_batch)
+
+        results = pd.DataFrame(store)
+        results_df = results.explode(list(results.columns), ignore_index=True)
+
+        # if trainer.logger:
+        #     wandb_logger: CustomWandbLogger = trainer.logger
+        #     wandb_logger.log_table(results)
+
+        logger =trainer.logger
+        if isinstance(logger, CustomWandbLogger):
+            exp: wandb.sdk.wandb_run.Run = logger.experiment[0]
+            path = os.path.join(RESULTS_DIR, self.save_dir, exp._run_id, 'results.parquet')
+
+            exp.log_artifact(path, type='dataset')
+        else:
+            path = os.path.join(RESULTS_DIR, self.save_dir, 'results.parquet')
+            _create_folder_if_not_exist(path)
+
+        results_df.to_parquet(path)
+
 
 
 class LogPredictionsCallback(Callback):

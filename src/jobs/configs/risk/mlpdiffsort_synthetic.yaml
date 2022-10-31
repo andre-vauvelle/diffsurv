@@ -1,6 +1,6 @@
 trainer:
   logger:
-    - class_path: models.loggers.CustomWandbLogger
+    - class_path: pytorch_lightning.loggers.wandb.WandbLogger
       init_args:
         project: diffsurv
         entity: cardiors
@@ -19,6 +19,9 @@ trainer:
         verbose: True
         check_finite: False
 #    - class_path: src.callbacks.LogPredictionsCallback
+    - class_path: callbacks.OnTrainEndResults
+      init_args:
+        save_dir: "./results"
   max_epochs: 20
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
