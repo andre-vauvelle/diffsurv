@@ -1,9 +1,10 @@
+import copy
 import os
+import random
 
 import numpy as np
 import pandas as pd
 import torch
-import wandb
 from matplotlib import pyplot as plt
 from pysurvival.models.semi_parametric import NonLinearCoxPHModel
 from pysurvival.models.simulations import SimulationModel
@@ -11,6 +12,7 @@ from pysurvival.utils.display import integrated_brier_score
 from pysurvival.utils.metrics import concordance_index
 from sklearn.model_selection import train_test_split
 
+import wandb
 from definitions import DATA_DIR
 from omni.common import create_folder
 
@@ -105,6 +107,40 @@ def gen_pysurvival(
 
 class CustomSimulationModel(SimulationModel):
     """Just inheriting to get access to pre time function risk"""
+
+    @staticmethod
+    def random_data(N):
+        """
+        Generating a array of size N from a random distribution -- the available
+        distributions are:
+            * binomial,
+            * chisquare,
+            * exponential,
+            * gamma,
+            * normal,
+            * uniform
+            * laplace
+        """
+
+        index = np.random.binomial(n=4, p=0.5)
+        distributions = {
+            # 'binomial_a': np.random.binomial(n=20, p=0.6, size=N),
+            # 'binomial_b': np.random.binomial(n=200, p=0.6, size=N),
+            # 'chisquare': np.random.chisquare(df=10, size=N),
+            # 'exponential_a': np.random.exponential(scale=0.1, size=N),
+            # 'exponential_b': np.random.exponential(scale=0.01, size=N),
+            # 'gamma': np.random.gamma(shape=2., scale=2., size=N),
+            "normal_a": np.random.normal(loc=0, scale=5.0, size=N),
+            # 'normal_b': np.random.normal(loc=10.0, scale=10.0, size=N),
+            # 'uniform_a': np.random.uniform(low=-2.0, high=10.0, size=N),
+            # 'uniform_b': np.random.uniform(low=-20.0, high=100.0, size=N),
+            # 'laplace': np.random.laplace(loc=0.0, scale=1.0, size=N)
+        }
+
+        # list_distributions = copy.deepcopy(list(distributions.keys()))
+        # random.shuffle(list_distributions)
+        # key = list_distributions[index]
+        return "normal_a", distributions["normal_a"]
 
     def generate_data(self, num_samples=100, num_features=3, feature_weights=None):
         """
@@ -248,7 +284,15 @@ if __name__ == "__main__":
     # gen_pysurvival('pysurv_square_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
     #                censored_proportion=0.3,
     #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
-    #
-    # gen_pysurvival('pysurv_square_independent_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
-    #                censored_proportion=0.3,
-    #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='independent')
+
+    gen_pysurvival(
+        "pysurv_square_independent_0.3.pt",
+        32000,
+        survival_distribution="weibull",
+        risk_type="square",
+        censored_proportion=0.3,
+        alpha=0.1,
+        beta=3.2,
+        feature_weights=[1.0] * 3,
+        censoring_function="independent",
+    )
