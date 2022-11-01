@@ -6,6 +6,7 @@ src/wandb/
 src/diffsurv/
 src/jobs/logs
 wandb/
+results/
 
 # VIM SWAPFILES
 *.swp

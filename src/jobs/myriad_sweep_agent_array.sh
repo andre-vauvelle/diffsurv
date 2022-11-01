@@ -1,17 +1,20 @@
 #!/bin/bash -l
-#$ -l mem=64G
-#$ -l h_rt=10:0:0
-#$ -l gpu=1
+#$ -l mem=16G
+#$ -l h_rt=10:00:00
 #$ -S /bin/bash
 #$ -j y
 #$ -N myriad_submit
-#$ -t 1-5
+#$ -t 1-10
+#$ -P Gold 
+#$ -A hpc.22
+#$ -o /home/rmhivau/diffsurv/src/jobs/logs/
+#$ -e /home/rmhivau/diffsurv/src/jobs/logs/errors/
 
-#$ -o /home/vauvelle/diffsurv/src/jobs/logs
+#### -l gpu=1
 
 hostname
 date
-SOURCE_DIR='/home/rmhivau/diffsurv/'
+SOURCE_DIR='/home/rmhivau/diffsurv'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR/src/ || exit
 # load cuda

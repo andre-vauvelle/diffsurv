@@ -1,10 +1,5 @@
-import importlib
-import pdb
-
 import pytorch_lightning as pl
 import torch
-import torchvision.utils
-from diffsort import diffsort
 from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
 
@@ -36,7 +31,10 @@ class RiskMixin(pl.LightningModule):
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
-            {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
+            {
+                "c_index_risk/" + safe_string(name): CIndex()
+                for name in c_index_metric_names
+            }
         )
         self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
 
@@ -64,7 +62,9 @@ class RiskMixin(pl.LightningModule):
 
         return loss
 
-    def log_cindex(self, cindex: MetricCollection, exclusions, logits, label_multihot, label_times):
+    def log_cindex(
+        self, cindex: MetricCollection, exclusions, logits, label_multihot, label_times
+    ):
         for name, metric in cindex.items():
             # idx = self._groping_idx[name]
             idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
@@ -94,14 +94,16 @@ class RiskMixin(pl.LightningModule):
         exclusions = batch["exclusions"]
 
         # c-index is applied per label, collect inputs
-        self.log_cindex(self.valid_cindex, exclusions, logits, label_multihot, label_times)
+        self.log_cindex(
+            self.valid_cindex, exclusions, logits, label_multihot, label_times
+        )
         all_observed = torch.ones_like(label_multihot)
         self.log_cindex(
             self.valid_cindex_risk,
             exclusions,
             logits,
             all_observed,
-            batch["risk"],
+            batch["risk"],  # *-1 since lower times is higher risk and vice versa
         )
 
     def on_validation_epoch_end(self) -> None:
@@ -222,12 +224,14 @@ class SortingRiskMixin(RiskMixin):
         exclusions = batch["exclusions"]
 
         # c-index is applied per label, collect inputs
-        self.log_cindex(self.valid_cindex, exclusions, logits, label_multihot, label_times)
+        self.log_cindex(
+            self.valid_cindex, exclusions, -1*logits, label_multihot, label_times
+        )
         all_observed = torch.ones_like(label_multihot)
         self.log_cindex(
             self.valid_cindex_risk,
             exclusions,
-            logits,
+            -1*logits,
             all_observed,
             batch["risk"],
         )
