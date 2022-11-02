@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import WandbLogger
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import wandb
@@ -19,14 +20,15 @@ class OnTrainEndResults(Callback):
     def __init__(self, save_dir: Optional[str] = None):
         self.save_dir = save_dir
 
-    def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        dataloader = trainer.val_dataloaders[0]
+    def _extract(
+        self, trainer: "pl.Trainer", dataloader: DataLoader, pl_module: "pl.LightningModule"
+    ) -> None:
         store = []
         for batch in tqdm(iter(dataloader)):
             batch: dict
-            outputs = pl_module(0, covariates=batch["covariates"])
+            logits = pl_module(0, covariates=batch["covariates"])
 
-            batch.update({"logits": outputs})
+            batch.update({"logits": logits})
 
             # Let's get things in a friendly format for pandas dataframe..
             numpy_batch = {}
@@ -58,6 +60,14 @@ class OnTrainEndResults(Callback):
             path = os.path.join(RESULTS_DIR, self.save_dir, "results.parquet")
             _create_folder_if_not_exist(path)
             results_df.to_parquet(path)
+
+    def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        dataloader = trainer.val_dataloaders[0]
+        self._extract(trainer, dataloader, pl_module)
+
+    def on_predict_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        dataloader = trainer.predict_dataloaders[0]
+        self._extract(trainer, dataloader, pl_module)
 
 
 class LogPredictionsCallback(Callback):

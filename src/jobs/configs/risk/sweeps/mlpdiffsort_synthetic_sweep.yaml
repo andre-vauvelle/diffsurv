@@ -1,15 +1,19 @@
 # wandb sweep
-program: scripts/mlpdiffsort_synthetic.py
-method: random
+method: bayes
 metric:
-  name: val/loss
-  goal: minimize
+  name: hp_metric
+  goal: maximize
 parameters:
   model.ignore_censoring:
-    value: True
+    value: False
   model.lr:
-    min: 0.0001
-    max: 0.03
+    distribution: log_uniform
+    min: -9.210340371976182 # 0.0001
+    max: -3.506557897319982 # 0.03
+  model.final_lr:
+    distribution: log_uniform
+    min: -9.210340371976182 # 0.0001
+    max: 2.302585092994046 # 10
   model.head_layers:
     value: 2
   model.head_hidden_dim:
@@ -17,7 +21,7 @@ parameters:
   model.hidden_dropout_prob:
     value: 0.1
   model.steepness:
-    min: 10
+    min: 1
     max: 50
   model.art_lambda:
     value: 0.0 # doesn't matter for cauchy
@@ -25,6 +29,8 @@ parameters:
     value: cauchy
   model.sorting_network:
     value: bitonic
+  model.use_buckets:
+    value: True
   data.batch_size:
     value: 64
 command:
