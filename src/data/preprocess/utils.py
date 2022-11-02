@@ -430,7 +430,7 @@ def update_with_phecode_x(phe_data):
     return phe_data_x
 
 
-def get_omop_map(save_path=os.path.join(EXTERNAL_DATA_DIR, "omop_map.csv")):
+def get_omop_map(save_path):
     if os.path.exists(save_path):
         omop_map = pd.read_csv(save_path)
     else:
