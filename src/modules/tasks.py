@@ -31,10 +31,7 @@ class RiskMixin(pl.LightningModule):
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
-            {
-                "c_index_risk/" + safe_string(name): CIndex()
-                for name in c_index_metric_names
-            }
+            {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
         )
         self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
 
@@ -62,9 +59,7 @@ class RiskMixin(pl.LightningModule):
 
         return loss
 
-    def log_cindex(
-        self, cindex: MetricCollection, exclusions, logits, label_multihot, label_times
-    ):
+    def log_cindex(self, cindex: MetricCollection, exclusions, logits, label_multihot, label_times):
         for name, metric in cindex.items():
             # idx = self._groping_idx[name]
             idx = self.label_vocab["token2idx"][unsafe_string(name.split("/")[-1])]
@@ -94,9 +89,7 @@ class RiskMixin(pl.LightningModule):
         exclusions = batch["exclusions"]
 
         # c-index is applied per label, collect inputs
-        self.log_cindex(
-            self.valid_cindex, exclusions, logits, label_multihot, label_times
-        )
+        self.log_cindex(self.valid_cindex, exclusions, logits, label_multihot, label_times)
         all_observed = torch.ones_like(label_multihot)
         self.log_cindex(
             self.valid_cindex_risk,
@@ -185,6 +178,8 @@ class SortingRiskMixin(RiskMixin):
         for i in range(logits.shape[1]):
             lh, d, e = logits[:, i], label_times[:, i], label_multihot[:, i]
 
+            lh = (lh - lh.mean(dim=0, keepdim=True)) / lh.std(dim=0, keepdim=True)
+
             # TODO: could refactor to dataloader
             # Get the soft permutation matrix
             sort_out, perm_prediction = self.sorter(lh.unsqueeze(0))
@@ -224,14 +219,12 @@ class SortingRiskMixin(RiskMixin):
         exclusions = batch["exclusions"]
 
         # c-index is applied per label, collect inputs
-        self.log_cindex(
-            self.valid_cindex, exclusions, -1*logits, label_multihot, label_times
-        )
+        self.log_cindex(self.valid_cindex, exclusions, -1 * logits, label_multihot, label_times)
         all_observed = torch.ones_like(label_multihot)
         self.log_cindex(
             self.valid_cindex_risk,
             exclusions,
-            -1*logits,
+            -1 * logits,
             all_observed,
             batch["risk"],
         )
