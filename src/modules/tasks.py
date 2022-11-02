@@ -1,3 +1,6 @@
+from typing import Any, Dict
+
+import numpy as np
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.utilities import rank_zero_warn
@@ -115,7 +118,6 @@ class RiskMixin(pl.LightningModule):
         self._group_cindex(output, key="val/c_index_risk/")
         self.valid_cindex_risk.reset()
         self.log_dict(output, prog_bar=False)
-        self.log("hp_metric", output["val/c_index_risk/all"], prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
@@ -221,6 +223,7 @@ class SortingRiskMixin(RiskMixin):
         loss = losses.mean()
         return loss, predictions, perm_prediction, perm_ground_truth
 
+
     def training_step(self, batch, batch_idx, optimizer_idx=None, *args, **kwargs):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
         loss, _, _, _ = self.sorting_step(logits, label_multihot, label_times)
@@ -228,6 +231,32 @@ class SortingRiskMixin(RiskMixin):
         self.log("train/loss", loss, prog_bar=True)
 
         return loss
+
+    def predict_step(
+        self, batch: Any, batch_idx: int, dataloader_idx: int = 0
+    ) -> Dict[str, np.ndarray]:
+        logits = self(0, covariates=batch["covariates"])
+
+        batch.update({"logits": logits})
+
+        # Let's get things in a friendly format for pandas dataframe..
+        numpy_batch = {}
+        for k, v in batch.items():
+            # Detach from graph and make sure on cpu
+            new_v = v.detach().cpu()
+            if k != "covariates":
+                new_v = new_v.flatten()
+                numpy_batch[k] = new_v.numpy().tolist()
+            # Covariates have multiple dim so should not be flattened
+            else:
+                dim = new_v.shape[1]
+                for i in range(dim):
+                    numpy_batch[k + f"_{i}"] = new_v[:, i].numpy().tolist()
+
+        return numpy_batch
+
+    def training_step(self, batch, batch_idx, optimizer_idx):
+
 
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
@@ -242,12 +271,15 @@ class SortingRiskMixin(RiskMixin):
         # label_times = batch['label_times']
         exclusions = batch["exclusions"]
 
+
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
+
         all_observed = torch.ones_like(label_multihot)
         self.log_cindex(
             self.valid_cindex_risk,
             exclusions,
+
             logits,
             all_observed,
             batch["risk"],
