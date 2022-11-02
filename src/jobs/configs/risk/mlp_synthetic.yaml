@@ -18,6 +18,9 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
+    - class_path: callbacks.OnTrainEndResults
+      init_args:
+        save_dir: "mlp_synthetic"
   max_epochs: 10
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
@@ -29,14 +32,14 @@ trainer:
 data:
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/linear_exp_synthetic_no_censoring.pt
-  wandb_artifact: 'cardiors/diffsurv/pysurv_square_0.3.pt:v4'
+  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_0.3.pt:v0
   val_split: 0.2
-  batch_size: 32
+  batch_size: 64
   num_workers: 1
 model:
-  head_layers: 0
+  head_layers: 2
   embedding_dim: 5
-  head_hidden_dim: 256
+  head_hidden_dim: 1024
   lr: 0.0001 # from auto lr find
   only_covs: True
   cov_size: 3
