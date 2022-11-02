@@ -1,4 +1,5 @@
 from torch import autocast, nn
+import torch
 
 
 class PredictionHead(nn.Module):
@@ -27,16 +28,29 @@ class PredictionHead(nn.Module):
                 if norm is not None:
                     sequence.append(norm(hidden_dim))
             sequence.append(nn.Dropout(dropout))
-            sequence.append(nn.Linear(in_features=hidden_dim, out_features=out_features))
+            self.final = nn.Linear(in_features=hidden_dim, out_features=out_features, bias=False)
         else:
             sequence = [
                 nn.Dropout(dropout),
                 nn.Batchnorm1d(in_features),
                 nn.Linear(in_features=in_features, out_features=out_features),
             ]
+            self.final = nn.Linear(in_features=in_features, out_features=out_features, bias=False)
         self.layers = nn.Sequential(*sequence)
         self.act_fn = act_fn
 
+        self.apply(self.init_weights_default)
+
     def forward(self, hidden_states):
         hidden_states = self.layers(hidden_states)
+        hidden_states = self.final(hidden_states)
         return hidden_states
+
+    def init_weights_default(self, m):
+        if isinstance(m, torch.nn.LayerNorm):
+            torch.nn.init.constant_(m.weight, 1)
+            torch.nn.init.constant_(m.bias, 0)
+        elif isinstance(m, torch.nn.Linear):
+            torch.nn.init.kaiming_normal_(m.weight, mode="fan_out")
+            if m.bias is not None:
+                torch.nn.init.zeros_(m.bias)

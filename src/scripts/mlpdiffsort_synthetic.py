@@ -17,6 +17,12 @@ class CustomLightningCLI(LightningCLI):
         )
         parser.link_arguments("data.batch_size", "model.sorter_size", apply_on="instantiate")
 
+    def before_fit(self):
+        self.trainer.logger.experiment[0].watch(
+            self.model,
+            log="all",
+        )
+
 
 # class CustomSaveConfigCallback(SaveConfigCallback):
 #     def on_train_start(self, trainer, pl_module) -> None:
