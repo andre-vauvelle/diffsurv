@@ -9,6 +9,7 @@ wandb/
 results/
 .DS_Store
 notebooks/
+lightning_logs/
 
 # VIM SWAPFILES
 *.swp
