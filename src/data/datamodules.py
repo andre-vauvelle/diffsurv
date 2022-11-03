@@ -55,7 +55,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.grouping_labels = {"all": ["event0"]}
 
     def get_dataloader(self, stage: Literal["train", "val"]):
-        data = torch.load(os.path.join(self.path))
+        data = torch.load(self.path)
         x_covar, y_times, censored_events = (
             data["x_covar"],
             data["y_times"],
