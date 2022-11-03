@@ -4,9 +4,11 @@ data/
 SAN/
 src/wandb/
 src/diffsurv/
+src/lightning_logs/
 src/jobs/logs
 wandb/
 results/
+
 
 # VIM SWAPFILES
 *.swp
