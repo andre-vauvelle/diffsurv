@@ -1,5 +1,5 @@
-from torch import autocast, nn
 import torch
+from torch import nn
 
 
 class PredictionHead(nn.Module):
@@ -19,7 +19,7 @@ class PredictionHead(nn.Module):
     ):
         super().__init__()
         if n_layers > 0:
-            sequence = [nn.Batchnorm1d(in_features), nn.Linear(in_features, hidden_dim), act_fn()]
+            sequence = [nn.BatchNorm1d(in_features), nn.Linear(in_features, hidden_dim), act_fn()]
             if norm is not None:
                 sequence.append(norm(hidden_dim))
             for _ in range(n_layers - 1):
@@ -32,7 +32,7 @@ class PredictionHead(nn.Module):
         else:
             sequence = [
                 nn.Dropout(dropout),
-                nn.Batchnorm1d(in_features),
+                nn.BatchNorm1d(in_features),
                 nn.Linear(in_features=in_features, out_features=out_features),
             ]
             self.final = nn.Linear(in_features=in_features, out_features=out_features, bias=False)

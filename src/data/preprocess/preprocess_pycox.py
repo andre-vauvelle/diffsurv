@@ -1,0 +1,102 @@
+import os.path
+from typing import Dict
+
+import pandas as pd
+import torch
+from pycox.datasets import from_deepsurv, from_kkbox, from_rdatasets, from_simulations
+
+import wandb
+from definitions import DATA_DIR
+from omni.common import create_folder
+
+
+def preprocess_pycox(
+    name: str, dataset: pd.DataFrame, save_artfifact: bool = True
+) -> Dict[str, torch.Tensor]:
+    """Take the pycox datasets and save them as artifacts in the format we use."""
+
+    x_covar_columns = [c for c in dataset.columns if "x" == c[0]]
+    if name == "flchain.pt":
+        x_covar_columns = [
+            "age",
+            "sex",
+            "sample.yr",
+            "kappa",
+            "lambda",
+            "flc.grp",
+            "creatinine",
+            "mgus",
+        ]
+        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
+        y_times = dataset.futime.to_numpy()
+        censored_events = 1 - dataset.death.to_numpy()
+    elif name == "nwtco.pt":
+        # This had a few weird columns in the pycox...
+        x_covar_columns = ["stage", "age", "instit_2", "histol_2", "study_4"]
+        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
+        y_times = dataset.edrel.to_numpy()
+        censored_events = 1 - dataset.rel.to_numpy()
+    else:
+        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+
+    x_covar = torch.Tensor(x_covar).float()
+    y_times = torch.Tensor(y_times).float().unsqueeze(-1)
+    censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
+
+    data = {"x_covar": x_covar, "y_times": y_times, "censored_events": censored_events}
+    save_path = os.path.join(DATA_DIR, "realworld")
+    create_folder(save_path)
+
+    torch.save(data, os.path.join(save_path, name))
+    print(f"Saved pycox realworld dataset to: {os.path.join(save_path, name)}")
+    if save_artfifact:
+        N = int(censored_events.shape[0])
+        censored_proportion = float(censored_events.sum() / N)
+        n_covariates = int(x_covar.shape[1])
+        metadata = {
+            "name": name,
+            "N": N,
+            "censored_proportion": censored_proportion,
+            "n_covariates": n_covariates,
+            "setting": "realworld",
+        }
+        run = wandb.init(
+            job_type="preprocess_pycox",
+            project="diffsurv",
+            entity="cardiors",
+        )
+        artifact = wandb.Artifact(name, type="dataset", metadata=metadata)
+        artifact.add_file(os.path.join(save_path, name), name)
+        run.log_artifact(artifact)
+    return data
+
+
+if __name__ == "__main__":
+    support = from_deepsurv._Support().read_df()
+    metabric = from_deepsurv._Metabric().read_df()
+    gbsg = from_deepsurv._Gbsg().read_df()
+    flchain = from_rdatasets._Flchain().read_df()
+    nwtco = from_rdatasets._Nwtco().read_df()
+    # kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
+    # kkbox = from_kkbox._DatasetKKBoxAdmin().read_df()
+    sac3 = from_simulations._SAC3().read_df()
+    rr_nl_nhp = from_simulations._RRNLNPH().read_df()
+    sac_admin5 = from_simulations._SACAdmin5().read_df()
+
+    datasets = {
+        "support.pt": support,
+        "metabric.pt": metabric,
+        "gbsg.pt": gbsg,
+        "flchain.pt": flchain,
+        "nwtco.pt": nwtco,
+        # kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
+        # kkbox = from_kkbox._DatasetKKBoxAdmin().read_df()
+        "sac3.pt": sac3,
+        "rr_nl_nhp.pt": rr_nl_nhp,
+        "sac_admin5.pt": sac_admin5,
+    }
+
+    for name, dataset in datasets.items():
+        preprocess_pycox(name, dataset, save_artfifact=True)

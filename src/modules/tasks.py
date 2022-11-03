@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
 import numpy as np
 import pytorch_lightning as pl
@@ -13,6 +13,11 @@ from omni.common import safe_string, unsafe_string
 
 
 class RiskMixin(pl.LightningModule):
+    """
+    :arg setting: If synthetic then we have access to true hazards from simulation model,
+    then will enable logging of metrics using true risk
+    """
+
     def __init__(
         self,
         grouping_labels,
@@ -20,11 +25,13 @@ class RiskMixin(pl.LightningModule):
         task="risk",
         weightings=None,
         use_weighted_loss=False,
+        setting: Literal["synthetic", "realworld"] = "realworld",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
+        self.setting = setting
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
@@ -36,7 +43,8 @@ class RiskMixin(pl.LightningModule):
         c_index_metrics = MetricCollection(
             {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
         )
-        self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
+        if self.setting == "synthetic":
+            self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
 
         if task == "risk":
             self.loss_func = CoxPHLoss()
@@ -93,14 +101,15 @@ class RiskMixin(pl.LightningModule):
 
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, logits, label_multihot, label_times)
-        all_observed = torch.ones_like(label_multihot)
-        self.log_cindex(
-            self.valid_cindex_risk,
-            exclusions,
-            -logits,
-            all_observed,
-            batch["risk"],  # *-1 since lower times is higher risk and vice versa
-        )
+        if self.setting == "synthetic":
+            all_observed = torch.ones_like(label_multihot)
+            self.log_cindex(
+                self.valid_cindex_risk,
+                exclusions,
+                -logits,
+                all_observed,
+                batch["risk"],  # *-1 since lower times is higher risk and vice versa
+            )
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_metrics.compute()
@@ -114,10 +123,11 @@ class RiskMixin(pl.LightningModule):
         self.log_dict(output, prog_bar=False)
         self.log("hp_metric", output["val/c_index/all"], prog_bar=True)
 
-        output = self.valid_cindex_risk.compute()
-        self._group_cindex(output, key="val/c_index_risk/")
-        self.valid_cindex_risk.reset()
-        self.log_dict(output, prog_bar=False)
+        if self.setting == "synthetic":
+            output = self.valid_cindex_risk.compute()
+            self._group_cindex(output, key="val/c_index_risk/")
+            self.valid_cindex_risk.reset()
+            self.log_dict(output, prog_bar=False)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
@@ -223,7 +233,6 @@ class SortingRiskMixin(RiskMixin):
         loss = losses.mean()
         return loss, predictions, perm_prediction, perm_ground_truth
 
-
     def training_step(self, batch, batch_idx, optimizer_idx=None, *args, **kwargs):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
         loss, _, _, _ = self.sorting_step(logits, label_multihot, label_times)
@@ -255,9 +264,6 @@ class SortingRiskMixin(RiskMixin):
 
         return numpy_batch
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
-
-
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
@@ -271,19 +277,18 @@ class SortingRiskMixin(RiskMixin):
         # label_times = batch['label_times']
         exclusions = batch["exclusions"]
 
-
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
 
-        all_observed = torch.ones_like(label_multihot)
-        self.log_cindex(
-            self.valid_cindex_risk,
-            exclusions,
-
-            logits,
-            all_observed,
-            batch["risk"],
-        )
+        if self.setting == "synthetic":
+            all_observed = torch.ones_like(label_multihot)
+            self.log_cindex(
+                self.valid_cindex_risk,
+                exclusions,
+                logits,
+                all_observed,
+                batch["risk"],
+            )
 
         return loss, predictions, perm_prediction, perm_ground_truth
 

@@ -1,23 +1,20 @@
-name: diffsurv
+name: diffsurv_pip
 channels:
   - pytorch
   - conda-forge
 dependencies:
   - conda
-  - python=3.8
+  - python~=3.8
   - ipython
   - pymongo
   - torchmetrics=0.6.0
   - torchvision
 #  - cudatoolkit=10.2
-  - pytorch~=1.11
-  - pycairo
-  - pygobject
+  - pytorch>=1.11
   - notebook
   - tensorboard
   - hyperopt
   - gh
-  - jsonargparse
   - pandas
   - torchaudio
   - file
@@ -29,6 +26,9 @@ dependencies:
   - pytest
   - python-dotenv
   - dill
-  - pytorch-lightning~=1.6.3
+  - pytorch-lightning>=1.6.3
   - numba
+  - pip:
+      - pysurvival
+      - jsonargparse[signatures]
 prefix: /home/vauvelle/miniconda3

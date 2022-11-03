@@ -4,6 +4,8 @@ metric:
   name: hp_metric
   goal: maximize
 parameters:
+  model.ignore_censoring:
+    value: False
   model.lr:
     distribution: log_uniform
     min: -9.210340371976182 # 0.0001
@@ -18,6 +20,17 @@ parameters:
     value: 1024
   model.hidden_dropout_prob:
     value: 0.1
+  model.steepness:
+    min: 1
+    max: 50
+  model.art_lambda:
+    value: 0.0 # doesn't matter for cauchy
+  model.distribution:
+    value: cauchy
+  model.sorting_network:
+    value: bitonic
+  model.use_buckets:
+    value: True
   data.batch_size:
     value: 64
 command:
@@ -26,9 +39,9 @@ command:
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/risk/mlp_synthetic.yaml"
+  - "jobs/configs/risk/mlpdiffsort.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/pysurv_square_0.3.pt:v4"
+  - "cardiors/diffsurv/pysurv_square_independent_0.3.pt:latest"
   - ${args}
 project: diffsurv
 entity: cardiors

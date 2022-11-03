@@ -1,8 +1,0 @@
-data:
-  token_col: phecode
-  label_col: phecode
-  token_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab.pkl
-  label_vocab_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/processed/omop/phecode_vocab.pkl
-model:
-  input_dim: 1390
-  output_dim: 1390
