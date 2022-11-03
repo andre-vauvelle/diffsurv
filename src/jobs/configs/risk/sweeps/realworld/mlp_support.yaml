@@ -1,0 +1,35 @@
+# wandb sweep
+method: bayes
+metric:
+  name: hp_metric
+  goal: maximize
+parameters:
+  model.lr:
+    distribution: log_uniform
+    min: -9.210340371976182 # 0.0001
+    max: -3.506557897319982 # 0.03
+  model.final_lr:
+    distribution: log_uniform
+    min: -9.210340371976182 # 0.0001
+    max: 2.302585092994046 # 10
+  model.head_layers:
+    values: [1, 3]
+  model.head_hidden_dim:
+    value: [64, 128, 256, 512, 1024]
+  model.hidden_dropout_prob:
+    min: 0
+    max: 0.6
+  data.batch_size:
+    values: [16, 32, 64, 84,128]
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - fit
+  - "--config"
+  - "jobs/configs/risk/mlp.yaml"
+  - "--data.wandb_artifact"
+  - "cardiors/diffsurv/support.pt:latest"
+  - ${args}
+project: diffsurv
+entity: cardiors

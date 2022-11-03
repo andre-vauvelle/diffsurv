@@ -1,22 +1,85 @@
 import os.path
-from typing import Dict
+from typing import Dict, List
 
 import pandas as pd
 import torch
 from pycox.datasets import from_deepsurv, from_kkbox, from_rdatasets, from_simulations
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 import wandb
 from definitions import DATA_DIR
 from omni.common import create_folder
 
 
+def preprocess_columns(
+    dataset_to_process: pd.DataFrame,
+    columns_to_scale: List,
+    columns_to_one_hot: List,
+    min_cat_prop: float = 0.01,
+) -> pd.DataFrame:
+    for c in columns_to_scale:
+        dataset_to_process.loc[:, c] = StandardScaler().fit_transform(
+            dataset_to_process.loc[:, c].values.reshape(-1, 1)
+        )
+
+    for c in columns_to_one_hot:
+        one_hots = OneHotEncoder(sparse=False).fit_transform(
+            dataset_to_process.loc[:, c].values.reshape(-1, 1)
+        )
+        proportions = one_hots.sum(axis=0) / one_hots.shape[0]
+        hots_to_keep = [i for i, p in enumerate(proportions) if p > min_cat_prop]
+        one_hots = one_hots[:, hots_to_keep]
+        one_hots_df = pd.DataFrame(one_hots, columns=[c + f"_{i}" for i in hots_to_keep])
+        dataset_to_process.drop(columns=[c], inplace=True)
+        dataset_to_process = pd.concat([one_hots_df, dataset_to_process], axis=1)
+        return dataset_to_process
+
+
 def preprocess_pycox(
-    name: str, dataset: pd.DataFrame, save_artfifact: bool = True
+    name: str, dataset: pd.DataFrame, save_artfifact: bool = True, min_cat_prop=0.01
 ) -> Dict[str, torch.Tensor]:
     """Take the pycox datasets and save them as artifacts in the format we use."""
 
     x_covar_columns = [c for c in dataset.columns if "x" == c[0]]
-    if name == "flchain.pt":
+    if name == "support.pt":
+        new_columns = [
+            "age",
+            "sex",
+            "race",
+            "number_of_comorbidities",
+            "presence_of_diabetes",
+            "presence_of_dementia",
+            "presence_of_cancer",
+            "mean_arterial_blood_pressure",
+            "heart_rate",
+            "respiration_rate",
+            "temperature",
+            "white_blood_cell_count",
+            "serums_sodium",
+            "serums_creatinine",
+        ]
+        col_map = dict(zip(x_covar_columns, new_columns))
+        dataset.rename(columns=col_map, inplace=True)
+        columns_to_scale = [
+            "age",
+            "number_of_comorbidities",
+            "mean_arterial_blood_pressure",
+            "heart_rate",
+            "respiration_rate",
+            "temperature",
+            "white_blood_cell_count",
+            "serums_sodium",
+            "serums_creatinine",
+        ]
+        columns_to_one_hot = ["race", "presence_of_cancer"]
+
+        dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, min_cat_prop)
+
+        x_covar = dataset.loc[:, list(set(dataset.columns) - {"duration", "event"})].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+
+    elif name == "flchain.pt":
         x_covar_columns = [
             "age",
             "sex",
@@ -87,16 +150,16 @@ if __name__ == "__main__":
 
     datasets = {
         "support.pt": support,
-        "metabric.pt": metabric,
-        "gbsg.pt": gbsg,
-        "flchain.pt": flchain,
-        "nwtco.pt": nwtco,
+        # "metabric.pt": metabric,
+        # "gbsg.pt": gbsg,
+        # "flchain.pt": flchain,
+        # "nwtco.pt": nwtco,
         # kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
         # kkbox = from_kkbox._DatasetKKBoxAdmin().read_df()
-        "sac3.pt": sac3,
-        "rr_nl_nhp.pt": rr_nl_nhp,
-        "sac_admin5.pt": sac_admin5,
+        # "sac3.pt": sac3,
+        # "rr_nl_nhp.pt": rr_nl_nhp,
+        # "sac_admin5.pt": sac_admin5,
     }
 
-    for name, dataset in datasets.items():
-        preprocess_pycox(name, dataset, save_artfifact=True)
+    for n, d in datasets.items():
+        preprocess_pycox(n, d, save_artfifact=True)
