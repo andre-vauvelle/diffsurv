@@ -1,8 +1,8 @@
 import torch
 from pytorch_lightning.utilities.cli import LightningCLI
 
-from data.datamodules import DataModuleAssessmentRiskPredict
-from modules.bert import BERTRisk
+from data.datamodules import DataModuleRisk
+from modules.mlp import MultilayerDiffsort, MultilayerRisk
 
 
 class CustomLightningCLI(LightningCLI):
@@ -10,12 +10,20 @@ class CustomLightningCLI(LightningCLI):
         # Automatically set model input dim based on data
         # TODO: remove symbols from label space?
         parser.link_arguments("data.input_dim", "model.input_dim", apply_on="instantiate")
+        parser.link_arguments("data.cov_size", "model.cov_size", apply_on="instantiate")
         parser.link_arguments("data.output_dim", "model.output_dim", apply_on="instantiate")
         parser.link_arguments("data.label_vocab", "model.label_vocab", apply_on="instantiate")
         parser.link_arguments(
             "data.grouping_labels", "model.grouping_labels", apply_on="instantiate"
         )
-        parser.link_arguments("data.weightings", "model.weightings", apply_on="instantiate")
+        parser.link_arguments("data.batch_size", "model.sorter_size", apply_on="instantiate")
+        parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
+
+    def before_fit(self):
+        self.trainer.logger.experiment.watch(
+            self.model,
+            log="all",
+        )
 
 
 # class CustomSaveConfigCallback(SaveConfigCallback):
@@ -28,8 +36,8 @@ class CustomLightningCLI(LightningCLI):
 
 def cli_main():
     cli = CustomLightningCLI(
-        BERTRisk,
-        DataModuleAssessmentRiskPredict,
+        MultilayerDiffsort,
+        DataModuleRisk,
         seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,

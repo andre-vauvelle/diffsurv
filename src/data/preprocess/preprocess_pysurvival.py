@@ -1,16 +1,10 @@
-import copy
 import os
-import random
+from typing import Dict
 
 import numpy as np
 import pandas as pd
 import torch
-from matplotlib import pyplot as plt
-from pysurvival.models.semi_parametric import NonLinearCoxPHModel
 from pysurvival.models.simulations import SimulationModel
-from pysurvival.utils.display import integrated_brier_score
-from pysurvival.utils.metrics import concordance_index
-from sklearn.model_selection import train_test_split
 
 import wandb
 from definitions import DATA_DIR
@@ -28,8 +22,12 @@ def gen_pysurvival(
     feature_weights=[1.0] * 3,
     censoring_function="independent",
     save_artifact=True,
-):
-    #### 2 - Generating the dataset from a nonlinear Weibull parametric model
+) -> Dict[str, torch.Tensor]:
+    """Generate simulated dataset using gaussin covariates, a hazard function and time function.
+    censored_events {0 - event happened, 1 - patients was censored}
+    """
+
+    # Generating the dataset from a nonlinear Weibull parametric model
     # Initializing the simulation model
     sim = CustomSimulationModel(
         survival_distribution=survival_distribution,
@@ -95,14 +93,15 @@ def gen_pysurvival(
             "beta": beta,
             "feature_weights": feature_weights,
             "censoring_function": censoring_function,
+            "n_covariates": len(feature_weights),
+            "setting": "synthetic",
         }
 
-        run = wandb.init(
-            job_type="preprocess_synthetic", project="diffsurv", entity="cardiors", config=config
-        )
+        run = wandb.init(job_type="preprocess_synthetic", project="diffsurv", entity="cardiors")
         artifact = wandb.Artifact(name, type="dataset", metadata=config)
         artifact.add_file(os.path.join(save_path, name), name)
         run.log_artifact(artifact)
+    return data
 
 
 class CustomSimulationModel(SimulationModel):
@@ -269,30 +268,58 @@ if __name__ == "__main__":
     #                    censored_proportion=c,
     #                    alpha=0.1, beta=3.2, feature_weights=[1.] * 3)
 
-    gen_pysurvival(
-        "pysurv_square_0.3.pt",
-        32000,
-        survival_distribution="weibull",
-        risk_type="square",
-        censored_proportion=0.3,
-        alpha=0.1,
-        beta=3.2,
-        feature_weights=[1.0] * 3,
-        censoring_function="mean",
-    )
+    # gen_pysurvival(
+    #     "pysurv_square_0.3.pt",
+    #     32000,
+    #     survival_distribution="weibull",
+    #     risk_type="square",
+    #     censored_proportion=0.3,
+    #     alpha=0.1,
+    #     beta=3.2,
+    #     feature_weights=[1.0] * 3,
+    #     censoring_function="mean",
+    # )
 
     # gen_pysurvival('pysurv_square_mean_0.3.pt', 32000, survival_distribution='weibull', risk_type='square',
     #                censored_proportion=0.3,
     #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
 
-    gen_pysurvival(
-        "pysurv_square_independent_0.3.pt",
-        32000,
-        survival_distribution="weibull",
-        risk_type="square",
-        censored_proportion=0.3,
-        alpha=0.1,
-        beta=3.2,
-        feature_weights=[1.0] * 3,
-        censoring_function="independent",
-    )
+    for c in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99):
+        gen_pysurvival(
+            f"pysurv_square_independent_{str(c)}.pt",
+            32000,
+            survival_distribution="weibull",
+            risk_type="square",
+            censored_proportion=c,
+            alpha=0.1,
+            beta=3.2,
+            feature_weights=[1.0] * 3,
+            censoring_function="independent",
+        )
+
+    for c in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99):
+        gen_pysurvival(
+            f"pysurv_square_mean_{str(c)}.pt",
+            32000,
+            survival_distribution="weibull",
+            risk_type="square",
+            censored_proportion=c,
+            alpha=0.1,
+            beta=3.2,
+            feature_weights=[1.0] * 3,
+            censoring_function="mean",
+        )
+
+    for N in (8000, 16000, 32000, 64000, 128000):
+        for d in (3, 100, 1000, 10000):
+            gen_pysurvival(
+                f"pysurv_square_independent_c0.3_N{N}_d{d}.pt",
+                N,
+                survival_distribution="weibull",
+                risk_type="square",
+                censored_proportion=0.3,
+                alpha=0.1,
+                beta=3.2,
+                feature_weights=[0.0001] * d,
+                censoring_function="independent",
+            )

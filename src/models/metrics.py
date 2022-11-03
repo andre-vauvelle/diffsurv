@@ -1,6 +1,5 @@
 import numba
 import numpy as np
-import pandas as pd
 import torch
 import torchmetrics
 
@@ -32,21 +31,6 @@ def cindex(events, event_times, predictions):
         return np.nan
 
 
-def kendall_embedding_loop(vector):
-    n = len(vector)
-    rank = torch.argsort(vector)
-    embedding = torch.zeros(n, n)
-    for i, iv in enumerate(rank):
-        for j, jv in enumerate(rank):
-            embedding[i, j] = 1 if iv < jv else 0
-    return embedding
-
-
-# def kendall_cindex(logits, events, times):
-#     """Vectorised version of c-index using kendall embeddings to find concordenet and discordent pairs"""
-#     e
-
-
 class CIndex(torchmetrics.Metric):
     def __init__(self, dist_sync_on_step=False, method="loop"):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
@@ -64,20 +48,12 @@ class CIndex(torchmetrics.Metric):
     def compute(self):
         # this version is much faster, but doesn't handle ties correctly.
         # numba doesn't handle half precision correctly, so we use float32
-        if self.method == "kendall":
-            NotImplemented
-        else:
-            return torch.Tensor(
-                [
-                    cindex(
-                        torch.cat(self.events).cpu().float().numpy(),
-                        torch.cat(self.times).cpu().float().numpy(),
-                        1 - torch.cat(self.logits).cpu().float().numpy(),  # just - x  not 1 - x?
-                    )
-                ]
-            )
-
-
-if __name__ == "__main__":
-    test_vector = torch.Tensor([5, 6, 3, 9])
-    kendall_embedding_loop(test_vector)
+        return torch.Tensor(
+            [
+                cindex(
+                    torch.cat(self.events).cpu().float().numpy(),
+                    torch.cat(self.times).cpu().float().numpy(),
+                    1 - torch.cat(self.logits).cpu().float().numpy(),  # just - x  not 1 - x?
+                )
+            ]
+        )
