@@ -1,5 +1,6 @@
 # wandb sweep
 method: bayes
+program: scripts/mlpdiffsort.py
 metric:
   name: hp_metric
   goal: maximize
