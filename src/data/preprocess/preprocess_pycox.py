@@ -18,7 +18,9 @@ def preprocess_columns(
     min_cat_prop: float = 0.01,
 ) -> pd.DataFrame:
     for c in columns_to_scale:
-        dataset_to_process.loc[:, c] = StandardScaler().fit_transform(dataset_to_process.loc[:, c])
+        dataset_to_process.loc[:, c] = StandardScaler().fit_transform(
+            dataset_to_process.loc[:, c].values.reshape(-1, 1)
+        )
 
     for c in columns_to_one_hot:
         one_hots = OneHotEncoder(sparse=False).fit_transform(
@@ -49,8 +51,8 @@ def preprocess_pycox(
             "presence_of_dementia",
             "presence_of_cancer",
             "mean_arterial_blood_pressure",
-            "heart rate",
-            "respiration rate",
+            "heart_rate",
+            "respiration_rate",
             "temperature",
             "white_blood_cell_count",
             "serums_sodium",
@@ -73,7 +75,11 @@ def preprocess_pycox(
 
         dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, min_cat_prop)
 
-    if name == "flchain.pt":
+        x_covar = dataset.loc[:, list(set(dataset.columns) - {"duration", "event"})].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+
+    elif name == "flchain.pt":
         x_covar_columns = [
             "age",
             "sex",

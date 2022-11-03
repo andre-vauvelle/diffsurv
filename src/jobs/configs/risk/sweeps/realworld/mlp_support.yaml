@@ -20,7 +20,7 @@ parameters:
     min: 0
     max: 0.6
   data.batch_size:
-    values: [32, 64, 84,128]
+    values: [16, 32, 64, 84,128]
 command:
   - ${env}
   - ${interpreter}
