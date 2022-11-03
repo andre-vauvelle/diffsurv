@@ -7,6 +7,8 @@ src/diffsurv/
 src/jobs/logs
 wandb/
 results/
+.DS_Store
+notebooks/
 
 # VIM SWAPFILES
 *.swp
