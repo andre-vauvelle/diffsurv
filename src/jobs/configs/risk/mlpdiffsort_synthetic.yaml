@@ -12,7 +12,7 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 50
+        patience: 20
         monitor: hp_metric
         min_delta: 0.002
         mode: max
@@ -48,6 +48,7 @@ model:
   sorting_network: bitonic
   steepness: 19
   art_lambda: 0.0
+  use_buckets: True
   distribution: cauchy
   ignore_censoring: true
 
