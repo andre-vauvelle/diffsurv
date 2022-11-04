@@ -1,5 +1,5 @@
 # wandb sweep
-method: bayes
+method: random
 metric:
   name: hp_metric
   goal: maximize

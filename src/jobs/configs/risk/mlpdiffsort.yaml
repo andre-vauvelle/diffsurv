@@ -4,11 +4,11 @@ trainer:
       init_args:
         project: diffsurv
         entity: cardiors
-#        tags:
-#          - mlp
-#          - synthetic
-#          - risk
-#          - diffsort
+        tags:
+          - mlp
+          - synthetic
+          - risk
+          - diffsort
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:

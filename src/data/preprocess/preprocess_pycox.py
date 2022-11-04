@@ -32,7 +32,8 @@ def preprocess_columns(
         one_hots_df = pd.DataFrame(one_hots, columns=[c + f"_{i}" for i in hots_to_keep])
         dataset_to_process.drop(columns=[c], inplace=True)
         dataset_to_process = pd.concat([one_hots_df, dataset_to_process], axis=1)
-        return dataset_to_process
+
+    return dataset_to_process
 
 
 def preprocess_pycox(
@@ -78,7 +79,34 @@ def preprocess_pycox(
         x_covar = dataset.loc[:, list(set(dataset.columns) - {"duration", "event"})].to_numpy()
         y_times = dataset.duration.to_numpy()
         censored_events = 1 - dataset.event.to_numpy()
+    elif name == "metabric.pt":
+        columns_to_scale = [
+            "x0",
+            "x1",
+            "x2",
+            "x3",
+            "x8",
+        ]
+        columns_to_one_hot = []
 
+        dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, min_cat_prop)
+
+        x_covar = dataset.loc[:, list(set(dataset.columns) - {"duration", "event"})].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+    elif name == "gbsg.pt":
+        columns_to_scale = [
+            "x3",
+            "x5",
+            "x4x6",
+        ]
+        columns_to_one_hot = ["x1"]
+
+        dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, min_cat_prop)
+
+        x_covar = dataset.loc[:, list(set(dataset.columns) - {"duration", "event"})].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
     elif name == "flchain.pt":
         x_covar_columns = [
             "age",
@@ -149,9 +177,9 @@ if __name__ == "__main__":
     sac_admin5 = from_simulations._SACAdmin5().read_df()
 
     datasets = {
-        "support.pt": support,
+        # "support.pt": support,
         # "metabric.pt": metabric,
-        # "gbsg.pt": gbsg,
+        "gbsg.pt": gbsg,
         # "flchain.pt": flchain,
         # "nwtco.pt": nwtco,
         # kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()

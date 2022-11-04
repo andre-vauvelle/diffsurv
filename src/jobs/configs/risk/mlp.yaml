@@ -1,15 +1,14 @@
 trainer:
   logger:
 #    - class_path: models.loggers.CustomWandbLogger
-    - class_path: pytorch_lightning.loggers.WandbLogger
+    - class_path: models.loggers.CustomWandbLogger
       init_args:
         project: diffsurv
         entity: cardiors
-#        save_dir: .
-#        tags:
-#          - mlp
-#          - synthetic
-#          - risk
+        tags:
+          - mlp
+          - synthetic
+          - risk
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
