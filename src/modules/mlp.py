@@ -24,6 +24,7 @@ class MultilayerBase(BaseModel):
         count=True,
         cov_size=2,
         only_covs=False,
+        batch_norm=True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -61,6 +62,7 @@ class MultilayerBase(BaseModel):
             hidden_dim=head_hidden_dim,
             n_layers=head_layers,
             dropout=hidden_dropout_prob,
+            batch_norm=batch_norm,
         )
 
         self.input_dim = input_dim

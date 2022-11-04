@@ -16,10 +16,14 @@ class PredictionHead(nn.Module):
         act_fn=nn.LeakyReLU,
         dropout=0.2,
         norm=nn.LayerNorm,
+        batch_norm=True,
     ):
         super().__init__()
         if n_layers > 0:
-            sequence = [nn.BatchNorm1d(in_features), nn.Linear(in_features, hidden_dim), act_fn()]
+            sequence = []
+            if batch_norm:
+                sequence.append(nn.BatchNorm1d(in_features))
+            sequence.extend([nn.Linear(in_features, hidden_dim), act_fn()])
             if norm is not None:
                 sequence.append(norm(hidden_dim))
             for _ in range(n_layers - 1):
@@ -30,11 +34,10 @@ class PredictionHead(nn.Module):
             sequence.append(nn.Dropout(dropout))
             self.final = nn.Linear(in_features=hidden_dim, out_features=out_features, bias=False)
         else:
-            sequence = [
-                nn.Dropout(dropout),
-                nn.BatchNorm1d(in_features),
-                nn.Linear(in_features=in_features, out_features=out_features),
-            ]
+            sequence = [nn.Dropout(dropout)]
+            if batch_norm:
+                sequence.append(nn.BatchNorm1d(in_features))
+            sequence.append(nn.Linear(in_features=in_features, out_features=out_features))
             self.final = nn.Linear(in_features=in_features, out_features=out_features, bias=False)
         self.layers = nn.Sequential(*sequence)
         self.act_fn = act_fn

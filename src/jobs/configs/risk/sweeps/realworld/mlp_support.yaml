@@ -5,6 +5,8 @@ metric:
   name: hp_metric
   goal: maximize
 parameters:
+  model.batch_norm:
+    value: False
   model.lr:
     distribution: log_uniform_values
     min: 1e-4 # 0.0001

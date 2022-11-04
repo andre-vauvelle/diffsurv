@@ -33,7 +33,7 @@ command:
   - "--config"
   - "jobs/configs/risk/mlpdiffsort.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/support.pt:latest"
+  - "cardiors/diffsurv/rr_nl_nhp.pt:latest"
   - ${args}
 project: diffsurv
 entity: cardiors
