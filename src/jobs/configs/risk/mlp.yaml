@@ -18,13 +18,13 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
-    - class_path: callbacks.OnTrainEndResults
-      init_args:
-        save_dir: "mlp_synthetic"
-  max_epochs: 20
+#   - class_path: callbacks.OnTrainEndResults
+#     init_args:
+#       save_dir: "mlp_synthetic"
+  max_epochs: 50
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
-  enable_checkpointing: True
+  enable_checkpointing: False
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
   default_root_dir: .

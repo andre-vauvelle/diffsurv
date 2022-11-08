@@ -12,20 +12,20 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 20
+        patience: 50
         monitor: hp_metric
         min_delta: 0.002
         mode: max
         verbose: True
         check_finite: False
     #    - class_path: src.callbacks.LogPredictionsCallback
-    - class_path: callbacks.OnTrainEndResults
-      init_args:
-        save_dir: "mlpdiffsort_synthetic"
+    #    - class_path: callbacks.OnTrainEndResults
+    #  init_args:
+    #    save_dir: "mlpdiffsort_synthetic"
   max_epochs: 20
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
-  enable_checkpointing: True
+  enable_checkpointing: False
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 #  default_root_dir: /home/rmhivau/diffsurv/wandb/
