@@ -155,6 +155,70 @@ def preprocess_pycox(
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
         y_times = dataset.edrel.to_numpy()
         censored_events = 1 - dataset.rel.to_numpy()
+    elif name == "kkbox_v1.pt":
+        x_covar_columns = [
+            "n_prev_churns",
+            "log_days_between_subs",
+            "log_days_since_reg_init",
+            "log_payment_plan_days",
+            "log_plan_list_price",
+            "log_actual_amount_paid",
+            "is_auto_renew",
+            "is_cancel",
+            "city_0",
+            "city_1",
+            "city_2",
+            "city_3",
+            "city_4",
+            "city_5",
+            "city_6",
+            "city_7",
+            "city_8",
+            "city_9",
+            "city_10",
+            "city_11",
+            "city_12",
+            "city_13",
+            "city_14",
+            "city_15",
+            "city_16",
+            "city_19",
+            "city_20",
+            "city_21",
+            "gender_0",
+            "gender_1",
+            "gender_2",
+            "registered_via_0",
+            "registered_via_1",
+            "registered_via_2",
+            "registered_via_3",
+            "registered_via_5",
+            "registered_via_7",
+            "age_at_start",
+            "strange_age",
+            "nan_days_since_reg_init",
+            "no_prev_churns",
+        ]
+        columns_to_scale = [
+            "n_prev_churns",
+            "log_days_between_subs",
+            "log_days_since_reg_init",
+            "log_payment_plan_days",
+            "log_plan_list_price",
+            "log_actual_amount_paid",
+            "age_at_start",
+        ]
+        columns_to_one_hot = [
+            "city",
+            "gender",
+            "registered_via",
+        ]
+
+        dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, 0.001)
+        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+
     else:
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
         y_times = dataset.duration.to_numpy()
@@ -198,23 +262,23 @@ if __name__ == "__main__":
     gbsg = from_deepsurv._Gbsg().read_df()
     flchain = from_rdatasets._Flchain().read_df()
     nwtco = from_rdatasets._Nwtco().read_df()
-    # kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
+    kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
     # kkbox = from_kkbox._DatasetKKBoxAdmin().read_df()
     sac3 = from_simulations._SAC3().read_df()
     rr_nl_nhp = from_simulations._RRNLNPH().read_df()
     sac_admin5 = from_simulations._SACAdmin5().read_df()
 
     datasets = {
-        "support.pt": support,
-        "metabric.pt": metabric,
-        "gbsg.pt": gbsg,
-        "flchain.pt": flchain,
-        "nwtco.pt": nwtco,
-        # kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
-        # kkbox = from_kkbox._DatasetKKBoxAdmin().read_df()
-        "sac3.pt": sac3,
-        "rr_nl_nhp.pt": rr_nl_nhp,
-        "sac_admin5.pt": sac_admin5,
+        # "support.pt": support,
+        # "metabric.pt": metabric,
+        # "gbsg.pt": gbsg,
+        # "flchain.pt": flchain,
+        # "nwtco.pt": nwtco,
+        "kkbox_v1.pt": kkbox_v1,
+        # 'kkbox': kkbox,
+        # "sac3.pt": sac3,
+        # "rr_nl_nhp.pt": rr_nl_nhp,
+        # "sac_admin5.pt": sac_admin5,
     }
 
     for n, d in datasets.items():
