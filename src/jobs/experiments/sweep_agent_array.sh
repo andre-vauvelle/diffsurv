@@ -1,19 +1,19 @@
 #!/bin/bash -l
 #$ -l tmem=20G
-#$ -l h_rt=50:0:0
+#$ -l h_rt=10:0:0
 #$ -S /bin/bash
 #$ -j y
 #$ -N sweep_agent_array
-#$ -t 1-20
-#$ -tc 10
+#$ -t 1-10
+#$ -tc 3
 
-#$ -o /home/vauvelle/pycharm-sftp/diffsurv/src/jobs/logs
-#$ -e /home/vauvelle/pycharm-sftp/diffsurv/src/jobs/logs/errors
+#$ -o /home/vauvelle/diffsurv/src/jobs/logs
+#$ -e /home/vauvelle/diffsurv/src/jobs/logs/errors
 
 ###$ -l gpu=true
 hostname
 date
-SOURCE_DIR='/home/vauvelle/pycharm-sftp/diffsurv/src'
+SOURCE_DIR='/home/vauvelle/diffsurv/src'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR || exit
 source /share/apps/source_files/cuda/cuda-11.2.source

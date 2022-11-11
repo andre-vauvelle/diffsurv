@@ -6,11 +6,11 @@
 #$ -j y
 #$ -N sweep_agent
 
-#$ -o /home/vauvelle/pycharm-sftp/diffsurv/src/jobs/logs
+#$ -o /home/vauvelle/diffsurv/src/jobs/logs
 
 hostname
 date
-SOURCE_DIR='/home/vauvelle/pycharm-sftp/diffsurv/'
+SOURCE_DIR='/home/vauvelle/diffsurv/'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR/src/ || exit
 source /share/apps/source_files/cuda/cuda-10.1.source
