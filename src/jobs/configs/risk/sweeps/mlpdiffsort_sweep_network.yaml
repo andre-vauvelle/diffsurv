@@ -29,7 +29,7 @@ parameters:
     value: 64
 command:
   - ${env}
-  - ${interpreter}
+  - python3
   - ${program}
   - fit
   - "--config"

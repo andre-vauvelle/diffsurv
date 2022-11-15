@@ -75,6 +75,7 @@ class DataModuleRisk(pl.LightningDataModule):
                 censored_events[:n_training_patients],
                 risk[:n_training_patients] if risk is not None else None,
             )
+            shuffle = True
         elif stage == "val":
             n_validation_patients = int(n_patients * self.val_split)
             dataset = DatasetRisk(
@@ -83,6 +84,7 @@ class DataModuleRisk(pl.LightningDataModule):
                 censored_events[-n_validation_patients:],
                 risk[-n_validation_patients:] if risk is not None else None,
             )
+            shuffle = False
         else:
             raise Exception("Stage must be either 'train' or 'val' ")
 
@@ -91,7 +93,7 @@ class DataModuleRisk(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             drop_last=True,
-            shuffle=True,
+            shuffle=shuffle,
         )
 
     def train_dataloader(self):

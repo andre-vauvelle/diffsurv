@@ -26,7 +26,7 @@ parameters:
   model.sorting_network:
     values: [bitonic, odd_even]
   trainer.max_epochs:
-    values: 100
+    value: 100
 command:
   - ${env}
   - ${interpreter}
@@ -35,7 +35,7 @@ command:
   - "--config"
   - "jobs/configs/risk/mlpdiffsort.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/kkbox_v1.pt:v0"
+  - "cardiors/diffsurv/kkbox_v1.pt:latest"
   - ${args}
 project: diffsurv
 entity: cardiors
