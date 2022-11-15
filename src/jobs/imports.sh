@@ -1,7 +1,7 @@
 #!/bin/bash -l
 hostname
 date
-SOURCE_DIR='/home/vauvelle/pycharm-sftp/diffsurv/src'
+SOURCE_DIR='/home/vauvelle/diffsurv/src'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
 cd $SOURCE_DIR
 

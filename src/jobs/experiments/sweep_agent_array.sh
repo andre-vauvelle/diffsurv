@@ -2,15 +2,15 @@
 #$ -l tmem=20G
 #$ -l h_rt=10:0:0
 #$ -S /bin/bash
+#$ -l gpu=true
 #$ -j y
 #$ -N sweep_agent_array
 #$ -t 1-10
-#$ -tc 3
+#$ -tc 2
 
 #$ -o /home/vauvelle/diffsurv/src/jobs/logs
 #$ -e /home/vauvelle/diffsurv/src/jobs/logs/errors
 
-###$ -l gpu=true
 hostname
 date
 SOURCE_DIR='/home/vauvelle/diffsurv/src'

@@ -9,6 +9,7 @@ trainer:
           - synthetic
           - risk
           - diffsort
+        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
@@ -33,7 +34,7 @@ trainer:
 data:
   #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
   #  local_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.1.pt
-  wandb_artifact: cardiors/diffsurv/kkbox_v1.pt:v1
+  wandb_artifact: cardiors/diffsurv/kkbox_v1.pt:latest
   val_split: 0.2
   batch_size: 64
   num_workers: 1

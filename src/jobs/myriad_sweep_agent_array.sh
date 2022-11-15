@@ -1,7 +1,8 @@
 #!/bin/bash -l
 #$ -l mem=16G
-#$ -l h_rt=10:00:00
+#$ -l h_rt=30:00:00
 #$ -S /bin/bash
+#$ -l gpu=1
 #$ -j y
 #$ -N myriad_submit
 #$ -t 1-10
@@ -10,7 +11,6 @@
 #$ -o /home/rmhivau/diffsurv/src/jobs/logs/
 #$ -e /home/rmhivau/diffsurv/src/jobs/logs/errors/
 
-#### -l gpu=1
 
 hostname
 date
