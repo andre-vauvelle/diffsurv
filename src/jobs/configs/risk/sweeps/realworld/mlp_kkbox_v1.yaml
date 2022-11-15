@@ -24,7 +24,7 @@ parameters:
     value: 100
 command:
   - ${env}
-  - ${interpreter}
+  - python3
   - ${program}
   - fit
   - "--config"
