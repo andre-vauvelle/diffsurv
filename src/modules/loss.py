@@ -1,146 +1,97 @@
-import pdb
+import math
+from typing import Optional
 
-import diffsort
+import numba
 import numpy as np
 import torch
 
-from modules.sorter import CustomDiffSortNet
 
-
-class SortingCrossEntropyLoss(torch.nn.Module):
-    """
-    Sorting Cross Entropy loss. Uses a differentiable sorter to find the loss between a true permutation and an
-    estimated permutation. Permutation are the set of events (patients) within a set ranked by risk (most likely event
-    first).
-
-    In the absence of full information with some labels missing due to censoring, soft-labels are used to determine the
-    true permutation matrix. Censored soft-labels are determined by the censoring time, an equal probability is
-    assigned to all labels with event times greater than the censoring time (could not have happened before censored
-    event). Events without censoring are assigned equal probability for each censored event
-    that happened before its event time, as the censored events, if continually observed could have manifested.
-    Cross entropy loss is applied using between estimated and true permutation matrices.
-    """
-
-    def __init__(self, sorter, eps=1e-6, weightings=None, ignore_censoring=False):
+class CauchyFunction(torch.nn.Module):
+    def __init__(self, steepness=1):
         super().__init__()
-        self.eps = eps
-        self.weightings = weightings
-        self.ignore_censoring = ignore_censoring
+        self.steepness = steepness
 
-    def forward(self, logits, events, durations):
-        losses = []
-        for i in range(logits.shape[1]):
-            lh, d, e = logits[:, i], durations[:, i], events[:, i]
-
-            # TODO: could refactor to dataloader
-            # Get the soft permutation matrix
-            _, perm_prediction = self.sorter(lh.unsqueeze(0))
-            perm_ground_truth = self._get_soft_perm(e, d)
-
-            if self.ignore_censoring:
-                weight = e
-            else:
-                weight = None
-            loss_fn = torch.nn.BCELoss(weight=weight)
-
-            loss = (perm_prediction, perm_ground_truth)
-            losses.append(loss)
-
-        # drop losses less than zero, ie no events in risk set
-        loss_tensor = torch.stack(losses)
-        loss_idx = loss_tensor.gt(0)
-
-        if self.weightings is None:
-            loss = loss_tensor[loss_idx].mean()
-        else:
-            # re-normalize weights
-            weightings = self.weightings[loss_idx] / self.weightings[loss_idx].sum()
-            loss = loss_tensor[loss_idx].mul(weightings).sum()
-
-        return loss
-
-    @staticmethod
-    def _get_soft_perm(events, d):
-        """
-        Returns the soft permutation matrix label for the given events and durations.
-
-        For a right-censored sample `i`, we only know that the risk must be lower than the risk of all other
-        samples with an event time lower than the censoring time of `i`, i.e. they must be ranked after
-        these events. We can thus assign p=0 of sample `i` being ranked before any prior events, and uniform
-        probability that it has a higher ranking.
-
-        For another sample `j` with an event at `t_j`, we know that the risk must be lower than the risk of
-        other samples with an event time lower than `t_j`, and higher than the risk of other samples either
-        with an event time higher than `t_j` or with a censoring time higher than `t_j`. We do not know how
-        the risk compares to samples with censoring time lower than `t_j`, and thus have to assign uniform
-        probability to their rankings.
-        :param events: binary vector indicating if event happened or not
-        :param d: time difference between observation start and event time
-        :return:
-        """
-        # Initialize the soft permutation matrix
-        perm_matrix = torch.zeros(events.shape[0], events.shape[0], device=events.device)
-
-        idx = torch.argsort(d, descending=False)
-
-        # Used to return to origonal order
-        perm_un_ascending = torch.nn.functional.one_hot(idx).transpose(-2, -1).float()
-
-        events = events[idx]
-        event_counts = 0
-
-        # TODO: refactor interms of comparable events
-        for i, e in enumerate(events):
-            # Right censored samples
-            if not e:
-                # assign 0 for all samples with event time lower than the censoring time
-                perm_matrix[i, :i] = 0
-                # assign uniform probability to all samples with event time higher than the censoring time
-                # includes previous censored events that happened before the event time
-                perm_matrix[i, event_counts:] = 1 / (perm_matrix[i, event_counts:].shape[0])
-            # events
-            else:
-                # assign uniform probability to an event and all censored events with shorted time,
-                perm_matrix[i, event_counts : i + 1] = 1 / (
-                    perm_matrix[i, event_counts : i + 1].shape[0]
-                )
-                event_counts += 1
-
-        # permute to match the order of the input
-        perm_matrix = perm_un_ascending @ perm_matrix
-
-        # Unsqueeze for one batch
-        return perm_matrix.unsqueeze(0)
+    def forward(self, d):
+        v = self.steepness * d
+        alpha = 1 / math.pi * torch.atan(v) + 0.5
+        return alpha
 
 
-def test_diff_sort_loss_get_soft_perm():
-    """Test the soft permutation matrix label for the given events and durations."""
+class RankingLoss(torch.nn.Module):
+    """
+    Implments Ranking loss where
+    \text{ranking-loss} = \frac{1}{\\lvert{\\mathcal{A}\rvert}}\\sum_{(x_i, x_j) \\in \\mathcal{A}} \\phi(f_\theta(x_i) - f_\theta(x_j))
+    Keyword Arguments:
+        ranking_function{nn.Module} -- Function to pass differences to, could also be C
+    """
+
+    def __init__(self, ranking_function: torch.nn.Module = torch.nn.LogSigmoid):
+        super().__init__()
+        self.ranking_function = ranking_function()
+
+    def forward(
+        self,
+        logh: torch.Tensor,
+        events: torch.Tensor,
+        durations: torch.Tensor,
+        pair_mat: Optional[torch.Tensor] = None,
+    ):
+        # TODO: could be moved to dataloader
+        if pair_mat is None:
+            pair_mat = torch.Tensor(
+                pair_rank_mat(durations.detach().numpy(), events.detach().numpy())
+            )
+
+        index_i, index_j = torch.nonzero(pair_mat, as_tuple=True)
+        return torch.sum(-self.ranking_function(logh[index_i] - logh[index_j])) / index_i.shape[0]
+
+
+@numba.njit
+def _pair_rank_mat(mat, idx_durations, events, dtype="float32"):
+    n = len(idx_durations)
+    for i in range(n):
+        dur_i = idx_durations[i]
+        ev_i = events[i]
+        if ev_i == 0:
+            continue
+        for j in range(n):
+            dur_j = idx_durations[j]
+            ev_j = events[j]
+            if (dur_i < dur_j) or ((dur_i == dur_j) and (ev_j == 0)):
+                mat[i, j] = 1
+    return mat
+
+
+def test_ranking_loss():
     test_events = torch.Tensor([0, 0, 1, 0, 1, 0, 0])
     test_durations = torch.Tensor([1, 3, 2, 4, 5, 6, 7])
     logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
 
-    required_perm_matrix = torch.Tensor(
-        [
-            [1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7],
-            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-            [1 / 2, 1 / 2, 0, 0, 0, 0, 0],
-            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-            [0, 1 / 4, 1 / 4, 1 / 4, 1 / 4, 0, 0],
-            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
-            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
-        ]
-    )
-    required_perm_matrix = required_perm_matrix.unsqueeze(0)
+    loss_fn = RankingLoss()
+    loss = loss_fn(logh, test_events, test_durations)
+    assert not torch.isnan(loss)
 
-    test_events = test_events.unsqueeze(-1)
-    test_durations = test_durations.unsqueeze(-1)
 
-    sorter = CustomDiffSortNet(sorting_network_type="bitonic", size=7)
-    loss = SortingCrossEntropyLoss(sorter)
+def pair_rank_mat(idx_durations, events, dtype="float32"):
+    """Indicator matrix R with R_ij = 1{T_i < T_j and D_i = 1}.
+    So it takes value 1 if we observe that i has an event before j and zero otherwise.
 
-    true_perm_matrix = loss._get_soft_perm(test_events[:, 0], test_durations[:, 0])
+    Arguments:
+        idx_durations {np.array} -- Array with durations.
+        events {np.array} -- Array with event indicators.
 
-    assert torch.allclose(required_perm_matrix, true_perm_matrix)
+    Keyword Arguments:
+        dtype {str} -- dtype of array (default: {'float32'})
+
+    Returns:
+        np.array -- n x n matrix indicating if i has an observerd event before j.
+    """
+    idx_durations = idx_durations.reshape(-1)
+    events = events.reshape(-1)
+    n = len(idx_durations)
+    mat = np.zeros((n, n), dtype=dtype)
+    mat = _pair_rank_mat(mat, idx_durations, events, dtype)
+    return mat
 
 
 class CustomBCEWithLogitsLoss(torch.nn.BCEWithLogitsLoss):
@@ -325,4 +276,4 @@ def cox_loss_ties(pred, cens, tril, tied_matrix):
 
 
 if __name__ == "__main__":
-    test_diff_sort_loss_get_soft_perm()
+    test_ranking_loss()

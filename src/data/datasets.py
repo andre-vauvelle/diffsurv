@@ -1,9 +1,13 @@
+import math
 import random
-from typing import Optional
+from typing import Iterator, List, Optional, Sized
 
 import numpy as np
 import torch
+from torch.utils.data import RandomSampler, Sampler
 from torch.utils.data.dataset import Dataset
+
+from modules.loss import pair_rank_mat
 
 
 def flip(p):
@@ -53,6 +57,89 @@ class AbstractDataset(Dataset):
 
     def __len__(self):
         return len(self.tokens)
+
+
+class CaseControlBatchSampler(RandomSampler):
+    r"""Samples elements randomly. If without replacement, then sample from a shuffled dataset.
+    If with replacement, then user can specify :attr:`num_samples` to draw.
+
+    Args:
+        data_source (Dataset): dataset to sample from
+        controls_per_case (int): number of valid comparable controls per case in the batch, will
+        replacement (bool): samples are drawn on-demand with replacement if ``True``, default=``False``
+        num_samples (int): number of samples to draw, default=`len(dataset)`.
+        generator (Generator): Generator used in sampling.
+    """
+
+    def __init__(
+        self,
+        data_source: Sized,
+        batch_size: int,
+        controls_per_case: int = 1,
+        replacement: bool = True,
+        num_samples: Optional[int] = None,
+        generator=None,
+    ) -> None:
+        super().__init__(data_source, replacement, num_samples, generator)
+        self.controls_per_case = controls_per_case
+        self.batch_size = batch_size
+        assert (
+            self.batch_size % (self.controls_per_case + 1) == 0
+        ), "Must batch size must be factor of cases/control "
+        self.cases_per_batch = self.batch_size / (self.controls_per_case + 1)
+        self.total_batches = int(math.floor(self.num_samples / self.batch_size))
+
+    @property
+    def num_samples(self) -> int:
+        # dataset size might change at runtime
+        if self._num_samples is None:
+            self.data_source: DatasetRisk
+            return int(sum(1 - self.data_source.censored_events))
+        return self._num_samples
+
+    def __iter__(self) -> Iterator[List[int]]:
+        self.data_source: DatasetRisk
+
+        if self.generator is None:
+            seed = int(torch.empty((), dtype=torch.int64).random_().item())
+            generator = torch.Generator()
+            generator.manual_seed(seed)
+        else:
+            generator = self.generator
+
+        idx_durations = self.data_source.y_times
+        events = 1 - self.data_source.censored_events
+        n = len(self.data_source)
+
+        # idx_batch_store = []
+        idx_batch = []
+        # for i in torch.randperm(n, generator=generator):
+        for i in torch.randperm(n, generator=generator):
+            dur_i = idx_durations[i]
+            ev_i = events[i]
+            if ev_i == 0:
+                continue
+
+            controls_sampled = 0
+            for j in torch.randperm(n, generator=generator):
+                if j == i:  # cannot compare with self
+                    continue
+
+                dur_j = idx_durations[j]
+                ev_j = events[j]
+                if (dur_i < dur_j) or ((dur_i == dur_j) and (ev_j == 0)):
+                    idx_batch.append(j)  # add a control
+                    controls_sampled += 1
+
+                if controls_sampled == self.controls_per_case:
+                    idx_batch.append(i)  # add case
+                    break
+
+            if len(idx_batch) == self.batch_size:
+                random.shuffle(idx_batch)
+                ans = idx_batch
+                idx_batch = []  # start new batch
+                yield ans
 
 
 class DatasetRisk(Dataset):

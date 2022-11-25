@@ -7,7 +7,7 @@ from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 
 import wandb
-from data.datasets import DatasetRisk
+from data.datasets import CaseControlBatchSampler, DatasetRisk
 
 
 class DataModuleRisk(pl.LightningDataModule):
@@ -24,9 +24,11 @@ class DataModuleRisk(pl.LightningDataModule):
         setting: Optional[Literal["realworld", "synthetic"]] = None,
         val_split=0.2,
         batch_size=32,
+        controls_per_case: Optional[int] = None,
         num_workers=1,
     ):
         super().__init__()
+        self.controls_per_case = controls_per_case
         self.wandb_artifact = wandb_artifact
         self.val_split = val_split
         self.batch_size = batch_size
@@ -88,13 +90,21 @@ class DataModuleRisk(pl.LightningDataModule):
         else:
             raise Exception("Stage must be either 'train' or 'val' ")
 
-        return DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            drop_last=True,
-            shuffle=shuffle,
-        )
+        # Validation must be not have casecontrol sampling (Otherwise not all patients included)
+        if self.controls_per_case is None or stage == "val":
+            return DataLoader(
+                dataset,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                drop_last=True,
+                shuffle=shuffle,
+                sampler=None,
+            )
+        else:
+            sampler = CaseControlBatchSampler(
+                dataset, batch_size=self.batch_size, controls_per_case=self.controls_per_case
+            )
+            return CustomDataLoader(dataset, num_workers=self.num_workers, batch_sampler=sampler)
 
     def train_dataloader(self):
         train_dataloader = self.get_dataloader(stage="train")
@@ -109,3 +119,17 @@ class DataModuleRisk(pl.LightningDataModule):
 
     def test_dataloader(self):
         pass
+
+
+class CustomDataLoader(DataLoader):
+    """Only adds updated len due to custom case control sampling, this is for tqdm"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __len__(self):
+        if self.batch_sampler is None:
+            super().__len__()
+        else:
+            self.batch_sampler: CaseControlBatchSampler
+            return self.batch_sampler.total_batches
