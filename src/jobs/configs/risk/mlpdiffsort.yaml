@@ -26,6 +26,7 @@ trainer:
   max_epochs: 20
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
+#  log_every_n_steps: 1
   enable_checkpointing: False
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
@@ -34,7 +35,7 @@ trainer:
 data:
   #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
   #  local_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.1.pt
-  wandb_artifact: cardiors/diffsurv/kkbox_v1.pt:latest
+  wandb_artifact: cardiors/diffsurv/gbsg.pt:latest
   val_split: 0.2
   batch_size: 64
   num_workers: 1
