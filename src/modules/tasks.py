@@ -7,7 +7,7 @@ from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
 
 from models.metrics import CIndex
-from modules.loss import CoxPHLoss, CustomBCEWithLogitsLoss, SortingCrossEntropyLoss
+from modules.loss import CoxPHLoss, CustomBCEWithLogitsLoss, RankingLoss
 from modules.sorter import CustomDiffSortNet
 from omni.common import safe_string, unsafe_string
 
@@ -22,7 +22,7 @@ class RiskMixin(pl.LightningModule):
         self,
         grouping_labels,
         label_vocab,
-        task="risk",
+        loss_str="cox",
         weightings=None,
         use_weighted_loss=False,
         setting: Literal["synthetic", "realworld"] = "realworld",
@@ -32,6 +32,7 @@ class RiskMixin(pl.LightningModule):
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
         self.setting = setting
+        self.loss_str = loss_str
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
@@ -46,10 +47,16 @@ class RiskMixin(pl.LightningModule):
         if self.setting == "synthetic":
             self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
 
-        if task == "risk":
+        if loss_str == "cox":
             self.loss_func = CoxPHLoss()
-        elif task == "next":
+        elif loss_str == "ranking":
+            self.loss_func = RankingLoss()
+        elif loss_str == "binary":
             self.loss_func = CustomBCEWithLogitsLoss()
+        else:
+            raise NotImplementedError(
+                "loss_str must be one of the implmented {'cox', 'ranking', 'binary'}"
+            )
 
         if weightings is not None:
             self.loss_func_w = CoxPHLoss(weightings=weightings)
