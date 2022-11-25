@@ -1,11 +1,7 @@
 import importlib
 import os
-from random import random
 
 import _pickle as pickle
-import dill as dill
-import numpy as np
-import torch
 
 
 def safe_string(name):
@@ -26,13 +22,12 @@ def _create_folder_if_not_exist(filename):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
 
-def save_pickle(obj, filename, use_dill=False, protocol=4, create_folder=True):
-    """Basic pickle/dill dumping.
+def save_pickle(obj, filename, protocol=4, create_folder=True):
+    """Basic pickle dumping.
     Given trial_n python object and trial_n baseline_path, the method will save the object under that baseline_path.
     Args:
         obj (python object): The object to be saved.
         filename (str): Location to save the file.
-        use_dill (bool): Set True to save using dill.
         protocol (int): Pickling protocol (see pickle docs).
         create_folder (bool): Set True to create the folder if it does not already exist.
     Returns:
@@ -43,25 +38,18 @@ def save_pickle(obj, filename, use_dill=False, protocol=4, create_folder=True):
 
     # Save
     with open(filename, "wb") as file:
-        if not use_dill:
-            pickle.dump(obj, file, protocol=protocol)
-        else:
-            dill.dump(obj, file)
+        pickle.dump(obj, file, protocol=protocol)
 
 
-def load_pickle(filename, use_dill=False):
-    """Basic dill/pickle load function.
+def load_pickle(filename):
+    """Basic pickle load function.
     Args:
         filename (str): Location of the object.
-        use_dill (bool): Set True to load with dill.
     Returns:
         python object: The loaded object.
     """
     with open(filename, "rb") as file:
-        if not use_dill:
-            obj = pickle.load(file)
-        else:
-            obj = dill.load(file)
+        obj = pickle.load(file)
     return obj
 
 
