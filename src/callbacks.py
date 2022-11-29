@@ -14,6 +14,21 @@ from models.loggers import CustomWandbLogger
 from omni.common import _create_folder_if_not_exist
 
 
+class TorchTensorboardProfilerCallback(Callback):
+    """Quick-and-dirty Callback for invoking TensorboardProfiler during training.
+
+    For greater robustness, extend the pl.profiler.profilers.BaseProfiler. See
+    https://pytorch-lightning.readthedocs.io/en/stable/advanced/profiler.html"""
+
+    def __init__(self, profiler):
+        super().__init__()
+        self.profiler = profiler
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
+        self.profiler.step()
+        pl_module.log_dict(outputs)  # also logging the loss, while we're here
+
+
 class OnTrainEndResults(Callback):
     """Get results on training end!"""
 
