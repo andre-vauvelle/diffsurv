@@ -99,12 +99,15 @@ class DataModuleRisk(pl.LightningDataModule):
                 drop_last=True,
                 shuffle=shuffle,
                 sampler=None,
+                pin_memory=True,
             )
         else:
             sampler = CaseControlBatchSampler(
                 dataset, batch_size=self.batch_size, controls_per_case=self.controls_per_case
             )
-            return CustomDataLoader(dataset, num_workers=self.num_workers, batch_sampler=sampler)
+            return CustomDataLoader(
+                dataset, num_workers=self.num_workers, batch_sampler=sampler, pin_memory=True
+            )
 
     def train_dataloader(self):
         train_dataloader = self.get_dataloader(stage="train")
