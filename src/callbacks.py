@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import WandbLogger
+from torch.profiler import tensorboard_trace_handler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -22,6 +23,15 @@ class TorchTensorboardProfilerCallback(Callback):
 
     def __init__(self, profiler):
         super().__init__()
+
+        wait, warmup, active, repeat = 1, 1, 2, 1
+        total_steps = (wait + warmup + active) * (1 + repeat)
+        schedule = torch.profiler.schedule(wait=wait, warmup=warmup, active=active, repeat=repeat)
+        profiler = torch.profiler.profile(
+            schedule=schedule,
+            on_trace_ready=tensorboard_trace_handler("wandb/latest-run/tbprofile"),
+            with_stack=False,
+        )
         self.profiler = profiler
 
     def on_train_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
