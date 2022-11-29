@@ -21,11 +21,11 @@ class TorchTensorboardProfilerCallback(Callback):
     For greater robustness, extend the pl.profiler.profilers.BaseProfiler. See
     https://pytorch-lightning.readthedocs.io/en/stable/advanced/profiler.html"""
 
-    def __init__(self, profiler):
+    def __init__(self):
         super().__init__()
 
         wait, warmup, active, repeat = 1, 1, 2, 1
-        total_steps = (wait + warmup + active) * (1 + repeat)
+        # total_steps = (wait + warmup + active) * (1 + repeat)
         schedule = torch.profiler.schedule(wait=wait, warmup=warmup, active=active, repeat=repeat)
         profiler = torch.profiler.profile(
             schedule=schedule,
