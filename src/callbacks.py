@@ -36,7 +36,6 @@ class TorchTensorboardProfilerCallback(Callback):
 
     def on_train_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
         self.profiler.step()
-        pl_module.log_dict(outputs)  # also logging the loss, while we're here
 
 
 class OnTrainEndResults(Callback):
