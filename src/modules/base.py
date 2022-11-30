@@ -25,9 +25,12 @@ class BaseModel(pl.LightningModule):
     def configure_optimizers(self):
         sparse = [p for n, p in self.named_parameters() if "embed" in n]
         not_sparse = [p for n, p in self.named_parameters() if "embed" not in n]
-        optimizer_sparse = torch.optim.SparseAdam(sparse, lr=self.lr)
         optimizer = torch.optim.Adam(not_sparse, lr=self.lr)
-        return optimizer_sparse, optimizer
+        if sparse:
+            optimizer_sparse = torch.optim.SparseAdam(sparse, lr=self.lr)
+            return optimizer_sparse, optimizer
+        else:
+            return optimizer
 
     @staticmethod
     def _row_unique(x):
