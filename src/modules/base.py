@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.utilities import rank_zero_warn
@@ -56,7 +58,7 @@ class BaseModel(pl.LightningModule):
             "`_shared_eval_step` must be implemented to be used with the Lightning Trainer"
         )
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx: Optional[int] = None):
         rank_zero_warn("`training_step` must be implemented to be used with the Lightning Trainer")
 
     def validation_step(self, batch, batch_idx):

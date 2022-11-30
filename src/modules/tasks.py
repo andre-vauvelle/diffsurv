@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 
 import numpy as np
 import pytorch_lightning as pl
@@ -65,7 +65,7 @@ class RiskMixin(pl.LightningModule):
 
         self.use_weighted_loss = use_weighted_loss
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx: Optional[int] = None):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
         if self.loss_func_w is not None:
@@ -240,7 +240,7 @@ class SortingRiskMixin(RiskMixin):
         loss = losses.mean()
         return loss, predictions, perm_prediction, perm_ground_truth
 
-    def training_step(self, batch, batch_idx, optimizer_idx=None, *args, **kwargs):
+    def training_step(self, batch, batch_idx, optimizer_idx: Optional[int] = None, *args, **kwargs):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
         loss, _, _, _ = self.sorting_step(logits, label_multihot, label_times)
 
