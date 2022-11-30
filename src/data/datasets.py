@@ -79,6 +79,7 @@ class CaseControlBatchSampler(RandomSampler):
         replacement: bool = True,
         num_samples: Optional[int] = None,
         generator=None,
+        drop_last=True,
     ) -> None:
         super().__init__(data_source, replacement, num_samples, generator)
         self.controls_per_case = controls_per_case
@@ -88,6 +89,9 @@ class CaseControlBatchSampler(RandomSampler):
         ), "Must batch size must be factor of cases/control "
         self.cases_per_batch = self.batch_size / (self.controls_per_case + 1)
         self.total_batches = int(math.floor(self.num_samples / self.batch_size))
+        self.drop_last = drop_last
+        # TODO: support drop last.
+        assert drop_last, "Currently doesn't support keeping last..?"
 
     @property
     def num_samples(self) -> int:
