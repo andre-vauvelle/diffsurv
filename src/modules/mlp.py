@@ -35,21 +35,22 @@ class MultilayerBase(BaseModel):
         self.cov_size = cov_size
         self.only_covs = only_covs
 
-        if pretrained_embedding_path is None:
-            self.embed = nn.EmbeddingBag(
-                num_embeddings=input_dim,
-                embedding_dim=embedding_dim,
-                padding_idx=SYMBOL_IDX["PAD"],
-                mode="mean",
-                sparse=True,
-            )
-        else:
-            # Use preprocess_ukb_omop.py to preprocess
-            pretrained_embedding = torch.load(pretrained_embedding_path).float()
-            # pretrained_embedding = pd.read_feather(pretrained_embedding_path)
-            self.embed = nn.EmbeddingBag.from_pretrained(
-                pretrained_embedding, freeze=freeze_pretrained, sparse=True
-            )
+        if not only_covs:
+            if pretrained_embedding_path is None:
+                self.embed = nn.EmbeddingBag(
+                    num_embeddings=input_dim,
+                    embedding_dim=embedding_dim,
+                    padding_idx=SYMBOL_IDX["PAD"],
+                    mode="mean",
+                    sparse=True,
+                )
+            else:
+                # Use preprocess_ukb_omop.py to preprocess
+                pretrained_embedding = torch.load(pretrained_embedding_path).float()
+                # pretrained_embedding = pd.read_feather(pretrained_embedding_path)
+                self.embed = nn.EmbeddingBag.from_pretrained(
+                    pretrained_embedding, freeze=freeze_pretrained, sparse=True
+                )
 
         if only_covs:
             head_input_dim = self.cov_size
