@@ -21,21 +21,28 @@ class TorchTensorboardProfilerCallback(Callback):
     For greater robustness, extend the pl.profiler.profilers.BaseProfiler. See
     https://pytorch-lightning.readthedocs.io/en/stable/advanced/profiler.html"""
 
-    def __init__(self):
+    def __init__(self, save_dir: str = "wandb/latest-run/tbprofile"):
         super().__init__()
-
+        self.save_dir = save_dir
         wait, warmup, active, repeat = 1, 1, 2, 1
         # total_steps = (wait + warmup + active) * (1 + repeat)
         schedule = torch.profiler.schedule(wait=wait, warmup=warmup, active=active, repeat=repeat)
         profiler = torch.profiler.profile(
             schedule=schedule,
-            on_trace_ready=tensorboard_trace_handler("wandb/latest-run/tbprofile"),
+            on_trace_ready=tensorboard_trace_handler(save_dir),
             with_stack=False,
         )
         self.profiler = profiler
 
     def on_train_batch_end(self, trainer, pl_module, outputs, *args, **kwargs):
         self.profiler.step()
+
+    def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        logger = trainer.logger
+        exp: wandb.sdk.wandb_run.Run = logger.experiment
+        filename = os.listdir(self.save_dir)[0]
+        path = os.path.join(self.save_dir, filename)
+        exp.log_artifact(path, type="profile")
 
 
 class OnTrainEndResults(Callback):
