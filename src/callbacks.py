@@ -1,4 +1,5 @@
 import os
+import socket
 from typing import Optional
 
 import pandas as pd
@@ -40,7 +41,8 @@ class TorchTensorboardProfilerCallback(Callback):
     def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         logger = trainer.logger
         exp: wandb.sdk.wandb_run.Run = logger.experiment
-        filename = os.listdir(self.save_dir)[0]
+        worker_name = f"{socket.gethostname()}_{str(os.getpid())}"
+        filename = [f for f in os.listdir(self.save_dir) if worker_name in f][0]
         path = os.path.join(self.save_dir, filename)
         exp.log_artifact(path, type="profile")
 
