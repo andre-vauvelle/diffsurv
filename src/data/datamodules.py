@@ -25,7 +25,7 @@ class DataModuleRisk(pl.LightningDataModule):
         val_split=0.2,
         batch_size=32,
         controls_per_case: Optional[int] = None,
-        num_workers=1,
+        num_workers: int = os.cpu_count(),
     ):
         super().__init__()
         self.controls_per_case = controls_per_case
