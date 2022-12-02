@@ -212,7 +212,9 @@ class SortingRiskMixin(RiskMixin):
         possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
         # impossible_predictions = (1 - perm_ground_truth) * perm_prediction.sum(dim=1)
 
-        loss = torch.nn.BCELoss()(possible_predictions, torch.ones_like(possible_predictions))
+        loss = torch.nn.BCELoss()(
+            torch.clamp(possible_predictions, 1e-8, 1 - 1e-8), torch.ones_like(possible_predictions)
+        )
 
         return loss, lh, perm_prediction, perm_ground_truth
 
