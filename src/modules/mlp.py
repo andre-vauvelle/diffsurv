@@ -82,34 +82,23 @@ class MultilayerBase(BaseModel):
         self.valid_metrics = metrics.clone(prefix="val/")
         self.save_hyperparameters()
 
-    def forward(self, idx, covariates=None) -> torch.Tensor:
-        if self.only_covs:
-            pooled = covariates.float().requires_grad_()
-        else:
-            pooled = self.embed(idx)
-            if self.cov_size is not None:
-                pooled = torch.cat((pooled, covariates), dim=1)
-
+    def forward(self, covariates) -> torch.Tensor:
+        pooled = covariates.float().requires_grad_()
         logits = self.head(pooled)
 
         return logits
 
     def _shared_eval_step(self, batch, batch_idx):
-        token_idx = batch["token_idx"]
-        # age_idx = batch['age_idx']
-        # position = batch['position']
-        # segment = batch['segment']
-        # mask = batch['mask']
         covariates = batch["covariates"]
         label_multihot = batch["labels"]
         label_times = batch["label_times"]
-        # censorings = batch['censorings']
-        # exclusions = batch['exclusions']
 
-        if not self.count:
-            token_idx = self._row_unique(token_idx)
-
-        logits = self(token_idx, covariates=covariates)
+        x_shape = covariates.shape
+        if len(x_shape) == 3:
+            covariates = covariates.reshape(-1, *x_shape[2:])
+        logits = self(covariates)
+        if len(x_shape) == 3:
+            logits = logits.reshape(*x_shape[:2], 1)
 
         return logits, label_multihot, label_times
 

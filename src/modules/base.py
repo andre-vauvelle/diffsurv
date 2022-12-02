@@ -14,12 +14,8 @@ class BaseModel(pl.LightningModule):
     ):
         super().__init__()
 
-    def forward(self, input_tuple, covariates) -> torch.Tensor:
-        token_idx, age_idx, position, segment, mask = input_tuple
-
-        _, pooled = self.model(token_idx, age_idx, position, segment, mask)
-        if self.used_covs is not None:
-            pooled = torch.cat((pooled, covariates), dim=1)
+    def forward(self, covariates) -> torch.Tensor:
+        pooled = torch.cat((pooled, covariates), dim=1)
 
         logits = self.head(pooled)
         return logits

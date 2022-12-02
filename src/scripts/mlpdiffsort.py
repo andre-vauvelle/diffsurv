@@ -16,7 +16,7 @@ class CustomLightningCLI(LightningCLI):
         parser.link_arguments(
             "data.grouping_labels", "model.grouping_labels", apply_on="instantiate"
         )
-        parser.link_arguments("data.batch_size", "model.sorter_size", apply_on="instantiate")
+        # parser.link_arguments("data.batch_size", "model.sorter_size", apply_on="instantiate")
         parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
 
     def before_fit(self):

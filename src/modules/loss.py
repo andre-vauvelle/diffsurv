@@ -29,21 +29,12 @@ class RankingLoss(torch.nn.Module):
         super().__init__()
         self.ranking_function = ranking_function()
 
-    def forward(
-        self,
-        logh: torch.Tensor,
-        events: torch.Tensor,
-        durations: torch.Tensor,
-        pair_mat: Optional[torch.Tensor] = None,
-    ):
-        # TODO: could be moved to dataloader
-        if pair_mat is None:
-            pair_mat = torch.Tensor(
-                pair_rank_mat(durations.detach().numpy(), events.detach().numpy())
-            )
-
-        index_i, index_j = torch.nonzero(pair_mat, as_tuple=True)
-        return torch.sum(-self.ranking_function(logh[index_i] - logh[index_j])) / index_i.shape[0]
+    def forward(self, logh: torch.Tensor, label_multihot, label_times):
+        assert (
+            logh.shape[1] == 2
+        ), f"must have pair wise comparisons,max num_compare==2, currently is {logh.shape[1]}"
+        # index 1 is always case... current implmentation relies on correct ordering of indicies
+        return torch.sum(-self.ranking_function(logh[:, 1, :] - logh[:, 0, :])) / logh.shape[0]
 
 
 @numba.njit
@@ -122,19 +113,23 @@ class CoxPHLoss(torch.nn.Module):
         :param weightings: weighting of the loss function
         :return:
         """
-
         losses = []
-        for i in range(logh.shape[1]):
-            lh, d, e = logh[:, i], durations[:, i], events[:, i]
-            if self.method == "efron":
-                loss = self._efron_loss(lh, d, e, eps)
-            elif self.method == "ranked_list":
-                loss = self._loss_ranked_list(lh, d, e, eps)
-            else:
-                raise ValueError(
-                    f'Unknown method: {self.method}, choose one of ["efron", "ranked_list"]'
-                )
-            losses.append(loss)
+        if len(logh) == 2:
+            logh = logh.unsqueeze(0)
+            events = events.unsqueeze(0)
+            durations = durations.unsqueeze(0)
+        for b in range(logh.shape[0]):
+            for i in range(logh.shape[2]):
+                lh, d, e = logh[b, :, i], durations[b, :, i], events[b, :, i]
+                if self.method == "efron":
+                    loss = self._efron_loss(lh, d, e, eps)
+                elif self.method == "ranked_list":
+                    loss = self._loss_ranked_list(lh, d, e, eps)
+                else:
+                    raise ValueError(
+                        f'Unknown method: {self.method}, choose one of ["efron", "ranked_list"]'
+                    )
+                losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
         loss_tensor = torch.stack(losses)

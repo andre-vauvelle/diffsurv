@@ -7,7 +7,7 @@ from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 
 import wandb
-from data.datasets import CaseControlBatchSampler, DatasetRisk
+from data.datasets import CaseControlBatchSampler, CaseControlRiskDataset, DatasetRisk
 
 
 class DataModuleRisk(pl.LightningDataModule):
@@ -71,7 +71,8 @@ class DataModuleRisk(pl.LightningDataModule):
         n_patients = x_covar.shape[0]
         if stage == "train":
             n_training_patients = int(n_patients * (1 - self.val_split))
-            dataset = DatasetRisk(
+            dataset = CaseControlRiskDataset(
+                self.controls_per_case,
                 x_covar[:n_training_patients],
                 y_times[:n_training_patients],
                 censored_events[:n_training_patients],
@@ -91,23 +92,16 @@ class DataModuleRisk(pl.LightningDataModule):
             raise Exception("Stage must be either 'train' or 'val' ")
 
         # Validation must be not have casecontrol sampling (Otherwise not all patients included)
-        if self.controls_per_case is None or stage == "val":
-            return DataLoader(
-                dataset,
-                batch_size=self.batch_size,
-                num_workers=self.num_workers,
-                drop_last=True,
-                shuffle=shuffle,
-                sampler=None,
-                pin_memory=True,
-            )
-        else:
-            sampler = CaseControlBatchSampler(
-                dataset, batch_size=self.batch_size, controls_per_case=self.controls_per_case
-            )
-            return CustomDataLoader(
-                dataset, num_workers=self.num_workers, batch_sampler=sampler, pin_memory=True
-            )
+        # if self.controls_per_case is None or stage == "val":
+        return DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            drop_last=True,
+            shuffle=shuffle,
+            sampler=None,
+            pin_memory=True,
+        )
 
     def train_dataloader(self):
         train_dataloader = self.get_dataloader(stage="train")

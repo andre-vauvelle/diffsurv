@@ -93,13 +93,14 @@ class RiskMixin(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
         # calc and use weighted loss
-        if self.loss_func_w is not None:
-            loss = self.loss_func_w(logits, label_multihot, label_times)
-        else:
-            loss = self.loss_func(logits, label_multihot, label_times)
 
-        if not torch.isnan(loss):
-            self.log("val/loss", loss, prog_bar=True)
+        # if self.loss_func_w is not None:
+        #     loss = self.loss_func_w(logits, label_multihot, label_times)
+        # else:
+        #     loss = self.loss_func(logits, label_multihot, label_times)
+        #
+        # if not torch.isnan(loss):
+        #     self.log("val/loss", loss, prog_bar=True)
 
         predictions = torch.sigmoid(logits)
         self.valid_metrics.update(predictions, label_multihot.int())
@@ -170,13 +171,13 @@ class SortingRiskMixin(RiskMixin):
 
     def __init__(
         self,
-        sorting_network="bitonic",
-        steepness=30,
-        art_lambda=0.2,
+        sorting_network: Literal["odd_even", "bitonic"],
+        steepness: int = 30,
+        art_lambda: float = 0.2,
         distribution="cauchy",
-        sorter_size=128,
-        ignore_censoring=False,
-        use_buckets=True,
+        sorter_size: int = 128,
+        ignore_censoring: bool = False,
+        use_buckets: bool = True,
         *args,
         **kwargs,
     ):
@@ -193,60 +194,59 @@ class SortingRiskMixin(RiskMixin):
         self.ignore_censoring = ignore_censoring
         self.use_buckets = use_buckets
 
-    def sorting_step(self, logits, label_multihot, label_times):
-        losses = torch.zeros(logits.shape[1])
-        predictions = torch.zeros_like(label_times)
-        for i in range(logits.shape[1]):
-            lh, d, e = logits[:, i], label_times[:, i], label_multihot[:, i]
+    def sorting_step(self, logits, perm_ground_truth, events):
+        lh = logits
 
+        # Normalize within risk set...
+        if len(lh.shape) == 3:
+            lh = (lh - lh.mean(dim=1, keepdim=True)) / lh.std(dim=1, keepdim=True)
+        else:
             lh = (lh - lh.mean(dim=0, keepdim=True)) / lh.std(dim=0, keepdim=True)
 
-            # TODO: could refactor to dataloader
-            # Get the soft permutation matrix
-            sort_out, perm_prediction = self.sorter(lh.unsqueeze(0))
-            perm_ground_truth = _get_soft_perm(e, d, self.use_buckets)
+        x_shape = lh.shape
+        if len(x_shape) == 3:
+            lh = lh.reshape(-1, lh.shape[1])
 
-            if self.ignore_censoring:
-                weight = e
-            else:
-                weight = None
+        sort_out, perm_prediction = self.sorter(lh)
 
-            if self.use_buckets:
-                bi = 0
-                batch_losses = []
-                for ri in range(perm_ground_truth.shape[1]):
-                    normal_idxs = torch.argwhere(perm_ground_truth[bi, ri] >= 0)
-                    bucked_idxs = torch.argwhere(perm_ground_truth[bi, ri] == -1.0)
+        possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
+        # impossible_predictions = (1 - perm_ground_truth) * perm_prediction.sum(dim=1)
 
-                    normal_preds = perm_prediction[bi, ri, normal_idxs]
-                    bucket_preds = perm_prediction[bi, ri, bucked_idxs]
-                    # bucket_pred = torch.logsumexp(bucket_preds, 0, keepdim=True)
-                    bucket_pred = torch.sum(bucket_preds, 0, keepdim=True)
-                    preds = torch.cat((normal_preds, bucket_pred))
+        loss = torch.nn.BCELoss()(possible_predictions, torch.ones_like(possible_predictions))
 
-                    normal_truth = perm_ground_truth[bi, ri, normal_idxs]
-                    bucket_truth = 1.0 - torch.sum(normal_truth, 0, keepdim=True)
-                    truths = torch.cat((normal_truth, bucket_truth))
-
-                    loss = torch.nn.BCELoss()(torch.clamp(preds.T, 1e-8, 1 - 1e-8), truths.T)
-                    batch_losses.append(loss)
-                loss = torch.mean(torch.stack(batch_losses))
-            else:
-                loss = torch.nn.BCELoss(weight=weight)(perm_prediction, perm_ground_truth)
-
-            predictions[:, i] = lh
-            losses[i] = loss
-
-        loss = losses.mean()
-        return loss, predictions, perm_prediction, perm_ground_truth
+        return loss, lh, perm_prediction, perm_ground_truth
 
     def training_step(self, batch, batch_idx, optimizer_idx: Optional[int] = None, *args, **kwargs):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
-        loss, _, _, _ = self.sorting_step(logits, label_multihot, label_times)
+        loss, _, _, _ = self.sorting_step(logits, batch["soft_perm_mat"], label_multihot)
 
         self.log("train/loss", loss, prog_bar=True)
 
         return loss
+
+    def validation_step(self, batch, batch_idx):
+        logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
+
+        # self.log("val/loss", loss, prog_bar=True)
+
+        self.valid_metrics.update(logits, label_multihot.int())
+        # label_times = batch['label_times']
+        exclusions = batch["exclusions"]
+
+        # c-index is applied per label, collect inputs
+        self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
+
+        if self.setting == "synthetic":
+            all_observed = torch.ones_like(label_multihot)
+            self.log_cindex(
+                self.valid_cindex_risk,
+                exclusions,
+                logits,
+                all_observed,
+                batch["risk"],
+            )
+
+        # return loss, predictions, perm_prediction, perm_ground_truth
 
     def predict_step(
         self, batch: Any, batch_idx: int, dataloader_idx: int = 0
@@ -270,34 +270,6 @@ class SortingRiskMixin(RiskMixin):
                     numpy_batch[k + f"_{i}"] = new_v[:, i].numpy().tolist()
 
         return numpy_batch
-
-    def validation_step(self, batch, batch_idx):
-        logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
-
-        loss, predictions, perm_prediction, perm_ground_truth = self.sorting_step(
-            logits, label_multihot, label_times
-        )
-
-        self.log("val/loss", loss, prog_bar=True)
-
-        self.valid_metrics.update(predictions, label_multihot.int())
-        # label_times = batch['label_times']
-        exclusions = batch["exclusions"]
-
-        # c-index is applied per label, collect inputs
-        self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
-
-        if self.setting == "synthetic":
-            all_observed = torch.ones_like(label_multihot)
-            self.log_cindex(
-                self.valid_cindex_risk,
-                exclusions,
-                logits,
-                all_observed,
-                batch["risk"],
-            )
-
-        return loss, predictions, perm_prediction, perm_ground_truth
 
 
 def _get_soft_perm(events, d, buckets=True):
@@ -338,21 +310,20 @@ def _get_soft_perm(events, d, buckets=True):
             # assign uniform probability to all samples with event time higher than the censoring time
             # includes previous censored events that happened before the event time
             perm_matrix[i, event_counts:] = (
-                -1 if buckets else 1 / (perm_matrix[i, event_counts:].shape[0])
+                1 if buckets else 1 / (perm_matrix[i, event_counts:].shape[0])
             )
         # events
         else:
             # assign uniform probability to an event and all censored events with shorted time,
             perm_matrix[i, event_counts : i + 1] = (
-                -1 if buckets else 1 / (perm_matrix[i, event_counts : i + 1].shape[0])
+                1 if buckets else 1 / (perm_matrix[i, event_counts : i + 1].shape[0])
             )
             event_counts += 1
 
     # permute to match the order of the input
     perm_matrix = perm_un_ascending @ perm_matrix
 
-    # Unsqueeze for one batch
-    return perm_matrix.unsqueeze(0)
+    return perm_matrix
 
 
 def test_diff_sort_loss_get_soft_perm():

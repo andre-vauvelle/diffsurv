@@ -1,13 +1,16 @@
 import math
 import random
-from typing import Iterator, List, Optional, Sized
+from typing import Iterator, List, Optional, Sized, Tuple
 
+import numba
 import numpy as np
 import torch
+from pytorch_lightning.overrides.distributed import DistributedSamplerWrapper
 from torch.utils.data import RandomSampler, Sampler
 from torch.utils.data.dataset import Dataset
 
 from modules.loss import pair_rank_mat
+from modules.tasks import _get_soft_perm
 
 
 def flip(p):
@@ -161,11 +164,6 @@ class DatasetRisk(Dataset):
 
     def __getitem__(self, index):
         covariates = self.x_covar[index]
-        token_idx = torch.zeros(1)
-        age_idx = torch.zeros(1)
-        position = torch.zeros(1)
-        segment = torch.zeros(1)
-        mask = torch.zeros(1)
 
         future_label_multihot = 1 - self.censored_events[index]
         future_label_times = self.y_times[index]
@@ -179,11 +177,6 @@ class DatasetRisk(Dataset):
             "censorings": censorings,
             "exclusions": exclusions,
             # input
-            "token_idx": token_idx,
-            "age_idx": age_idx,
-            "position": position,
-            "segment": segment,
-            "mask": mask,
             "covariates": covariates,
         }
 
@@ -197,6 +190,111 @@ class DatasetRisk(Dataset):
 
     def __len__(self):
         return self.x_covar.shape[0]
+
+
+class CaseControlRiskDataset(Dataset):
+    def __init__(
+        self,
+        n_controls: int,
+        x_covar: torch.Tensor,
+        y_times: torch.Tensor,
+        censored_events: torch.Tensor,
+        risk: Optional[torch.Tensor] = None,
+        n_cases: int = 1,
+    ):
+        self.n_controls = n_controls
+        self.n_cases = n_cases
+        self.x_covar = x_covar
+        self.y_times = y_times
+        self.censored_events = censored_events
+        self.risk = risk
+
+    def __getitem__(self, index):
+        idx_durations = self.y_times
+        events = 1 - self.censored_events
+        idxs = get_case_control_idxs(
+            # mat: np.ndarray,
+            n_cases=self.n_cases,
+            n_controls=self.n_controls,
+            idx_durations=idx_durations.numpy(),
+            events=events.numpy(),
+        )
+
+        assert events.shape[1] == 1, "does not support multi class yet.."
+        soft_perm_mat = _get_soft_perm(events[idxs].flatten(), idx_durations[idxs].flatten())
+
+        covariates = self.x_covar[idxs]
+
+        future_label_multihot = events[idxs]
+        future_label_times = self.y_times[idxs]
+        censorings = self.censored_events[idxs]
+        exclusions = torch.zeros_like(censorings)
+
+        output = {
+            # labels
+            "labels": future_label_multihot,
+            "label_times": future_label_times,
+            "censorings": censorings,
+            "exclusions": exclusions,
+            # input
+            "covariates": covariates,
+            "soft_perm_mat": soft_perm_mat,
+        }
+
+        if self.risk is not None:
+            risk = self.risk[idxs]
+            if not isinstance(risk, np.ndarray):
+                risk = np.array(risk).reshape(-1, 1)
+            output.update({"risk": risk})
+
+        return output
+
+    def __len__(self):
+        return (1 - self.censored_events).sum()
+
+
+#
+# @numba.njit
+def get_case_control_idxs(
+    # mat: np.ndarray,
+    n_cases: int,
+    n_controls: int,
+    idx_durations: np.ndarray,
+    events: np.ndarray,
+) -> List[int]:  # Tuple[List[int], np.ndarray]:
+    """
+    Get the case and control idxs that are acceptable pairs
+    # :param mat:
+    :param n_cases:
+    :param n_controls:
+    :param idx_durations:
+    :param events:
+    :return:
+    """
+    idx_batch = []
+    n = idx_durations.shape[0]
+    cases_sampled = 0
+    case_idxs = np.arange(n)[events.flatten() == 1]
+    while cases_sampled < n_cases:
+        i = np.random.choice(case_idxs)
+        dur_i = idx_durations[i]
+        cases_sampled += 1
+
+        controls_sampled = 0
+        while controls_sampled < n_controls:
+            j = np.random.choice(np.arange(n))
+            if j == i:  # cannot compare with self
+                continue
+            dur_j = idx_durations[j]
+            ev_j = events[j]
+            if (dur_i < dur_j) or ((dur_i == dur_j) and (ev_j == 0)):
+                idx_batch.append(j)  # add a control
+                controls_sampled += 1
+            if controls_sampled == n_controls:
+                idx_batch.append(i)  # add case
+                break
+
+    return idx_batch
 
 
 class TensorDataset(Dataset):
