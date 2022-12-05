@@ -281,9 +281,10 @@ def get_case_control_idxs(
         cases_sampled += 1
 
         controls_sampled = 0
+        # TODO: Rely on sorted idx_durations and we can easily a sample without replacement
         while controls_sampled < n_controls:
             j = np.random.choice(np.arange(n))
-            if j == i:  # cannot compare with self
+            if (j == i) or (j in idx_batch):  # cannot compare with self or repeat controls
                 continue
             dur_j = idx_durations[j]
             ev_j = events[j]
