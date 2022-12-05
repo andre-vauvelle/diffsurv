@@ -210,11 +210,19 @@ class SortingRiskMixin(RiskMixin):
         sort_out, perm_prediction = self.sorter(lh)
 
         possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
-        # impossible_predictions = (1 - perm_ground_truth) * perm_prediction.sum(dim=1)
+        if self.ignore_censoring:
+            loss = torch.nn.BCELoss()(
+                torch.clamp(possible_predictions, 1e-8, 1 - 1e-8),
+                torch.ones_like(possible_predictions),
+            )
+        else:
+            impossible_predictions = (1 - perm_ground_truth) * perm_prediction.sum(dim=1)
+            preds = torch.concat((possible_predictions, impossible_predictions))
+            truths = torch.concat(
+                (torch.ones_like(possible_predictions), torch.zeros_like(possible_predictions))
+            )
 
-        loss = torch.nn.BCELoss()(
-            torch.clamp(possible_predictions, 1e-8, 1 - 1e-8), torch.ones_like(possible_predictions)
-        )
+            loss = torch.nn.BCELoss()(torch.clamp(preds, 1e-8, 1 - 1e-8), truths)
 
         return loss, lh, perm_prediction, perm_ground_truth
 
