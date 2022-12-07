@@ -33,7 +33,9 @@ trainer:
 data:
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
 #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/linear_exp_synthetic_no_censoring.pt
-  wandb_artifact: cardiors/diffsurv/rr_nl_nhp.pt:latest
+#  wandb_artifact: cardiors/diffsurv/rr_nl_nhp.pt:latest
+#  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_0.3.pt:latest
+  wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.3.pt:latest
   val_split: 0.2
   batch_size: 64
   controls_per_case: 9

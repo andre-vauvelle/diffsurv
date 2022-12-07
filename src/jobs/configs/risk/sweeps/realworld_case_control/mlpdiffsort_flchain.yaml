@@ -20,28 +20,20 @@ parameters:
     max: 0.6
   data.batch_size:
     values: [16, 32, 64, 84, 128]
-  data.risk_set_size:
-    values: [1, 4, 8, 32, 64]
   model.steepness:
     min: 10
     max: 50
   model.sorting_network:
     values: [bitonic, odd_even]
-  trainer.max_epochs:
-    value: 10
-  trainer.val_check_interval:
-    value: 10
-  trainer.limit_train_batches:
-    value: 200
 command:
   - ${env}
-  - python3
+  - ${interpreter}
   - ${program}
   - fit
   - "--config"
   - "jobs/configs/risk/mlpdiffsort.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/kkbox_v1.pt:latest"
+  - "cardiors/diffsurv/flchain.pt:latest"
   - ${args}
 project: diffsurv
 entity: cardiors

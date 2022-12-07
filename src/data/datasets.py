@@ -200,6 +200,7 @@ class CaseControlRiskDataset(Dataset):
         y_times: torch.Tensor,
         censored_events: torch.Tensor,
         risk: Optional[torch.Tensor] = None,
+        return_perm_mat: bool = True,
         n_cases: int = 1,
     ):
         self.n_controls = n_controls
@@ -208,6 +209,7 @@ class CaseControlRiskDataset(Dataset):
         self.y_times = y_times
         self.censored_events = censored_events
         self.risk = risk
+        self.return_perm_mat = return_perm_mat
 
     def __getitem__(self, index):
         idx_durations = self.y_times
@@ -221,7 +223,10 @@ class CaseControlRiskDataset(Dataset):
         )
 
         assert events.shape[1] == 1, "does not support multi class yet.."
-        soft_perm_mat = _get_soft_perm(events[idxs].flatten(), idx_durations[idxs].flatten())
+        if self.return_perm_mat:
+            soft_perm_mat = _get_soft_perm(events[idxs].flatten(), idx_durations[idxs].flatten())
+        else:
+            soft_perm_mat = None
 
         covariates = self.x_covar[idxs]
 
@@ -282,18 +287,13 @@ def get_case_control_idxs(
 
         controls_sampled = 0
         # TODO: Rely on sorted idx_durations and we can easily a sample without replacement
-        while controls_sampled < n_controls:
-            j = np.random.choice(np.arange(n))
-            if (j == i) or (j in idx_batch):  # cannot compare with self or repeat controls
-                continue
-            dur_j = idx_durations[j]
-            ev_j = events[j]
-            if (dur_i < dur_j) or ((dur_i == dur_j) and (ev_j == 0)):
-                idx_batch.append(j)  # add a control
-                controls_sampled += 1
-            if controls_sampled == n_controls:
-                idx_batch.append(i)  # add case
-                break
+        possible_controls_mask = (dur_i < idx_durations) | ((dur_i == idx_durations) & events == 0)
+        if sum(possible_controls_mask) == 0:
+            continue  # No possible controls for this case... ignore and move to the next!
+        possible_control_idxs = np.arange(n)[possible_controls_mask.flatten()]
+        control_idxs = np.random.choice(possible_control_idxs, n_controls, replace=False)
+        idx_batch.extend(control_idxs)
+        idx_batch.append(i)
 
     return idx_batch
 

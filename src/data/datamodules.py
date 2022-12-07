@@ -24,11 +24,11 @@ class DataModuleRisk(pl.LightningDataModule):
         setting: Optional[Literal["realworld", "synthetic"]] = None,
         val_split=0.2,
         batch_size=32,
-        controls_per_case: Optional[int] = None,
+        risk_set_size: Optional[int] = None,
         num_workers: int = os.cpu_count(),
     ):
         super().__init__()
-        self.controls_per_case = controls_per_case
+        self.controls_per_case = risk_set_size - 1  # one is a case...
         self.wandb_artifact = wandb_artifact
         self.val_split = val_split
         self.batch_size = batch_size

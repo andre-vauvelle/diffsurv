@@ -282,7 +282,7 @@ class SortingRiskMixin(RiskMixin):
         return numpy_batch
 
 
-def _get_soft_perm(events, d, buckets=True):
+def _get_soft_perm(events: torch.Tensor, d: torch.Tensor, buckets=True):
     """
     Returns the soft permutation matrix label for the given events and durations.
 
