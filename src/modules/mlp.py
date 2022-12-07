@@ -112,3 +112,4 @@ class MultilayerRisk(RiskMixin, MultilayerBase):
 class MultilayerDiffsort(SortingRiskMixin, MultilayerBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.save_hyperparameters()

@@ -21,7 +21,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self,
         wandb_artifact: Optional[str] = "qndre/diffsurv/pysurv_square_0.3.pt:v0",
         local_path: Optional[str] = None,
-        setting: Optional[Literal["realworld", "synthetic"]] = None,
+        setting: Optional[Literal["realworld", "synthetic"]] = "synthetic",
         val_split=0.2,
         batch_size=32,
         risk_set_size: Optional[int] = None,
@@ -56,6 +56,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.output_dim = data["y_times"].shape[1]
         self.label_vocab = {"token2idx": {"event0": 0}, "idx2token": {0: "event0"}}
         self.grouping_labels = {"all": ["event0"]}
+        self.save_hyperparameters()
 
     def get_dataloader(self, stage: Literal["train", "val"]):
         data = torch.load(self.path)
@@ -96,7 +97,9 @@ class DataModuleRisk(pl.LightningDataModule):
         # if self.controls_per_case is None or stage == "val":
         return DataLoader(
             dataset,
-            batch_size=self.batch_size,
+            batch_size=self.batch_size
+            if stage == "train"
+            else self.batch_size * self.risk_set_size,
             num_workers=self.num_workers,
             drop_last=True,
             shuffle=shuffle,

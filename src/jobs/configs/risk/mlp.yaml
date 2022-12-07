@@ -38,7 +38,7 @@ data:
   wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.3.pt:latest
   val_split: 0.2
   batch_size: 64
-  controls_per_case: 9
+  risk_set_size: 10
   num_workers: 1
 model:
   head_layers: 2
