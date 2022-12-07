@@ -28,6 +28,7 @@ class DataModuleRisk(pl.LightningDataModule):
         num_workers: int = os.cpu_count(),
     ):
         super().__init__()
+        self.risk_set_size = risk_set_size
         self.controls_per_case = risk_set_size - 1  # one is a case...
         self.wandb_artifact = wandb_artifact
         self.val_split = val_split
