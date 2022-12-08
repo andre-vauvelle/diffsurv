@@ -25,7 +25,7 @@ class RiskMixin(pl.LightningModule):
         loss_str="cox",
         weightings=None,
         use_weighted_loss=False,
-        setting: Literal["synthetic", "realworld"] = "realworld",
+        setting: str = "realworld",
         **kwargs,
     ):
         super().__init__(**kwargs)
