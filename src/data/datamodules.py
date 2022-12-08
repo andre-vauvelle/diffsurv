@@ -21,7 +21,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self,
         wandb_artifact: Optional[str] = "qndre/diffsurv/pysurv_square_0.3.pt:v0",
         local_path: Optional[str] = None,
-        setting: Optional[Literal["realworld", "synthetic"]] = "synthetic",
+        setting: str = "synthetic",
         val_split=0.2,
         batch_size=32,
         risk_set_size: Optional[int] = None,
