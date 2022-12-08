@@ -215,7 +215,6 @@ class CaseControlRiskDataset(Dataset):
         idx_durations = self.y_times
         events = 1 - self.censored_events
         idxs = get_case_control_idxs(
-            # mat: np.ndarray,
             n_cases=self.n_cases,
             n_controls=self.n_controls,
             idx_durations=idx_durations.numpy(),
@@ -259,7 +258,7 @@ class CaseControlRiskDataset(Dataset):
 
 
 #
-# @numba.njit
+@numba.njit
 def get_case_control_idxs(
     # mat: np.ndarray,
     n_cases: int,
@@ -288,7 +287,7 @@ def get_case_control_idxs(
         controls_sampled = 0
         # TODO: Rely on sorted idx_durations and we can easily a sample without replacement
         possible_controls_mask = (dur_i < idx_durations) | ((dur_i == idx_durations) & events == 0)
-        if sum(possible_controls_mask) == 0:
+        if not possible_controls_mask.sum():
             continue  # No possible controls for this case... ignore and move to the next!
         possible_control_idxs = np.arange(n)[possible_controls_mask.flatten()]
         control_idxs = np.random.choice(possible_control_idxs, n_controls, replace=False)
