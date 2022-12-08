@@ -16,7 +16,7 @@ class CustomLightningCLI(LightningCLI):
         parser.link_arguments(
             "data.grouping_labels", "model.grouping_labels", apply_on="instantiate"
         )
-        parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
+        # parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
 
 
 # class CustomSaveConfigCallback(SaveConfigCallback):
