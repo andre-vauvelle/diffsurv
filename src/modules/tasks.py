@@ -25,12 +25,13 @@ class RiskMixin(pl.LightningModule):
         loss_str="cox",
         weightings=None,
         use_weighted_loss=False,
+        setting: Literal["synthetic", "realworld"] = "realworld",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
-        self.setting = None
+        self.setting = setting
         self.loss_str = loss_str
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
@@ -43,7 +44,8 @@ class RiskMixin(pl.LightningModule):
         c_index_metrics = MetricCollection(
             {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
         )
-        self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
+        if self.setting == "synthetic":
+            self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
 
         if loss_str == "cox":
             self.loss_func = CoxPHLoss()
