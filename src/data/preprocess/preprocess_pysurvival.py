@@ -89,6 +89,8 @@ def gen_pysurvival(
             "survival_distribution": survival_distribution,
             "risk_type": risk_type,
             "censored_proportion": censored_proportion,
+            "input_dim": len(feature_weights),
+            "output_dim": 1,
             "alpha": alpha,
             "beta": beta,
             "feature_weights": feature_weights,
