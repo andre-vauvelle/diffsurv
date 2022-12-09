@@ -1,6 +1,6 @@
 # wandb sweep
 method: random
-program: scripts/mlpdiffsort.py
+program: scripts/mlp.py
 metric:
   name: hp_metric
   goal: maximize
@@ -10,7 +10,7 @@ parameters:
   model.lr:
     distribution: log_uniform_values
     min: 1e-4 # 0.0001
-    max: 3e-2
+    max: 1e-2
   model.head_layers:
     values: [1, 2, 3]
   model.head_hidden_dim:
@@ -20,24 +20,19 @@ parameters:
     max: 0.6
   data.batch_size:
     values: [32, 64, 84, 128]
-  model.steepness:
-    min: 10
-    max: 50
-  model.sorting_network:
-    values: [bitonic, odd_even]
   trainer.max_epochs:
     value: 50
   data.risk_set_size:
-    values: [ 1, 4, 8, 16, 32, 64]
-  model.ignore_censoring:
-    values: [False, True]
+    values: [ 2, 4, 8, 16, 32, 64, 128]
+  data.num_workers:
+    value: -1
 command:
   - ${env}
   - python3
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/risk/mlpdiffsort.yaml"
+  - "jobs/configs/risk/mlp.yaml"
   - "--data.wandb_artifact"
   - "cardiors/diffsurv/kkbox_v1:latest"
   - ${args}

@@ -38,7 +38,8 @@ class DataModuleRisk(pl.LightningDataModule):
             api = wandb.Api()
             artifact = api.artifact(self.wandb_artifact)
             self.wandb_dir = artifact.download(root=f"../data/wandb/{self.wandb_artifact}")
-            self.setting = artifact.metadata["setting"]
+            setting = artifact.metadata["setting"]
+            self.setting = setting
             self.input_dim = artifact.metadata["input_dim"]
             self.cov_size = artifact.metadata["input_dim"]
             self.output_dim = artifact.metadata["output_dim"]
