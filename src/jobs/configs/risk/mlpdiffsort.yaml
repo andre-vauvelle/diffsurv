@@ -6,9 +6,9 @@ trainer:
         entity: cardiors
         tags:
           - mlp
-          - synthetic
           - risk
           - diffsort
+          - case-control-sampling
         save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
@@ -25,7 +25,7 @@ trainer:
     #    save_dir: "mlpdiffsort_synthetic"
   max_epochs: 20
   check_val_every_n_epoch: 1
-  val_check_interval: 10
+  val_check_interval: 100
   log_every_n_steps: 1
   enable_checkpointing: False
   num_sanity_val_steps: 0
@@ -39,7 +39,7 @@ data:
 #  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_0.3.pt:latest
   wandb_artifact: cardiors/diffsurv/kkbox_v1:latest
 #  wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.3.pt:latest
-  val_split: 0.2
+#  val_split: 0.2
   batch_size: 64
   risk_set_size: 10
   num_workers: 1

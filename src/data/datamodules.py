@@ -22,8 +22,8 @@ class DataModuleRisk(pl.LightningDataModule):
         wandb_artifact: Optional[str] = "qndre/diffsurv/pysurv_square_0.3.pt:v0",
         local_path: Optional[str] = None,
         setting: str = "realworld",
-        val_split=0.2,
-        batch_size=32,
+        val_split: Optional[float] = 0.2,
+        batch_size: int = 32,
         risk_set_size: Optional[int] = None,
         num_workers: int = 0,
     ):
