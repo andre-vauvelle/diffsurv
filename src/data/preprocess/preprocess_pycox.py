@@ -1,6 +1,7 @@
 import os.path
 from typing import Dict, List
 
+import numpy as np
 import pandas as pd
 import torch
 from pycox.datasets import from_deepsurv, from_kkbox, from_rdatasets, from_simulations
@@ -23,13 +24,13 @@ def preprocess_columns(
         )
 
     for c in columns_to_one_hot:
-        one_hots = OneHotEncoder(sparse=False).fit_transform(
-            dataset_to_process.loc[:, c].values.reshape(-1, 1)
-        )
+        enc = OneHotEncoder(sparse=False)
+        one_hots = enc.fit_transform(dataset_to_process.loc[:, c].values.reshape(-1, 1))
         proportions = one_hots.sum(axis=0) / one_hots.shape[0]
         hots_to_keep = [i for i, p in enumerate(proportions) if p > min_cat_prop]
         one_hots = one_hots[:, hots_to_keep]
-        one_hots_df = pd.DataFrame(one_hots, columns=[c + f"_{i}" for i in hots_to_keep])
+        kept_cols = np.array(enc.categories_[0])[hots_to_keep]
+        one_hots_df = pd.DataFrame(one_hots, columns=[c + f"_{i}" for i in kept_cols])
         dataset_to_process.drop(columns=[c], inplace=True)
         dataset_to_process = pd.concat([one_hots_df, dataset_to_process], axis=1)
 
@@ -155,70 +156,7 @@ def preprocess_pycox(
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
         y_times = dataset.edrel.to_numpy()
         censored_events = 1 - dataset.rel.to_numpy()
-    elif name == "kkbox_v1.pt":
-        x_covar_columns = [
-            "n_prev_churns",
-            "log_days_between_subs",
-            "log_days_since_reg_init",
-            "log_payment_plan_days",
-            "log_plan_list_price",
-            "log_actual_amount_paid",
-            "is_auto_renew",
-            "is_cancel",
-            "city_0",
-            "city_1",
-            "city_2",
-            "city_3",
-            "city_4",
-            "city_5",
-            "city_6",
-            "city_7",
-            "city_8",
-            "city_9",
-            "city_10",
-            "city_11",
-            "city_12",
-            "city_13",
-            "city_14",
-            "city_15",
-            "city_16",
-            "city_19",
-            "city_20",
-            "city_21",
-            "gender_0",
-            "gender_1",
-            "gender_2",
-            "registered_via_0",
-            "registered_via_1",
-            "registered_via_2",
-            "registered_via_3",
-            "registered_via_5",
-            "registered_via_7",
-            "age_at_start",
-            "strange_age",
-            "nan_days_since_reg_init",
-            "no_prev_churns",
-        ]
-        columns_to_scale = [
-            "n_prev_churns",
-            "log_days_between_subs",
-            "log_days_since_reg_init",
-            "log_payment_plan_days",
-            "log_plan_list_price",
-            "log_actual_amount_paid",
-            "age_at_start",
-        ]
-        columns_to_one_hot = [
-            "city",
-            "gender",
-            "registered_via",
-        ]
-
-        dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, 0.001)
-        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
-        y_times = dataset.duration.to_numpy()
-        censored_events = 1 - dataset.event.to_numpy()
-
+        # TODO: refactor censored events to just events..
     else:
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
         y_times = dataset.duration.to_numpy()
@@ -256,30 +194,144 @@ def preprocess_pycox(
     return data
 
 
+def preprocess_kkbox(
+    save_artifact=True, save_path: str = os.path.join(DATA_DIR, "realworld", "kkbox_v1")
+):
+    train = from_kkbox._DatasetKKBoxChurn().read_df(subset="train")
+    val = from_kkbox._DatasetKKBoxChurn().read_df(subset="val")
+    test = from_kkbox._DatasetKKBoxChurn().read_df(subset="test")
+
+    datasets = {"train": train, "val": val, "test": test}
+
+    x_covar_columns = [
+        "n_prev_churns",
+        "log_days_between_subs",
+        "log_days_since_reg_init",
+        "log_payment_plan_days",
+        "log_plan_list_price",
+        "log_actual_amount_paid",
+        "is_auto_renew",
+        "is_cancel",
+        "city_1.0",
+        "city_3.0",
+        "city_4.0",
+        "city_5.0",
+        "city_6.0",
+        "city_7.0",
+        "city_8.0",
+        "city_9.0",
+        "city_10.0",
+        "city_11.0",
+        "city_12.0",
+        "city_13.0",
+        "city_14.0",
+        "city_15.0",
+        "city_16.0",
+        "city_17.0",
+        "city_18.0",
+        "city_21.0",
+        "city_22.0",
+        "city_nan",
+        "gender_female",
+        "gender_male",
+        "gender_nan",
+        "registered_via_3.0",
+        "registered_via_4.0",
+        "registered_via_7.0",
+        "registered_via_9.0",
+        "registered_via_13.0",
+        "registered_via_nan",
+        "age_at_start",
+        "strange_age",
+        "nan_days_since_reg_init",
+        "no_prev_churns",
+    ]
+    columns_to_scale = [
+        "n_prev_churns",
+        "log_days_between_subs",
+        "log_days_since_reg_init",
+        "log_payment_plan_days",
+        "log_plan_list_price",
+        "log_actual_amount_paid",
+        "age_at_start",
+    ]
+    columns_to_one_hot = [
+        "city",
+        "gender",
+        "registered_via",
+    ]
+
+    data_store = dict()
+    for stage, dataset in datasets.items():
+        dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, 0.001)
+        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+
+        x_covar = torch.Tensor(x_covar).float()
+        y_times = torch.Tensor(y_times).float().unsqueeze(-1)
+        censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
+
+        data = {"x_covar": x_covar, "y_times": y_times, "censored_events": censored_events}
+
+        data = {
+            "x_covar": x_covar,
+            "y_times": y_times,
+            "censored_events": censored_events,
+        }
+        name = f"kkbox_v1_{stage}.pt"
+        create_folder(save_path)
+
+        torch.save(data, os.path.join(save_path, name))
+        print(f"Saved pycox realworld dataset to: {save_path}")
+        data_store[name] = data
+
+    if save_artifact:
+        N = sum(df.shape[0] for df in datasets.values())
+        censored_proportion = 1 - float(sum(df.event.sum() for df in datasets.values()) / N)
+        n_covariates = int(x_covar.shape[1])
+        metadata = {
+            "name": "kkbox_v1",
+            "N": N,
+            "censored_proportion": censored_proportion,
+            "input_dim": n_covariates,
+            "output_dim": 1,
+            "setting": "realworld",
+        }
+        run = wandb.init(
+            job_type="preprocess_pycox",
+            project="diffsurv",
+            entity="cardiors",
+        )
+        artifact = wandb.Artifact("kkbox_v1", type="dataset", metadata=metadata)
+        artifact.add_dir(os.path.join(save_path))
+
+        run.log_artifact(artifact)
+
+
 if __name__ == "__main__":
-    support = from_deepsurv._Support().read_df()
-    metabric = from_deepsurv._Metabric().read_df()
-    gbsg = from_deepsurv._Gbsg().read_df()
-    flchain = from_rdatasets._Flchain().read_df()
-    nwtco = from_rdatasets._Nwtco().read_df()
-    kkbox_v1 = from_kkbox._DatasetKKBoxChurn().read_df()
-    # kkbox = from_kkbox._DatasetKKBoxAdmin().read_df()
-    sac3 = from_simulations._SAC3().read_df()
-    rr_nl_nhp = from_simulations._RRNLNPH().read_df()
-    sac_admin5 = from_simulations._SACAdmin5().read_df()
+    # support = from_deepsurv._Support().read_df()
+    # metabric = from_deepsurv._Metabric().read_df()
+    # gbsg = from_deepsurv._Gbsg().read_df()
+    # flchain = from_rdatasets._Flchain().read_df()
+    # nwtco = from_rdatasets._Nwtco().read_df()
+    # sac3 = from_simulations._SAC3().read_df()
+    # rr_nl_nhp = from_simulations._RRNLNPH().read_df()
+    # sac_admin5 = from_simulations._SACAdmin5().read_df()
+    #
+    # datasets = {
+    # "support.pt": support,
+    # "metabric.pt": metabric,
+    # "gbsg.pt": gbsg,
+    # "flchain.pt": flchain,
+    # "nwtco.pt": nwtco,
+    # 'kkbox': kkbox,
+    # "sac3.pt": sac3,
+    # "rr_nl_nhp.pt": rr_nl_nhp,
+    # "sac_admin5.pt": sac_admin5,
+    # }
 
-    datasets = {
-        # "support.pt": support,
-        # "metabric.pt": metabric,
-        # "gbsg.pt": gbsg,
-        # "flchain.pt": flchain,
-        # "nwtco.pt": nwtco,
-        "kkbox_v1.pt": kkbox_v1,
-        # 'kkbox': kkbox,
-        # "sac3.pt": sac3,
-        # "rr_nl_nhp.pt": rr_nl_nhp,
-        # "sac_admin5.pt": sac_admin5,
-    }
+    # for n, d in datasets.items():
+    #     preprocess_pycox(n, d, save_artfifact=True)
 
-    for n, d in datasets.items():
-        preprocess_pycox(n, d, save_artfifact=True)
+    preprocess_kkbox(save_artifact=True)
