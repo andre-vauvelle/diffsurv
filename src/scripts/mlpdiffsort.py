@@ -20,11 +20,11 @@ class CustomLightningCLI(LightningCLI):
         parser.link_arguments("data.risk_set_size", "model.sorter_size", apply_on="instantiate")
         parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
 
-    def before_fit(self):
-        self.trainer.logger.experiment.watch(
-            self.model,
-            log="all",
-        )
+    # def before_fit(self):
+    #     self.trainer.logger.experiment.watch(
+    #         self.model,
+    #         log="all",
+    #     )
 
 
 # class CustomSaveConfigCallback(SaveConfigCallback):
