@@ -59,7 +59,7 @@ class OnTrainEndResults(Callback):
         store = []
         for batch in tqdm(iter(dataloader)):
             batch: dict
-            logits = pl_module(0, covariates=batch["covariates"])
+            logits = pl_module(covariates=batch["covariates"])
 
             batch.update({"logits": logits})
 
