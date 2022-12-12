@@ -43,6 +43,8 @@ def preprocess_pycox(
     """Take the pycox datasets and save them as artifacts in the format we use."""
 
     x_covar_columns = [c for c in dataset.columns if "x" == c[0]]
+    risk = None
+    setting = "realworld"
     if name == "support.pt":
         new_columns = [
             "age",
@@ -157,6 +159,12 @@ def preprocess_pycox(
         y_times = dataset.edrel.to_numpy()
         censored_events = 1 - dataset.rel.to_numpy()
         # TODO: refactor censored events to just events..
+    elif name == "rr_nl_nhp.pt":
+        x_covar = dataset.loc[:, x_covar_columns].to_numpy()
+        y_times = dataset.duration.to_numpy()
+        censored_events = 1 - dataset.event.to_numpy()
+        risk = dataset.duration_true * -1  # event times inversely proportional to risk
+        setting = "synthetic"
     else:
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
         y_times = dataset.duration.to_numpy()
@@ -166,7 +174,16 @@ def preprocess_pycox(
     y_times = torch.Tensor(y_times).float().unsqueeze(-1)
     censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
 
-    data = {"x_covar": x_covar, "y_times": y_times, "censored_events": censored_events}
+    if risk is not None:
+        risk = torch.Tensor(risk).float().unsqueeze(-1)
+        data = {
+            "x_covar": x_covar,
+            "y_times": y_times,
+            "censored_events": censored_events,
+            "risk": risk,
+        }
+    else:
+        data = {"x_covar": x_covar, "y_times": y_times, "censored_events": censored_events}
     save_path = os.path.join(DATA_DIR, "realworld")
     create_folder(save_path)
 
@@ -181,7 +198,9 @@ def preprocess_pycox(
             "N": N,
             "censored_proportion": censored_proportion,
             "n_covariates": n_covariates,
-            "setting": "realworld",
+            "setting": setting,
+            "input_dim": n_covariates,
+            "output_dim": 1,
         }
         run = wandb.init(
             job_type="preprocess_pycox",
@@ -316,22 +335,22 @@ if __name__ == "__main__":
     # flchain = from_rdatasets._Flchain().read_df()
     # nwtco = from_rdatasets._Nwtco().read_df()
     # sac3 = from_simulations._SAC3().read_df()
-    # rr_nl_nhp = from_simulations._RRNLNPH().read_df()
+    rr_nl_nhp = from_simulations._RRNLNPH().read_df()
     # sac_admin5 = from_simulations._SACAdmin5().read_df()
     #
-    # datasets = {
-    # "support.pt": support,
-    # "metabric.pt": metabric,
-    # "gbsg.pt": gbsg,
-    # "flchain.pt": flchain,
-    # "nwtco.pt": nwtco,
-    # 'kkbox': kkbox,
-    # "sac3.pt": sac3,
-    # "rr_nl_nhp.pt": rr_nl_nhp,
-    # "sac_admin5.pt": sac_admin5,
-    # }
+    datasets = {
+        # "support.pt": support,
+        # "metabric.pt": metabric,
+        # "gbsg.pt": gbsg,
+        # "flchain.pt": flchain,
+        # "nwtco.pt": nwtco,
+        # 'kkbox': kkbox,
+        # "sac3.pt": sac3,
+        "rr_nl_nhp.pt": rr_nl_nhp,
+        # "sac_admin5.pt": sac_admin5,
+    }
 
-    # for n, d in datasets.items():
-    #     preprocess_pycox(n, d, save_artfifact=True)
+    for n, d in datasets.items():
+        preprocess_pycox(n, d, save_artfifact=True)
 
-    preprocess_kkbox(save_artifact=True)
+    # preprocess_kkbox(save_artifact=True)
