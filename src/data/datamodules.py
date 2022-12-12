@@ -60,7 +60,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.grouping_labels = {"all": ["event0"]}
         self.save_hyperparameters()
 
-    def get_dataloader(self, stage: Literal["train", "val"]):
+    def get_dataloader(self, stage: Literal["train", "val", "test"]):
         if "kkbox_v1:" in self.wandb_artifact:
             # Pre-split provided
             if stage == "train":
@@ -147,7 +147,8 @@ class DataModuleRisk(pl.LightningDataModule):
         return self.val_dataloader()
 
     def test_dataloader(self):
-        pass
+        test_dataloader = self.get_dataloader(stage="test")
+        return test_dataloader
 
 
 class CustomDataLoader(DataLoader):
