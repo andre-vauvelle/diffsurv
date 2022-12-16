@@ -19,13 +19,14 @@ class DataModuleRisk(pl.LightningDataModule):
 
     def __init__(
         self,
-        wandb_artifact: Optional[str] = "qndre/diffsurv/pysurv_square_0.3.pt:v0",
+        wandb_artifact: Optional[str] = None,
         local_path: Optional[str] = None,
         setting: str = "realworld",
-        val_split: Optional[float] = 0.2,
+        val_split: Optional[float] = None,
         batch_size: int = 32,
         risk_set_size: Optional[int] = None,
         num_workers: int = 0,
+        return_perm_mat=True,
     ):
         super().__init__()
         self.risk_set_size = risk_set_size
@@ -34,6 +35,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.val_split = val_split
         self.batch_size = batch_size
         self.num_workers = os.cpu_count() if num_workers == -1 else num_workers
+        self.return_perm_mat = return_perm_mat
         if wandb_artifact is not None:
             api = wandb.Api()
             artifact = api.artifact(self.wandb_artifact)
@@ -51,6 +53,8 @@ class DataModuleRisk(pl.LightningDataModule):
                     f" local path, currently: {setting}"
                 )
             data = torch.load(os.path.join(self.path))
+            self.setting = "synthetic"
+            setting = "synthetic"
             self.input_dim = data["x_covar"].shape[1]
             self.cov_size = data["x_covar"].shape[1]
             self.output_dim = data["y_times"].shape[1]
@@ -61,7 +65,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.save_hyperparameters()
 
     def get_dataloader(self, stage: Literal["train", "val", "test"]):
-        if "kkbox_v1:" in self.wandb_artifact:
+        if self.wandb_artifact and "kkbox_v1:" in self.wandb_artifact:
             # Pre-split provided
             if stage == "train":
                 wandb_path = [p for p in os.listdir(self.wandb_dir) if "train" in p][0]
@@ -86,8 +90,9 @@ class DataModuleRisk(pl.LightningDataModule):
             )
         else:
             # Manually split data
-            wandb_path = os.listdir(self.wandb_dir)[0]
-            self.path = os.path.join(self.wandb_dir, wandb_path)
+            if self.wandb_artifact:
+                wandb_path = os.listdir(self.wandb_dir)[0]
+                self.path = os.path.join(self.wandb_dir, wandb_path)
             data = torch.load(self.path)
             x_covar, y_times, censored_events = (
                 data["x_covar"],
@@ -100,17 +105,22 @@ class DataModuleRisk(pl.LightningDataModule):
                 risk = None
             n_patients = x_covar.shape[0]
             if stage == "train":
-                n_training_patients = int(n_patients * (1 - self.val_split))
+                n_training_patients = (
+                    int(n_patients * (1 - self.val_split)) if self.val_split else n_patients
+                )
                 dataset = CaseControlRiskDataset(
                     self.controls_per_case,
                     x_covar[:n_training_patients],
                     y_times[:n_training_patients],
                     censored_events[:n_training_patients],
                     risk[:n_training_patients] if risk is not None else None,
+                    return_perm_mat=self.return_perm_mat,
                 )
                 shuffle = True
             elif stage == "val":
-                n_validation_patients = int(n_patients * self.val_split)
+                n_validation_patients = (
+                    int(n_patients * self.val_split) if self.val_split else n_patients
+                )
                 dataset = DatasetRisk(
                     x_covar[-n_validation_patients:],
                     y_times[-n_validation_patients:],
