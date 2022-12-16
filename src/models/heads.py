@@ -37,7 +37,7 @@ class PredictionHead(nn.Module):
             sequence = [nn.Dropout(dropout)]
             if batch_norm:
                 sequence.append(nn.BatchNorm1d(in_features))
-            sequence.append(nn.Linear(in_features=in_features, out_features=out_features))
+            # sequence.append(nn.Linear(in_features=in_features, out_features=out_features))
             self.final = nn.Linear(in_features=in_features, out_features=out_features, bias=False)
         self.layers = nn.Sequential(*sequence)
         self.act_fn = act_fn
@@ -54,6 +54,7 @@ class PredictionHead(nn.Module):
             torch.nn.init.constant_(m.weight, 1)
             torch.nn.init.constant_(m.bias, 0)
         elif isinstance(m, torch.nn.Linear):
-            torch.nn.init.kaiming_normal_(m.weight, mode="fan_out")
+            torch.nn.init.xavier_normal_(m.weight)
+            # torch.nn.init.kaiming_normal_(m.weight, mode="fan_out")
             if m.bias is not None:
                 torch.nn.init.zeros_(m.bias)

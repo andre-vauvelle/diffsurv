@@ -26,9 +26,11 @@ class RiskMixin(pl.LightningModule):
         weightings=None,
         use_weighted_loss=False,
         setting: str = "realworld",
+        log_weights=True,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.log_weights = log_weights
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
         self.setting = setting
@@ -74,6 +76,9 @@ class RiskMixin(pl.LightningModule):
             loss = self.loss_func(logits, label_multihot, label_times)
 
         self.log("train/loss", loss, prog_bar=True)
+        if self.log_weights:
+            for i, p in enumerate(self.head.final.weight.flatten()):
+                self.log(f"param_est_{i}", -p, prog_bar=True)
 
         return loss
 
@@ -178,6 +183,7 @@ class SortingRiskMixin(RiskMixin):
         sorter_size: int = 128,
         ignore_censoring: bool = False,
         use_buckets: bool = True,
+        norm_risk: bool = True,
         *args,
         **kwargs,
     ):
@@ -193,15 +199,17 @@ class SortingRiskMixin(RiskMixin):
         )
         self.ignore_censoring = ignore_censoring
         self.use_buckets = use_buckets
+        self.norm_risk = norm_risk
 
     def sorting_step(self, logits, perm_ground_truth, events):
         lh = logits
 
         # Normalize within risk set...
-        if len(lh.shape) == 3:
-            lh = (lh - lh.mean(dim=1, keepdim=True)) / lh.std(dim=1, keepdim=True)
-        else:
-            lh = (lh - lh.mean(dim=0, keepdim=True)) / lh.std(dim=0, keepdim=True)
+        if self.norm_risk:
+            if len(lh.shape) == 3:
+                lh = (lh - lh.mean(dim=1, keepdim=True)) / lh.std(dim=1, keepdim=True)
+            else:
+                lh = (lh - lh.mean(dim=0, keepdim=True)) / lh.std(dim=0, keepdim=True)
 
         x_shape = lh.shape
         if len(x_shape) == 3:
@@ -216,7 +224,8 @@ class SortingRiskMixin(RiskMixin):
                 torch.ones_like(possible_predictions),
             )
         else:
-            impossible_predictions = ((1 - perm_ground_truth) * perm_prediction).sum(dim=1)
+            # impossible_predictions = ((1 - perm_ground_truth) * perm_prediction).sum(dim=1)
+            impossible_predictions = 1 - possible_predictions
             preds = torch.concat((possible_predictions, impossible_predictions))
             truths = torch.concat(
                 (torch.ones_like(possible_predictions), torch.zeros_like(possible_predictions))
@@ -231,6 +240,9 @@ class SortingRiskMixin(RiskMixin):
         loss, _, _, _ = self.sorting_step(logits, batch["soft_perm_mat"], label_multihot)
 
         self.log("train/loss", loss, prog_bar=True)
+        if self.log_weights:
+            for i, p in enumerate(self.head.final.weight.flatten()):
+                self.log(f"param_est_{i}", -p, prog_bar=True)
 
         return loss
 

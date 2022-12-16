@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 import pytorch_lightning as pl
 import torch
@@ -11,8 +11,10 @@ class BaseModel(pl.LightningModule):
         input_dim=1390,
         output_dim=1390,
         used_covs=("age_ass", "sex"),
+        optimizer: Literal["adam", "sgd"] = "adam",
     ):
         super().__init__()
+        self.optimizer = optimizer
 
     def forward(self, covariates) -> torch.Tensor:
         pooled = torch.cat((pooled, covariates), dim=1)
@@ -23,7 +25,11 @@ class BaseModel(pl.LightningModule):
     def configure_optimizers(self):
         sparse = [p for n, p in self.named_parameters() if "embed" in n]
         not_sparse = [p for n, p in self.named_parameters() if "embed" not in n]
-        optimizer = torch.optim.Adam(not_sparse, lr=self.lr)
+        if self.optimizer == "adam":
+            optimizer = torch.optim.Adam(not_sparse, lr=self.lr)
+        elif self.optimizer == "sgd":
+            optimizer = torch.optim.SGD(not_sparse, lr=self.lr)
+
         if sparse:
             optimizer_sparse = torch.optim.SparseAdam(sparse, lr=self.lr)
             return optimizer_sparse, optimizer
