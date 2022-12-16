@@ -159,7 +159,7 @@ def preprocess_pycox(
         y_times = dataset.edrel.to_numpy()
         censored_events = 1 - dataset.rel.to_numpy()
         # TODO: refactor censored events to just events..
-    elif name == "rr_nl_nhp.pt":
+    elif name in {"rr_nl_nhp.pt", "sac3.pt", "sac_admin5.pt"}:
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
         y_times = dataset.duration.to_numpy()
         censored_events = 1 - dataset.event.to_numpy()
@@ -334,9 +334,9 @@ if __name__ == "__main__":
     # gbsg = from_deepsurv._Gbsg().read_df()
     # flchain = from_rdatasets._Flchain().read_df()
     # nwtco = from_rdatasets._Nwtco().read_df()
-    # sac3 = from_simulations._SAC3().read_df()
-    rr_nl_nhp = from_simulations._RRNLNPH().read_df()
-    # sac_admin5 = from_simulations._SACAdmin5().read_df()
+    sac3 = from_simulations._SAC3().read_df()
+    # rr_nl_nhp = from_simulations._RRNLNPH().read_df()
+    sac_admin5 = from_simulations._SACAdmin5().read_df()
     #
     datasets = {
         # "support.pt": support,
@@ -345,9 +345,9 @@ if __name__ == "__main__":
         # "flchain.pt": flchain,
         # "nwtco.pt": nwtco,
         # 'kkbox': kkbox,
-        # "sac3.pt": sac3,
-        "rr_nl_nhp.pt": rr_nl_nhp,
-        # "sac_admin5.pt": sac_admin5,
+        "sac3.pt": sac3,
+        # "rr_nl_nhp.pt": rr_nl_nhp,
+        "sac_admin5.pt": sac_admin5,
     }
 
     for n, d in datasets.items():

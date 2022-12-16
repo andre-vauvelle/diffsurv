@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -17,14 +17,29 @@ def gen_pysurvival(
     survival_distribution="weibull",
     risk_type="gaussian",
     censored_proportion=0.0,
-    alpha=0.1,
-    beta=3.2,
+    alpha: float = 1,
+    beta: float = 1,
     feature_weights=[1.0] * 3,
     censoring_function="independent",
     save_artifact=True,
+    tie_groups: Optional[int] = None,
 ) -> Dict[str, torch.Tensor]:
-    """Generate simulated dataset using gaussin covariates, a hazard function and time function.
+    """
+    Generate simulated dataset using gaussin covariates, a hazard function and time function.
     censored_events {0 - event happened, 1 - patients was censored}
+    :param name:
+    :param N:
+    :param survival_distribution:
+    :param risk_type:
+    :param censored_proportion:
+    :param alpha:
+    :param beta:
+    :param feature_weights:
+    :param censoring_function:
+    :param save_artifact:
+    :param tie_groups: group times into n groups, these are ties due to inexact measurement
+    :param tie_repeats: randomly repeat instance n tiems, these are exact ties
+    :return:
     """
 
     # Generating the dataset from a nonlinear Weibull parametric model
@@ -39,7 +54,9 @@ def gen_pysurvival(
 
     # Generating N random samples
     dataset = sim.generate_data(
-        num_samples=N, num_features=len(feature_weights), feature_weights=feature_weights
+        num_samples=N,
+        num_features=len(feature_weights),
+        feature_weights=feature_weights,
     )
     x_covar = dataset.iloc[:, : len(feature_weights)].to_numpy()
     y_times = dataset.time.to_numpy()
@@ -64,6 +81,23 @@ def gen_pysurvival(
     y_times[censoring_indices] = censoring_times[censoring_indices]
     censored_events = np.zeros(N, dtype=bool)
     censored_events[censoring_indices] = True
+
+    if tie_groups:
+        # intervals = np.linspace(min(y_times), max(y_times), tie_groups)
+        intervals = (
+            np.sort(y_times).reshape(tie_groups, -1).mean(-1)
+        )  # equal number of samples per bin...
+
+        def find_nearest(array, value):
+            array = np.asarray(array)
+            idx = (np.abs(array - value)).argmin()
+            return array[idx]
+
+        new_y = []
+
+        for y in y_times:
+            new_y.append(find_nearest(intervals, y))
+        y_times = np.array(new_y)
 
     x_covar = torch.Tensor(x_covar).float()
     y_times = torch.Tensor(y_times).float().unsqueeze(-1)
@@ -97,6 +131,7 @@ def gen_pysurvival(
             "censoring_function": censoring_function,
             "n_covariates": len(feature_weights),
             "setting": "synthetic",
+            "tie_groups": tie_groups,
         }
 
         run = wandb.init(job_type="preprocess_synthetic", project="diffsurv", entity="cardiors")
@@ -131,9 +166,9 @@ class CustomSimulationModel(SimulationModel):
             # 'exponential_a': np.random.exponential(scale=0.1, size=N),
             # 'exponential_b': np.random.exponential(scale=0.01, size=N),
             # 'gamma': np.random.gamma(shape=2., scale=2., size=N),
-            "normal_a": np.random.normal(loc=0, scale=5.0, size=N),
+            "normal_a": np.random.normal(loc=0, scale=1.0, size=N),
             # 'normal_b': np.random.normal(loc=10.0, scale=10.0, size=N),
-            # 'uniform_a': np.random.uniform(low=-2.0, high=10.0, size=N),
+            # 'uniform_a': np.random.uniform(low=-1.0, high=1.0, size=N),
             # 'uniform_b': np.random.uniform(low=-20.0, high=100.0, size=N),
             # 'laplace': np.random.laplace(loc=0.0, scale=1.0, size=N)
         }
@@ -142,6 +177,7 @@ class CustomSimulationModel(SimulationModel):
         # random.shuffle(list_distributions)
         # key = list_distributions[index]
         return "normal_a", distributions["normal_a"]
+        # return "uniform_a", distributions["uniform_a"]
 
     def generate_data(self, num_samples=100, num_features=3, feature_weights=None):
         """
@@ -286,42 +322,83 @@ if __name__ == "__main__":
     #                censored_proportion=0.3,
     #                alpha=0.1, beta=3.2, feature_weights=[1.] * 3, censoring_function='mean')
 
-    for c in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99):
-        gen_pysurvival(
-            f"pysurv_square_independent_{str(c)}.pt",
-            32000,
-            survival_distribution="weibull",
-            risk_type="square",
-            censored_proportion=c,
-            alpha=0.1,
-            beta=3.2,
-            feature_weights=[1.0] * 3,
-            censoring_function="independent",
-        )
+    # for c in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99):
+    #     gen_pysurvival(
+    #         f"pysurv_square_independent_{str(c)}.pt",
+    #         32000,
+    #         survival_distribution="weibull",
+    #         risk_type="square",
+    #         censored_proportion=c,
+    #         alpha=0.1,
+    #         beta=3.2,
+    #         feature_weights=[1.0] * 3,
+    #         censoring_function="independent",
+    #     )
+    #
+    # for c in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99):
+    #     gen_pysurvival(
+    #         f"pysurv_square_mean_{str(c)}.pt",
+    #         32000,
+    #         survival_distribution="weibull",
+    #         risk_type="square",
+    #         censored_proportion=c,
+    #         alpha=0.1,
+    #         beta=3.2,
+    #         feature_weights=[1.0] * 3,
+    #         censoring_function="mean",
+    #     )
+    #
+    # for N in (8000, 16000, 32000, 64000, 128000):
+    #     for d in (3, 100, 1000, 10000):
+    #         gen_pysurvival(
+    #             f"pysurv_square_independent_c0.3_N{N}_d{d}.pt",
+    #             N,
+    #             survival_distribution="weibull",
+    #             risk_type="square",
+    #             censored_proportion=0.3,
+    #             alpha=0.1,
+    #             beta=3.2,
+    #             feature_weights=[0.0001] * d,
+    #             censoring_function="independent",
+    #         )
 
-    for c in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99):
-        gen_pysurvival(
-            f"pysurv_square_mean_{str(c)}.pt",
-            32000,
-            survival_distribution="weibull",
-            risk_type="square",
-            censored_proportion=c,
-            alpha=0.1,
-            beta=3.2,
-            feature_weights=[1.0] * 3,
-            censoring_function="mean",
-        )
-
-    for N in (8000, 16000, 32000, 64000, 128000):
-        for d in (3, 100, 1000, 10000):
+    for trail in range(100):
+        for ties in (4, 5, 10, 50, 100, 200, 500, 1000, 2500, 5000, 10000):
             gen_pysurvival(
-                f"pysurv_square_independent_c0.3_N{N}_d{d}.pt",
-                N,
-                survival_distribution="weibull",
-                risk_type="square",
+                f"pysurv_linear_exp_independent_ties{str(ties)}_{trail}.pt",
+                10_000,
+                survival_distribution="exponential",
+                risk_type="linear",
                 censored_proportion=0.3,
-                alpha=0.1,
-                beta=3.2,
-                feature_weights=[0.0001] * d,
+                alpha=1,
+                beta=1,
+                feature_weights=[0.3, 0.6],
                 censoring_function="independent",
+                tie_groups=ties,
+                save_artifact=False,
             )
+        gen_pysurvival(
+            f"pysurv_linear_exp_independent_ties{0}_{trail}.pt",
+            10_000,
+            survival_distribution="exponential",
+            risk_type="linear",
+            censored_proportion=0.3,
+            alpha=1,
+            beta=1,
+            feature_weights=[0.3, 0.6],
+            censoring_function="independent",
+            tie_groups=None,
+            save_artifact=False,
+        )
+
+    # gen_pysurvival(
+    #     f"pysurv_linear_exp_independent_ties5_10000_0.3_unif.pt",
+    #     10_000,
+    #     survival_distribution="exponential",
+    #     risk_type="linear",
+    #     censored_proportion=0.3,
+    #     feature_weights=[0.3, 0.6],
+    #     censoring_function="independent",
+    #     tie_groups=5,
+    #     save_artifact=False
+    # )

@@ -4,6 +4,7 @@ trainer:
       init_args:
         project: diffsurv
         entity: cardiors
+        log_model: True
         tags:
           - mlp
           - risk
@@ -11,6 +12,11 @@ trainer:
           - case-control-sampling
         save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   callbacks:
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        auto_insert_metric_name: False
+        monitor: hp_metric
+        filename: '{epoch}-{hp_metric:.2f}'
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
         patience: 50
@@ -19,15 +25,16 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
-    #    - class_path: src.callbacks.LogPredictionsCallback
-    #    - class_path: callbacks.OnTrainEndResults
-    #  init_args:
-    #    save_dir: "mlpdiffsort_synthetic"
+    - class_path: src.callbacks.OnTrainEndResults
+      init_args:
+        save_dir: "mlpdiffsort_synthetic"
+#        - class_path: src.callbacks.LogPredictionsCallback
   max_epochs: 20
   check_val_every_n_epoch: 1
-  val_check_interval: 2
+#  val_check_interval: 5
+#  limit_train_batches: 50
   log_every_n_steps: 1
-  enable_checkpointing: False
+  enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 #  default_root_dir: /home/rmhivau/diffsurv/wandb/
@@ -36,13 +43,16 @@ data:
   #  path: /lustre/home/rmhivau/diffsurv/data/synthetic/nonlinear_exp_synthetic_no_censoring.pt
   #  local_path: /SAN/ihibiobank/denaxaslab/andre/UKBB/data/synthetic/pysurv_square_0.1.pt
 #  wandb_artifact: cardiors/diffsurv/rr_nl_nhp.pt:latest
-#  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_0.99.pt:latest
-  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_c0.3_N128000_d100.pt:latest
+  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_ties10.pt:latest
+#  wandb_artifact: cardiors/diffsurv/sac3.pt:v2
+#  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_0.3.pt:latest
+#  wandb_artifact: cardiors/diffsurv/pysurv_square_independent_c0.3_N128000_d100.pt:latest
+#  wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.99.pt:latest
 #  wandb_artifact: cardiors/diffsurv/kkbox_v1:latest
 #  wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.3.pt:latest
 #  val_split: 0.2
   batch_size: 64
-  risk_set_size: 10
+  risk_set_size: 32
   num_workers: 1
 model:
   head_layers: 2
