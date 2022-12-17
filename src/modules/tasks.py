@@ -177,7 +177,7 @@ class SortingRiskMixin(RiskMixin):
     def __init__(
         self,
         sorting_network: Literal["odd_even", "bitonic"],
-        steepness: int = 30,
+        steepness: float = 30.0,
         art_lambda: float = 0.2,
         distribution="cauchy",
         sorter_size: int = 128,
