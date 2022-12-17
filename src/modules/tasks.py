@@ -182,7 +182,6 @@ class SortingRiskMixin(RiskMixin):
         distribution="cauchy",
         sorter_size: int = 128,
         ignore_censoring: bool = False,
-        use_buckets: bool = True,
         norm_risk: bool = True,
         *args,
         **kwargs,
@@ -198,7 +197,6 @@ class SortingRiskMixin(RiskMixin):
             distribution=distribution,
         )
         self.ignore_censoring = ignore_censoring
-        self.use_buckets = use_buckets
         self.norm_risk = norm_risk
 
     def sorting_step(self, logits, perm_ground_truth, events):
@@ -228,7 +226,10 @@ class SortingRiskMixin(RiskMixin):
             impossible_predictions = 1 - possible_predictions
             preds = torch.concat((possible_predictions, impossible_predictions))
             truths = torch.concat(
-                (torch.ones_like(possible_predictions), torch.zeros_like(possible_predictions))
+                (
+                    torch.ones_like(possible_predictions),
+                    torch.zeros_like(possible_predictions),
+                )
             )
 
             loss = torch.nn.BCELoss()(torch.clamp(preds, 1e-8, 1 - 1e-8), truths)
@@ -294,7 +295,7 @@ class SortingRiskMixin(RiskMixin):
         return numpy_batch
 
 
-def _get_soft_perm(events: torch.Tensor, d: torch.Tensor, buckets=True):
+def _get_soft_perm(events: torch.Tensor, d: torch.Tensor):
     """
     Returns the soft permutation matrix label for the given events and durations.
 
@@ -323,32 +324,38 @@ def _get_soft_perm(events: torch.Tensor, d: torch.Tensor, buckets=True):
     events = events[idx]
     event_counts = 0
 
-    # TODO: refactor interms of comparable events
-    for i, e in enumerate(events):
+    idx_stack = list(range(len(idx)))
+    idx_stack.reverse()
+    i = []
+    while idx_stack:
+        i.append(idx_stack.pop())
+        # Handle Ties: Look ahead, if next is also an event and has the same time, append to index
+        if idx_stack and i and (events[i[-1] + 1]) and (d[i[-1]] == d[i[-1] + 1]):
+            continue
+
+        e = all(events[i])
         # Right censored samples
         if not e:
             # assign 0 for all samples with event time lower than the censoring time
-            perm_matrix[i, :i] = 0
+            # perm_matrix[i, : i[-1]] = 0
             # assign uniform probability to all samples with event time higher than the censoring time
             # includes previous censored events that happened before the event time
-            perm_matrix[i, event_counts:] = (
-                1 if buckets else 1 / (perm_matrix[i, event_counts:].shape[0])
-            )
-        # events
+            perm_matrix[i, event_counts:] = 1
+            i = []  # clear idx on  censored
+        # Events
         else:
-            # assign uniform probability to an event and all censored events with shorted time,
-            perm_matrix[i, event_counts : i + 1] = (
-                1 if buckets else 1 / (perm_matrix[i, event_counts : i + 1].shape[0])
-            )
-            event_counts += 1
+            # Assign uniform probability to an event and all censored events with shorter time,
+            perm_matrix[i, event_counts : i[-1] + 1] = 1
+            event_counts += int(sum(events[i]))
+            i = []  # reset indices no more ties
 
-    # permute to match the order of the input
+    # Permute to match the order of the input
     perm_matrix = perm_un_ascending @ perm_matrix
 
     return perm_matrix
 
 
-def test_diff_sort_loss_get_soft_perm():
+def test_get_soft_perm():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([0, 0, 1, 0, 1, 0, 0])
     test_durations = torch.Tensor([1, 3, 2, 4, 5, 6, 7])
@@ -356,13 +363,13 @@ def test_diff_sort_loss_get_soft_perm():
 
     required_perm_matrix = torch.Tensor(
         [
-            [1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7, 1 / 7],
-            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-            [1 / 2, 1 / 2, 0, 0, 0, 0, 0],
-            [0, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-            [0, 1 / 4, 1 / 4, 1 / 4, 1 / 4, 0, 0],
-            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
-            [0, 0, 1 / 5, 1 / 5, 1 / 5, 1 / 5, 1 / 5],
+            [1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 0, 0],
+            [0, 0, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1],
         ]
     )
     required_perm_matrix = required_perm_matrix.unsqueeze(0)
@@ -373,3 +380,53 @@ def test_diff_sort_loss_get_soft_perm():
     true_perm_matrix = _get_soft_perm(test_events[:, 0], test_durations[:, 0])
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
+
+
+def test_ties_all_events_get_soft_perm():
+    """Test the soft permutation matrix label for the given events and durations."""
+    test_events = torch.Tensor([1, 1, 1, 1, 1, 1, 1])
+    test_durations = torch.Tensor([1, 1, 1, 1, 1, 1, 1])
+    # logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
+
+    required_perm_matrix = torch.ones((7, 7))
+    required_perm_matrix = required_perm_matrix.unsqueeze(0)
+
+    test_events = test_events.unsqueeze(-1)
+    test_durations = test_durations.unsqueeze(-1)
+
+    true_perm_matrix = _get_soft_perm(test_events[:, 0], test_durations[:, 0])
+
+    assert torch.allclose(required_perm_matrix, true_perm_matrix)
+
+
+def test_ties_get_soft_perm():
+    """Test the soft permutation matrix label for the given events and durations."""
+    test_events = torch.Tensor([0, 1, 0, 1, 1, 0, 0])
+    test_durations = torch.Tensor([1, 2, 3, 4, 4, 5, 5])
+    # logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
+
+    required_perm_matrix = torch.Tensor(
+        [
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0],
+            [0, 0, 0, 1, 1, 1, 1],
+            [0, 0, 0, 1, 1, 1, 1],
+        ]
+    )
+    required_perm_matrix = required_perm_matrix.unsqueeze(0)
+
+    test_events = test_events.unsqueeze(-1)
+    test_durations = test_durations.unsqueeze(-1)
+
+    true_perm_matrix = _get_soft_perm(test_events[:, 0], test_durations[:, 0])
+
+    assert torch.allclose(required_perm_matrix, true_perm_matrix)
+
+
+if __name__ == "__main__":
+    test_ties_get_soft_perm()
+    test_ties_all_events_get_soft_perm()
+    test_get_soft_perm()
