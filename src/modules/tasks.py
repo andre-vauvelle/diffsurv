@@ -295,9 +295,9 @@ class SortingRiskMixin(RiskMixin):
         return numpy_batch
 
 
-def _get_soft_perm(events: torch.Tensor, d: torch.Tensor):
+def _get_soft_perm(events: torch.Tensor, d: torch.Tensor, inc_censored_in_ties=True):
     """
-    Returns the soft permutation matrix label for the given events and durations.
+    Returns the possible permutation matrix label for the given events and durations.
 
     For a right-censored sample `i`, we only know that the risk must be lower than the risk of all other
     samples with an event time lower than the censoring time of `i`, i.e. they must be ranked after
@@ -311,6 +311,7 @@ def _get_soft_perm(events: torch.Tensor, d: torch.Tensor):
     probability to their rankings.
     :param events: binary vector indicating if event happened or not
     :param d: time difference between observation start and event time
+    :param inc_censored_in_ties: if we want to include censored events as possible permutations in ties with events
     :return:
     """
     # Initialize the soft permutation matrix
@@ -326,28 +327,38 @@ def _get_soft_perm(events: torch.Tensor, d: torch.Tensor):
 
     idx_stack = list(range(len(idx)))
     idx_stack.reverse()
-    i = []
+    i_event = []
+    i_censored = []
     while idx_stack:
-        i.append(idx_stack.pop())
-        # Handle Ties: Look ahead, if next is also an event and has the same time, append to index
-        if idx_stack and i and (events[i[-1] + 1]) and (d[i[-1]] == d[i[-1] + 1]):
+        if events[idx_stack[-1]]:
+            i_event.append(idx_stack.pop())
+        else:
+            i_censored.append(idx_stack.pop())
+
+        # Handle Ties: Look ahead, if next has the same time, add next index!
+        i_all = i_event + i_censored
+        if idx_stack and i_all and (d[i_all[-1]] == d[i_all[-1] + 1]):
             continue
 
-        e = all(events[i])
-        # Right censored samples
-        if not e:
+        if inc_censored_in_ties and i_censored:
+            # Right censored samples
             # assign 0 for all samples with event time lower than the censoring time
             # perm_matrix[i, : i[-1]] = 0
             # assign uniform probability to all samples with event time higher than the censoring time
             # includes previous censored events that happened before the event time
-            perm_matrix[i, event_counts:] = 1
-            i = []  # clear idx on  censored
+            perm_matrix[i_censored, event_counts:] = 1
+            i_censored = []  # clear idx on  censored
+
         # Events
-        else:
-            # Assign uniform probability to an event and all censored events with shorter time,
-            perm_matrix[i, event_counts : i[-1] + 1] = 1
-            event_counts += int(sum(events[i]))
-            i = []  # reset indices no more ties
+        # Assign uniform probability to an event and all censored events with shorter time,
+        if i_event:
+            perm_matrix[i_event, event_counts : i_event[-1] + 1] = 1
+            event_counts += int(sum(events[i_event]))
+            i_event = []  # reset indices no more ties
+
+        if not inc_censored_in_ties and i_censored:
+            perm_matrix[i_censored, event_counts:] = 1
+            i_censored = []  # clear idx on  censored
 
     # Permute to match the order of the input
     perm_matrix = perm_un_ascending @ perm_matrix
@@ -355,6 +366,7 @@ def _get_soft_perm(events: torch.Tensor, d: torch.Tensor):
     return perm_matrix
 
 
+# TODO: add pytest and fixtures...
 def test_get_soft_perm():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([0, 0, 1, 0, 1, 0, 0])
@@ -402,9 +414,11 @@ def test_ties_all_events_get_soft_perm():
 def test_ties_get_soft_perm():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([0, 1, 0, 1, 1, 0, 0])
-    test_durations = torch.Tensor([1, 2, 3, 4, 4, 5, 5])
+    test_durations = torch.Tensor([1, 2, 3, 4, 4, 4, 5])
     # logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
 
+    # -2 censored event same time so can permuate with events under independent censoring
+    # -1 cannot permuate with events but can with censored event of the same time
     required_perm_matrix = torch.Tensor(
         [
             [1, 1, 1, 1, 1, 1, 1],
@@ -412,7 +426,7 @@ def test_ties_get_soft_perm():
             [0, 1, 1, 1, 1, 1, 1],
             [0, 1, 1, 1, 1, 0, 0],
             [0, 1, 1, 1, 1, 0, 0],
-            [0, 0, 0, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1],
             [0, 0, 0, 1, 1, 1, 1],
         ]
     )
@@ -421,12 +435,62 @@ def test_ties_get_soft_perm():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    true_perm_matrix = _get_soft_perm(test_events[:, 0], test_durations[:, 0])
+    true_perm_matrix = _get_soft_perm(
+        test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=True
+    )
+
+    assert torch.allclose(required_perm_matrix, true_perm_matrix)
+
+
+def test_ties_inc_get_soft_perm():
+    """Test the soft permutation matrix label for the given events and durations."""
+    test_events = torch.Tensor([0, 1, 0, 0, 1, 1, 0])
+    test_durations = torch.Tensor([1, 2, 3, 4, 4, 4, 5])
+    # logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
+
+    # censored event same time so can permuate with events under independent c
+    # cannot permuate with events but can with censored event of the same time
+    required_perm_matrix = torch.Tensor(
+        [
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 0, 0],
+            [
+                0,
+                1,
+                1,
+                1,
+                1,
+                0,
+                0,
+            ],  # censored event same time so can permuate with events under independent censoring
+            [
+                0,
+                0,
+                0,
+                1,
+                1,
+                1,
+                1,
+            ],  # cannot permuate with events but can with censored event of the same time
+        ]
+    )
+    required_perm_matrix = required_perm_matrix.unsqueeze(0)
+
+    test_events = test_events.unsqueeze(-1)
+    test_durations = test_durations.unsqueeze(-1)
+
+    true_perm_matrix = _get_soft_perm(
+        test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=False
+    )
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
 
 
 if __name__ == "__main__":
     test_ties_get_soft_perm()
+    test_ties_inc_get_soft_perm()
     test_ties_all_events_get_soft_perm()
     test_get_soft_perm()
