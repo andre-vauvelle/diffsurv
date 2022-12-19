@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Literal, Optional
 
 import numba
 import numpy as np
@@ -94,7 +94,11 @@ class CustomBCEWithLogitsLoss(torch.nn.BCEWithLogitsLoss):
 
 
 class CoxPHLoss(torch.nn.Module):
-    def __init__(self, weightings=None, method="ranked_list"):
+    def __init__(
+        self,
+        weightings=None,
+        method: Literal["breslow", "efron", "ranked_list"] = "efron",
+    ):
         super().__init__()
         self.method = method
         if weightings is not None:
@@ -123,11 +127,14 @@ class CoxPHLoss(torch.nn.Module):
                 lh, d, e = logh[b, :, i], durations[b, :, i], events[b, :, i]
                 if self.method == "efron":
                     loss = self._efron_loss(lh, d, e, eps)
+                elif self.method == "breslow":
+                    loss = self._breslow_loss(lh, d, e, eps)
                 elif self.method == "ranked_list":
                     loss = self._loss_ranked_list(lh, d, e, eps)
                 else:
                     raise ValueError(
-                        f'Unknown method: {self.method}, choose one of ["efron", "ranked_list"]'
+                        f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
+                        ' "breslow"]'
                     )
                 losses.append(loss)
 
@@ -164,11 +171,108 @@ class CoxPHLoss(torch.nn.Module):
         return loss
 
     @staticmethod
-    def _efron_loss(lh, d, e, eps=1e-7):
+    def _get_event_ties_lcse(log_h, durations, events):
+        log_h = log_h.flatten()
+        # sort input
+        durations, idx = durations.sort(descending=True)
+        log_h = log_h[idx]
+        events = events[idx]
+
+        event_ind = events.nonzero().flatten()
+
+        # logcumsumexp of events
+        event_lcse = torch.logcumsumexp(log_h, dim=0)[event_ind]
+
+        # number of events for each unique risk set
+        _, tie_inverses, tie_count = torch.unique_consecutive(
+            durations[event_ind], return_counts=True, return_inverse=True
+        )
+
+        # position of last event (lowest duration) of each unique risk set
+        tie_pos = tie_count.cumsum(axis=0) - 1
+
+        # logcumsumexp by tie for each event
+        event_tie_lcse = event_lcse[tie_pos][tie_inverses]
+        return event_tie_lcse, tie_count, tie_inverses, tie_pos, event_ind
+
+    def _efron_loss(self, log_h, durations, events, eps=1e-7):
         """Efron method for COX-PH.
-        Credit to https://bydmitry.github.io/efron-tensorflow.html
+        Credit to https://github.com/lasso-net/lassonet/blob/78bd5875cd43ae667690e5bda524818c05efe62d/lassonet/utils.py
         """
-        raise NotImplementedError
+        (
+            event_tie_lcse,
+            tie_count,
+            tie_inverses,
+            tie_pos,
+            event_ind,
+        ) = self._get_event_ties_lcse(log_h, durations, events)
+        # logsumexp of ties, duplicated within tie set
+        tie_lse = scatter_logsumexp(log_h[event_ind], tie_inverses, dim=0)[tie_inverses]
+        # multiply (add in log space) with corrective factor
+        aux = torch.ones_like(tie_inverses)
+        aux[tie_pos[:-1] + 1] -= tie_count[:-1]
+        event_id_in_tie = torch.cumsum(aux, dim=0) - 1
+        discounted_tie_lse = (
+            tie_lse + torch.log(event_id_in_tie) - torch.log(tie_count[tie_inverses])
+        )
+
+        # denominator
+        log_den = log_substract(event_tie_lcse, discounted_tie_lse).mean()
+
+        # numerator
+        log_num = log_h[event_ind].mean()
+        # loss is negative log likelihood
+        return log_den - log_num
+
+    def _breslow_loss(self, log_h, durations, events, eps=1e-7):
+        """Breslow method for COX-PH.
+        Credit to https://github.com/lasso-net/lassonet/blob/78bd5875cd43ae667690e5bda524818c05efe62d/lassonet/utils.py
+
+        """
+        event_tie_lcse, _, _, _, event_ind = self._get_event_ties_lcse(log_h, durations, events)
+        log_num = log_h[event_ind].mean()
+        # loss is negative log likelihood
+        log_den = event_tie_lcse.mean()
+        return log_den - log_num
+
+
+# from https://github.com/lasso-net/lassonet/blob/78bd5875cd43ae667690e5bda524818c05efe62d/lassonet/utils.py
+def scatter_logsumexp(input, index, *, dim=-1, output_size=None):
+    """Inspired by torch_scatter.logsumexp
+    Uses torch.scatter_reduce for performance
+    """
+    max_value_per_index = scatter_reduce(
+        input, dim=dim, index=index, output_size=output_size, reduce="amax"
+    )
+    max_per_src_element = max_value_per_index.gather(dim, index)
+    recentered_scores = input - max_per_src_element
+    sum_per_index = scatter_reduce(
+        recentered_scores.exp(),
+        dim=dim,
+        index=index,
+        output_size=output_size,
+        reduce="sum",
+    )
+    return max_value_per_index + sum_per_index.log()
+
+
+if hasattr(torch.Tensor, "scatter_reduce_"):
+    # version >= 1.12
+    def scatter_reduce(input, dim, index, reduce, *, output_size=None):
+        src = input
+        if output_size is None:
+            output_size = index.max() + 1
+        return torch.empty(output_size, device=input.device).scatter_reduce(
+            dim=dim, index=index, src=src, reduce=reduce, include_self=False
+        )
+
+else:
+    scatter_reduce = torch.scatter_reduce
+
+
+def log_substract(x, y):
+    """log(exp(x) - exp(y))"""
+    return x + torch.log1p(-(y - x).exp())
 
 
 def tgt_equal_tgt(time):
@@ -176,6 +280,7 @@ def tgt_equal_tgt(time):
     Used for tied times. Returns a diagonal by block matrix.
     Diagonal blocks of 1 if same time.
     Sorted over time. A_ij = i if t_i == t_j.
+
     Parameters
     ----------
     time: ndarray

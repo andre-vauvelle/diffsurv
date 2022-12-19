@@ -27,6 +27,7 @@ class RiskMixin(pl.LightningModule):
         use_weighted_loss=False,
         setting: str = "realworld",
         log_weights=True,
+        cph_method: str = "efron",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -50,7 +51,7 @@ class RiskMixin(pl.LightningModule):
             self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
 
         if loss_str == "cox":
-            self.loss_func = CoxPHLoss()
+            self.loss_func = CoxPHLoss(method=cph_method)
         elif loss_str == "ranking":
             self.loss_func = RankingLoss()
         elif loss_str == "binary":
