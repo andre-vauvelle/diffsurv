@@ -362,7 +362,7 @@ if __name__ == "__main__":
     #             censoring_function="independent",
     #         )
 
-    for trail in range(100):
+    for trail in range(5):
         for ties in (4, 5, 10, 50, 100, 200, 500, 1000, 2500, 5000, 10000):
             gen_pysurvival(
                 f"pysurv_linear_exp_independent_ties{str(ties)}_{trail}.pt",
@@ -375,7 +375,7 @@ if __name__ == "__main__":
                 feature_weights=[0.3, 0.6],
                 censoring_function="independent",
                 tie_groups=ties,
-                save_artifact=False,
+                save_artifact=True,
             )
         gen_pysurvival(
             f"pysurv_linear_exp_independent_ties{0}_{trail}.pt",
@@ -388,7 +388,7 @@ if __name__ == "__main__":
             feature_weights=[0.3, 0.6],
             censoring_function="independent",
             tie_groups=None,
-            save_artifact=False,
+            save_artifact=True,
         )
 
     # gen_pysurvival(

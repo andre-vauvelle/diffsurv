@@ -297,7 +297,9 @@ class SortingRiskMixin(RiskMixin):
         return numpy_batch
 
 
-def _get_soft_perm(events: torch.Tensor, d: torch.Tensor, inc_censored_in_ties=True):
+def _get_possible_permutation_matrix(
+    events: torch.Tensor, d: torch.Tensor, inc_censored_in_ties=True
+):
     """
     Returns the possible permutation matrix label for the given events and durations.
 
@@ -369,7 +371,7 @@ def _get_soft_perm(events: torch.Tensor, d: torch.Tensor, inc_censored_in_ties=T
 
 
 # TODO: add pytest and fixtures...
-def test_get_soft_perm():
+def test_get_possible_permutation_matrix():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([0, 0, 1, 0, 1, 0, 0])
     test_durations = torch.Tensor([1, 3, 2, 4, 5, 6, 7])
@@ -391,12 +393,12 @@ def test_get_soft_perm():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    true_perm_matrix = _get_soft_perm(test_events[:, 0], test_durations[:, 0])
+    true_perm_matrix = _get_possible_permutation_matrix(test_events[:, 0], test_durations[:, 0])
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
 
 
-def test_ties_all_events_get_soft_perm():
+def test_ties_all_events_get_possible_permutation_matrix():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([1, 1, 1, 1, 1, 1, 1])
     test_durations = torch.Tensor([1, 1, 1, 1, 1, 1, 1])
@@ -408,12 +410,12 @@ def test_ties_all_events_get_soft_perm():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    true_perm_matrix = _get_soft_perm(test_events[:, 0], test_durations[:, 0])
+    true_perm_matrix = _get_possible_permutation_matrix(test_events[:, 0], test_durations[:, 0])
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
 
 
-def test_ties_get_soft_perm():
+def test_ties_get_possible_permutation_matrix():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([0, 1, 0, 1, 1, 0, 0])
     test_durations = torch.Tensor([1, 2, 3, 4, 4, 4, 5])
@@ -437,14 +439,14 @@ def test_ties_get_soft_perm():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    true_perm_matrix = _get_soft_perm(
+    true_perm_matrix = _get_possible_permutation_matrix(
         test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=True
     )
 
     assert torch.allclose(required_perm_matrix, true_perm_matrix)
 
 
-def test_ties_inc_get_soft_perm():
+def test_ties_inc_get_possible_permutation_matrix():
     """Test the soft permutation matrix label for the given events and durations."""
     test_events = torch.Tensor([0, 1, 0, 0, 1, 1, 0])
     test_durations = torch.Tensor([1, 2, 3, 4, 4, 4, 5])
@@ -484,7 +486,7 @@ def test_ties_inc_get_soft_perm():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    true_perm_matrix = _get_soft_perm(
+    true_perm_matrix = _get_possible_permutation_matrix(
         test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=False
     )
 
@@ -492,7 +494,7 @@ def test_ties_inc_get_soft_perm():
 
 
 if __name__ == "__main__":
-    test_ties_get_soft_perm()
-    test_ties_inc_get_soft_perm()
-    test_ties_all_events_get_soft_perm()
-    test_get_soft_perm()
+    test_ties_get_possible_permutation_matrix()
+    test_ties_inc_get_possible_permutation_matrix()
+    test_ties_all_events_get_possible_permutation_matrix()
+    test_get_possible_permutation_matrix()

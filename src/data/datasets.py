@@ -10,7 +10,7 @@ from torch.utils.data import RandomSampler, Sampler
 from torch.utils.data.dataset import Dataset
 
 from modules.loss import pair_rank_mat
-from modules.tasks import _get_soft_perm
+from modules.tasks import _get_possible_permutation_matrix
 
 
 def flip(p):
@@ -225,7 +225,7 @@ class CaseControlRiskDataset(Dataset):
 
         assert events.shape[1] == 1, "does not support multi class yet.."
         if self.return_perm_mat:
-            soft_perm_mat = _get_soft_perm(
+            soft_perm_mat = _get_possible_permutation_matrix(
                 events[idxs].flatten(),
                 idx_durations[idxs].flatten(),
                 inc_censored_in_ties=self.inc_censored_in_ties,
