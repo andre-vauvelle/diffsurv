@@ -202,7 +202,9 @@ class CaseControlRiskDataset(Dataset):
         risk: Optional[torch.Tensor] = None,
         return_perm_mat: bool = True,
         n_cases: int = 1,
+        inc_censored_in_ties: bool = False,
     ):
+        self.inc_censored_in_ties = inc_censored_in_ties
         self.n_controls = n_controls
         self.n_cases = n_cases
         self.x_covar = x_covar
@@ -223,7 +225,11 @@ class CaseControlRiskDataset(Dataset):
 
         assert events.shape[1] == 1, "does not support multi class yet.."
         if self.return_perm_mat:
-            soft_perm_mat = _get_soft_perm(events[idxs].flatten(), idx_durations[idxs].flatten())
+            soft_perm_mat = _get_soft_perm(
+                events[idxs].flatten(),
+                idx_durations[idxs].flatten(),
+                inc_censored_in_ties=self.inc_censored_in_ties,
+            )
         else:
             soft_perm_mat = None
 

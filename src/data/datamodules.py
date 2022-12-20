@@ -26,9 +26,11 @@ class DataModuleRisk(pl.LightningDataModule):
         batch_size: int = 32,
         risk_set_size: Optional[int] = None,
         num_workers: int = 0,
-        return_perm_mat=True,
+        return_perm_mat: bool = True,
+        inc_censored_in_ties: bool = True,
     ):
         super().__init__()
+        self.inc_censored_in_ties = inc_censored_in_ties
         self.risk_set_size = risk_set_size
         self.controls_per_case = risk_set_size - 1  # one is a case...
         self.wandb_artifact = wandb_artifact
@@ -86,7 +88,12 @@ class DataModuleRisk(pl.LightningDataModule):
                 data["censored_events"],
             )
             dataset = CaseControlRiskDataset(
-                self.controls_per_case, x_covar, y_times, censored_events, risk=None
+                self.controls_per_case,
+                x_covar,
+                y_times,
+                censored_events,
+                risk=None,
+                inc_censored_in_ties=self.inc_censored_in_ties,
             )
         else:
             # Manually split data
@@ -115,6 +122,7 @@ class DataModuleRisk(pl.LightningDataModule):
                     censored_events[:n_training_patients],
                     risk[:n_training_patients] if risk is not None else None,
                     return_perm_mat=self.return_perm_mat,
+                    inc_censored_in_ties=self.inc_censored_in_ties,
                 )
                 shuffle = True
             elif stage == "val":

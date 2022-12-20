@@ -199,6 +199,7 @@ class SortingRiskMixin(RiskMixin):
         )
         self.ignore_censoring = ignore_censoring
         self.norm_risk = norm_risk
+        self.steepness = steepness
 
     def sorting_step(self, logits, perm_ground_truth, events):
         lh = logits
@@ -244,7 +245,7 @@ class SortingRiskMixin(RiskMixin):
         self.log("train/loss", loss, prog_bar=True)
         if self.log_weights:
             for i, p in enumerate(self.head.final.weight.flatten()):
-                self.log(f"param_est_{i}", -p, prog_bar=True)
+                self.log(f"param_est_{i}", -2 * p * self.steepness, prog_bar=True)
 
         return loss
 
