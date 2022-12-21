@@ -12,9 +12,11 @@ class BaseModel(pl.LightningModule):
         output_dim=1390,
         used_covs=("age_ass", "sex"),
         optimizer: Literal["adam", "sgd"] = "adam",
+        weight_decay: float = 0,
     ):
         super().__init__()
         self.optimizer = optimizer
+        self.weight_decay = weight_decay
 
     def forward(self, covariates) -> torch.Tensor:
         pooled = torch.cat((pooled, covariates), dim=1)
@@ -28,7 +30,7 @@ class BaseModel(pl.LightningModule):
         if self.optimizer == "adam":
             optimizer = torch.optim.Adam(not_sparse, lr=self.lr)
         elif self.optimizer == "sgd":
-            optimizer = torch.optim.SGD(not_sparse, lr=self.lr)
+            optimizer = torch.optim.SGD(not_sparse, lr=self.lr, weight_decay=self.weight_decay)
 
         if sparse:
             optimizer_sparse = torch.optim.SparseAdam(sparse, lr=self.lr)
