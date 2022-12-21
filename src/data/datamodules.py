@@ -39,7 +39,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.num_workers = os.cpu_count() if num_workers == -1 else num_workers
         self.return_perm_mat = return_perm_mat
         if wandb_artifact is not None:
-            api = wandb.Api()
+            api = wandb.Api(overrides={"project": "diffsurv", "entity": "cardiors"})
             artifact = api.artifact(self.wandb_artifact)
             self.wandb_dir = artifact.download(root=f"../data/wandb/{self.wandb_artifact}")
             setting = artifact.metadata["setting"]

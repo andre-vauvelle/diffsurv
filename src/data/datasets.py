@@ -231,7 +231,9 @@ class CaseControlRiskDataset(Dataset):
                 inc_censored_in_ties=self.inc_censored_in_ties,
             )
         else:
-            soft_perm_mat = None
+            soft_perm_mat = np.zeros(
+                (self.n_cases + self.n_controls, self.n_cases + self.n_controls)
+            )
 
         covariates = self.x_covar[idxs]
 
