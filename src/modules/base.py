@@ -12,7 +12,7 @@ class BaseModel(pl.LightningModule):
         output_dim=1390,
         used_covs=("age_ass", "sex"),
         optimizer: Literal["adam", "sgd"] = "adam",
-        weight_decay: float = 0,
+        weight_decay=0,
     ):
         super().__init__()
         self.optimizer = optimizer
