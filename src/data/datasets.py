@@ -225,13 +225,13 @@ class CaseControlRiskDataset(Dataset):
 
         assert events.shape[1] == 1, "does not support multi class yet.."
         if self.return_perm_mat:
-            soft_perm_mat = _get_possible_permutation_matrix(
+            possible_perm_mat = _get_possible_permutation_matrix(
                 events[idxs].flatten(),
                 idx_durations[idxs].flatten(),
                 inc_censored_in_ties=self.inc_censored_in_ties,
             )
         else:
-            soft_perm_mat = np.zeros(
+            possible_perm_mat = np.zeros(
                 (self.n_cases + self.n_controls, self.n_cases + self.n_controls)
             )
 
@@ -250,7 +250,7 @@ class CaseControlRiskDataset(Dataset):
             "exclusions": exclusions,
             # input
             "covariates": covariates,
-            "soft_perm_mat": soft_perm_mat,
+            "soft_perm_mat": possible_perm_mat,
         }
 
         if self.risk is not None:

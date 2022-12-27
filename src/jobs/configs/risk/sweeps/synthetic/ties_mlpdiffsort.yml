@@ -22,8 +22,9 @@ command:
   - fit
   - "--config"
   - "jobs/configs/risk/mlpdiffsort_small.yaml"
-  - "--data.local_path"
-  - "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties10000_99.pt"
+  - "--data.wandb_artifact"
+  - pysurv_linear_exp_nocensoring_ties10000_9.pt
+#  - "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties10000_99.pt"
   - ${args}
 project: diffsurv
 entity: cardiors

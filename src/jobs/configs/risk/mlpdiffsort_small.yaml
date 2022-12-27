@@ -26,22 +26,23 @@ data:
 #  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties9000_33.pt
 #  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_nocensoring.pt
 #  local_path: "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_nocensoring_unif.pt"
-  local_path: "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_0.3_unif.pt"
+#  local_path: "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_5_0.3_unif.pt"
+#  wandb_artifact: pysurv_linear_exp_nocensoring_ties5_9.pt:latest
+  wandb_artifact: pysurv_linear_exp_independent_ties1000_9.pt:latest
   batch_size: 64
-  risk_set_size: 64
+  risk_set_size: 32
   num_workers: 0
 model:
   head_layers: 0
   lr: 0.03 # from auto lr find
   only_covs: True
   hidden_dropout_prob: 0
-  sorting_network: odd_even
-  steepness: 25
+  sorting_network: bitonic
+  steepness: 15.1
   optimizer: sgd
   batch_norm: False
   norm_risk: True
 #  sorter_size: 10 # must be controls per case + 1 if not None else batch_size
-  use_buckets: True
 #  distribution: logistic
   distribution: cauchy
   ignore_censoring: True

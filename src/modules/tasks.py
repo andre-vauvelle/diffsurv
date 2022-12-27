@@ -245,7 +245,7 @@ class SortingRiskMixin(RiskMixin):
         self.log("train/loss", loss, prog_bar=True)
         if self.log_weights:
             for i, p in enumerate(self.head.final.weight.flatten()):
-                self.log(f"param_est_{i}", -2 * p * self.steepness, prog_bar=True)
+                self.log(f"param_est_{i}", p, prog_bar=True)
 
         return loss
 
@@ -298,7 +298,7 @@ class SortingRiskMixin(RiskMixin):
 
 
 def _get_possible_permutation_matrix(
-    events: torch.Tensor, d: torch.Tensor, inc_censored_in_ties=True
+    events: torch.Tensor, durations: torch.Tensor, inc_censored_in_ties=True, eps: float = 1e-6
 ):
     """
     Returns the possible permutation matrix label for the given events and durations.
@@ -314,34 +314,41 @@ def _get_possible_permutation_matrix(
     the risk compares to samples with censoring time lower than `t_j`, and thus have to assign uniform
     probability to their rankings.
     :param events: binary vector indicating if event happened or not
-    :param d: time difference between observation start and event time
+    :param durations: time difference between observation start and event time
     :param inc_censored_in_ties: if we want to include censored events as possible permutations in ties with events
     :return:
     """
     # Initialize the soft permutation matrix
     perm_matrix = torch.zeros(events.shape[0], events.shape[0], device=events.device)
 
-    idx = torch.argsort(d, descending=False)
+    # eps here forces ties between censored and event to be ordred event first (ascending)
+    idx = torch.argsort(durations - events * eps, descending=False)
 
     # Used to return to origonal order
     perm_un_ascending = torch.nn.functional.one_hot(idx).transpose(-2, -1).float()
+    ordered_durations = durations[idx]
+    ordered_events = events[idx]
 
-    events = events[idx]
+    # events_ordered = events[idx]
     event_counts = 0
 
-    idx_stack = list(range(len(idx)))
+    idx_stack = list(range(idx.shape[0]))
     idx_stack.reverse()
     i_event = []
     i_censored = []
     while idx_stack:
-        if events[idx_stack[-1]]:
+        if ordered_events[idx_stack[-1]]:
             i_event.append(idx_stack.pop())
         else:
             i_censored.append(idx_stack.pop())
 
         # Handle Ties: Look ahead, if next has the same time, add next index!
         i_all = i_event + i_censored
-        if idx_stack and i_all and (d[i_all[-1]] == d[i_all[-1] + 1]):
+        if (
+            idx_stack
+            and i_all
+            and (ordered_durations[i_all[-1]] == ordered_durations[idx_stack[-1]])
+        ):
             continue
 
         if inc_censored_in_ties and i_censored:
@@ -356,8 +363,11 @@ def _get_possible_permutation_matrix(
         # Events
         # Assign uniform probability to an event and all censored events with shorter time,
         if i_event:
-            perm_matrix[i_event, event_counts : i_event[-1] + 1] = 1
-            event_counts += int(sum(events[i_event]))
+            if inc_censored_in_ties:
+                perm_matrix[i_event, event_counts : max(i_all) + 1] = 1
+            else:
+                perm_matrix[i_event, event_counts : max(i_event) + 1] = 1
+            event_counts += int(sum(ordered_events[i_event]))
             i_event = []  # reset indices no more ties
 
         if not inc_censored_in_ties and i_censored:
@@ -430,7 +440,7 @@ def test_ties_get_possible_permutation_matrix():
             [0, 1, 1, 1, 1, 1, 1],
             [0, 1, 1, 1, 1, 0, 0],
             [0, 1, 1, 1, 1, 0, 0],
-            [0, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 1, 1, 1, 1],
             [0, 0, 0, 1, 1, 1, 1],
         ]
     )
@@ -439,11 +449,11 @@ def test_ties_get_possible_permutation_matrix():
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
 
-    true_perm_matrix = _get_possible_permutation_matrix(
-        test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=True
+    perm_matrix = _get_possible_permutation_matrix(
+        test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=False
     )
 
-    assert torch.allclose(required_perm_matrix, true_perm_matrix)
+    assert torch.allclose(required_perm_matrix, perm_matrix)
 
 
 def test_ties_inc_get_possible_permutation_matrix():
@@ -451,7 +461,6 @@ def test_ties_inc_get_possible_permutation_matrix():
     test_events = torch.Tensor([0, 1, 0, 0, 1, 1, 0])
     test_durations = torch.Tensor([1, 2, 3, 4, 4, 4, 5])
     # logh = torch.Tensor([0, 2, 1, 3, 4, 5, 6])
-
     # censored event same time so can permuate with events under independent c
     # cannot permuate with events but can with censored event of the same time
     required_perm_matrix = torch.Tensor(
@@ -459,38 +468,19 @@ def test_ties_inc_get_possible_permutation_matrix():
             [1, 1, 1, 1, 1, 1, 1],
             [1, 1, 0, 0, 0, 0, 0],
             [0, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 0],
+            [0, 1, 1, 1, 1, 1, 0],
             [0, 0, 0, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 0, 0],
-            [
-                0,
-                1,
-                1,
-                1,
-                1,
-                0,
-                0,
-            ],  # censored event same time so can permuate with events under independent censoring
-            [
-                0,
-                0,
-                0,
-                1,
-                1,
-                1,
-                1,
-            ],  # cannot permuate with events but can with censored event of the same time
         ]
     )
     required_perm_matrix = required_perm_matrix.unsqueeze(0)
-
     test_events = test_events.unsqueeze(-1)
     test_durations = test_durations.unsqueeze(-1)
-
-    true_perm_matrix = _get_possible_permutation_matrix(
-        test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=False
+    perm_matrix = _get_possible_permutation_matrix(
+        test_events[:, 0], test_durations[:, 0], inc_censored_in_ties=True
     )
-
-    assert torch.allclose(required_perm_matrix, true_perm_matrix)
+    assert torch.allclose(required_perm_matrix, perm_matrix)
 
 
 if __name__ == "__main__":
