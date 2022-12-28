@@ -375,21 +375,21 @@ if __name__ == "__main__":
                 feature_weights=[0.2, 0.7],
                 censoring_function="independent",
                 tie_groups=ties,
-                save_artifact=False,
-            )
-            gen_pysurvival(
-                f"pysurv27_linear_exp_nocensoring_ties{str(ties)}_{trail}.pt",
-                10_000,
-                survival_distribution="exponential",
-                risk_type="linear",
-                censored_proportion=0.0,
-                alpha=1,
-                beta=1,
-                feature_weights=[0.2, 0.7],
-                censoring_function="independent",
-                tie_groups=ties,
                 save_artifact=True,
             )
+            # gen_pysurvival(
+            #     f"pysurv27_linear_exp_nocensoring_ties{str(ties)}_{trail}.pt",
+            #     10_000,
+            #     survival_distribution="exponential",
+            #     risk_type="linear",
+            #     censored_proportion=0.0,
+            #     alpha=1,
+            #     beta=1,
+            #     feature_weights=[0.2, 0.7],
+            #     censoring_function="independent",
+            #     tie_groups=ties,
+            #     save_artifact=True,
+            # )
         gen_pysurvival(
             f"pysurv27_linear_exp_independent_ties{0}_{trail}.pt",
             10_000,
@@ -401,21 +401,21 @@ if __name__ == "__main__":
             feature_weights=[0.2, 0.7],
             censoring_function="independent",
             tie_groups=None,
-            save_artifact=False,
-        )
-        gen_pysurvival(
-            f"pysurv27_linear_exp_nocensoring_ties{0}_{trail}.pt",
-            10_000,
-            survival_distribution="exponential",
-            risk_type="linear",
-            censored_proportion=0.0,
-            alpha=1,
-            beta=1,
-            feature_weights=[0.2, 0.7],
-            censoring_function="independent",
-            tie_groups=None,
             save_artifact=True,
         )
+        # gen_pysurvival(
+        #     f"pysurv27_linear_exp_nocensoring_ties{0}_{trail}.pt",
+        #     10_000,
+        #     survival_distribution="exponential",
+        #     risk_type="linear",
+        #     censored_proportion=0.0,
+        #     alpha=1,
+        #     beta=1,
+        #     feature_weights=[0.2, 0.7],
+        #     censoring_function="independent",
+        #     tie_groups=None,
+        #     save_artifact=True,
+        # )
 
     # gen_pysurvival(
     #     f"pysurv_linear_exp_independent_ties5_10000_0.3_unif.pt",

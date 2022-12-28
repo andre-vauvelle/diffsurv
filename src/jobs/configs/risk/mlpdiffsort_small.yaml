@@ -1,16 +1,16 @@
 trainer:
-  logger:
-    - class_path: pytorch_lightning.loggers.WandbLogger
-      init_args:
-        project: diffsurv
-        entity: cardiors
-        log_model: True
-        tags:
-          - mlp
-          - risk
-          - diffsort
-          - case-control-sampling
-        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
+#  logger:
+#    - class_path: pytorch_lightning.loggers.WandbLogger
+#      init_args:
+#        project: diffsurv
+#        entity: cardiors
+#        log_model: True
+#        tags:
+#          - mlp
+#          - risk
+#          - diffsort
+#          - case-control-sampling
+#        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   max_epochs: 5
   check_val_every_n_epoch: 1
   log_every_n_steps: 1
@@ -27,9 +27,12 @@ data:
 #  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_nocensoring.pt
 #  local_path: "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_nocensoring_unif.pt"
 #  local_path: "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_5_0.3_unif.pt"
+#  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv27_linear_exp_nocensoring_ties5_0.pt
+#  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv27_linear_exp_independent_ties5_1.pt
+  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties5_1.pt
 #  wandb_artifact: pysurv_linear_exp_nocensoring_ties5_9.pt:latest
-  wandb_artifact: pysurv_linear_exp_independent_ties1000_9.pt:latest
-  batch_size: 64
+#  wandb_artifact: pysurv27_linear_exp_independent_ties5_0.pt:latest
+  batch_size: 32
   risk_set_size: 32
   num_workers: 0
 model:
@@ -38,7 +41,7 @@ model:
   only_covs: True
   hidden_dropout_prob: 0
   sorting_network: bitonic
-  steepness: 15.1
+  steepness: 10.1
   optimizer: sgd
   batch_norm: False
   norm_risk: True

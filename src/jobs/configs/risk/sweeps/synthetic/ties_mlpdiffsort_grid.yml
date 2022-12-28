@@ -22,20 +22,20 @@ parameters:
       - 128
   data.wandb_artifact:
     values:
-      - pysurv_linear_exp_independent_ties5_0.pt:latest
-      - pysurv_linear_exp_independent_ties10_0.pt:latest
-      - pysurv_linear_exp_independent_ties25_0.pt:latest
-      - pysurv_linear_exp_independent_ties50_0.pt:latest
-      - pysurv_linear_exp_independent_ties100_0.pt:latest
-      - pysurv_linear_exp_independent_ties2500_0.pt:latest
-      - pysurv_linear_exp_independent_ties10000_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties5_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties10_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties25_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties50_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties100_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties2500_0.pt:latest
-      - pysurv_linear_exp_nocensoring_ties10000_0.pt:latest
+      - pysurv27_linear_exp_independent_ties5_0.pt:latest
+      - pysurv27_linear_exp_independent_ties10_0.pt:latest
+      - pysurv27_linear_exp_independent_ties25_0.pt:latest
+      - pysurv27_linear_exp_independent_ties50_0.pt:latest
+      - pysurv27_linear_exp_independent_ties100_0.pt:latest
+      - pysurv27_linear_exp_independent_ties2500_0.pt:latest
+      - pysurv27_linear_exp_independent_ties10000_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties5_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties10_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties25_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties50_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties100_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties2500_0.pt:latest
+      - pysurv27_linear_exp_nocensoring_ties10000_0.pt:latest
   model.lr:
     value: 0.01
   model.norm_risk:

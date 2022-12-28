@@ -182,13 +182,15 @@ class SortingRiskMixin(RiskMixin):
         art_lambda: float = 0.2,
         distribution="cauchy",
         sorter_size: int = 128,
-        ignore_censoring: bool = False,
+        ignore_censoring: bool = True,
+        ignore_impossible: bool = False,
         norm_risk: bool = True,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.sorter_size = sorter_size
+        self.ignore_impossible = ignore_impossible
 
         self.sorter = CustomDiffSortNet(
             sorting_network_type=sorting_network,
@@ -218,23 +220,30 @@ class SortingRiskMixin(RiskMixin):
         sort_out, perm_prediction = self.sorter(lh)
 
         possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
+
         if self.ignore_censoring:
+            possible_events_only = possible_predictions.flatten()[events.flatten() == 1]
+            predictions = possible_events_only
+        else:
+            predictions = possible_predictions
+
+        if self.ignore_impossible:
             loss = torch.nn.BCELoss()(
-                torch.clamp(possible_predictions, 1e-8, 1 - 1e-8),
-                torch.ones_like(possible_predictions),
+                torch.clamp(predictions, 1e-8, 1 - 1e-8),
+                torch.ones_like(predictions),
             )
         else:
             # impossible_predictions = ((1 - perm_ground_truth) * perm_prediction).sum(dim=1)
             impossible_predictions = 1 - possible_predictions
-            preds = torch.concat((possible_predictions, impossible_predictions))
+            predictions = torch.concat((possible_predictions, impossible_predictions))
             truths = torch.concat(
                 (
                     torch.ones_like(possible_predictions),
-                    torch.zeros_like(possible_predictions),
+                    torch.zeros_like(impossible_predictions),
                 )
             )
 
-            loss = torch.nn.BCELoss()(torch.clamp(preds, 1e-8, 1 - 1e-8), truths)
+            loss = torch.nn.BCELoss()(torch.clamp(predictions, 1e-8, 1 - 1e-8), truths)
 
         return loss, lh, perm_prediction, perm_ground_truth
 
@@ -298,7 +307,10 @@ class SortingRiskMixin(RiskMixin):
 
 
 def _get_possible_permutation_matrix(
-    events: torch.Tensor, durations: torch.Tensor, inc_censored_in_ties=True, eps: float = 1e-6
+    events: torch.Tensor,
+    durations: torch.Tensor,
+    inc_censored_in_ties=True,
+    eps: float = 1e-6,
 ):
     """
     Returns the possible permutation matrix label for the given events and durations.
