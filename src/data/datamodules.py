@@ -24,12 +24,14 @@ class DataModuleRisk(pl.LightningDataModule):
         setting: str = "realworld",
         val_split: Optional[float] = None,
         batch_size: int = 32,
+        val_batch_size: Optional[int] = 32,
         risk_set_size: Optional[int] = None,
         num_workers: int = 0,
         return_perm_mat: bool = True,
         inc_censored_in_ties: bool = True,
     ):
         super().__init__()
+        self.val_batch_size = val_batch_size
         self.inc_censored_in_ties = inc_censored_in_ties
         self.risk_set_size = risk_set_size
         self.controls_per_case = risk_set_size - 1  # one is a case...
@@ -143,13 +145,10 @@ class DataModuleRisk(pl.LightningDataModule):
         # if self.controls_per_case is None or stage == "val":
         return DataLoader(
             dataset,
-            batch_size=self.batch_size
-            if stage == "train"
-            else self.batch_size * self.risk_set_size,
+            batch_size=self.batch_size if stage == "train" else self.val_batch_size,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=True,  # TODO: Do we need to drop?
             shuffle=shuffle,
-            sampler=None,
             pin_memory=True,
         )
 

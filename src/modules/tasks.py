@@ -26,7 +26,7 @@ class RiskMixin(pl.LightningModule):
         weightings=None,
         use_weighted_loss=False,
         setting: str = "realworld",
-        log_weights=True,
+        log_weights=False,
         cph_method: str = "efron",
         **kwargs,
     ):
