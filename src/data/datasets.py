@@ -5,7 +5,6 @@ from typing import Iterator, List, Optional, Sized, Tuple
 import numba
 import numpy as np
 import torch
-from pytorch_lightning.overrides.distributed import DistributedSamplerWrapper
 from torch.utils.data import RandomSampler, Sampler
 from torch.utils.data.dataset import Dataset
 

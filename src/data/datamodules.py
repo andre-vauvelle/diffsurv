@@ -15,6 +15,7 @@ class DataModuleRisk(pl.LightningDataModule):
     Args:
         :param wandb_artifact: wandb artficact dataset to use.
         :param local_path: local path to data, only used if there is no wandb_artifact...
+        :param k_fold: (kth fold, total_folds)
     """
 
     def __init__(
@@ -29,9 +30,11 @@ class DataModuleRisk(pl.LightningDataModule):
         num_workers: int = 0,
         return_perm_mat: bool = True,
         inc_censored_in_ties: bool = True,
+        k_fold: Optional[tuple] = (1, 5),
     ):
         super().__init__()
         self.val_batch_size = val_batch_size
+        self.k_fold = k_fold
         self.inc_censored_in_ties = inc_censored_in_ties
         self.risk_set_size = risk_set_size
         self.controls_per_case = risk_set_size - 1  # one is a case...
@@ -114,29 +117,59 @@ class DataModuleRisk(pl.LightningDataModule):
                 risk = None
             n_patients = x_covar.shape[0]
             if stage == "train":
-                n_training_patients = (
-                    int(n_patients * (1 - self.val_split)) if self.val_split else n_patients
-                )
-                dataset = CaseControlRiskDataset(
-                    self.controls_per_case,
-                    x_covar[:n_training_patients],
-                    y_times[:n_training_patients],
-                    censored_events[:n_training_patients],
-                    risk[:n_training_patients] if risk is not None else None,
-                    return_perm_mat=self.return_perm_mat,
-                    inc_censored_in_ties=self.inc_censored_in_ties,
-                )
+                if not self.k_fold:
+                    n_training_patients = (
+                        int(n_patients * (1 - self.val_split)) if self.val_split else n_patients
+                    )
+                    dataset = CaseControlRiskDataset(
+                        self.controls_per_case,
+                        x_covar[:n_training_patients],
+                        y_times[:n_training_patients],
+                        censored_events[:n_training_patients],
+                        risk[:n_training_patients] if risk is not None else None,
+                        return_perm_mat=self.return_perm_mat,
+                        inc_censored_in_ties=self.inc_censored_in_ties,
+                    )
+                else:
+                    idx = set(range(n_patients))
+                    kth_fold, total_folds = self.k_fold
+                    shift = int(kth_fold * (n_patients / total_folds))
+                    remove_idx = set(range(shift, shift + int(n_patients / total_folds)))
+                    fold_idx = list(idx - remove_idx)
+
+                    dataset = CaseControlRiskDataset(
+                        self.controls_per_case,
+                        x_covar[fold_idx],
+                        y_times[fold_idx],
+                        censored_events[fold_idx],
+                        risk[fold_idx] if risk is not None else None,
+                        return_perm_mat=self.return_perm_mat,
+                        inc_censored_in_ties=self.inc_censored_in_ties,
+                    )
                 shuffle = True
             elif stage == "val":
-                n_validation_patients = (
-                    int(n_patients * self.val_split) if self.val_split else n_patients
-                )
-                dataset = DatasetRisk(
-                    x_covar[-n_validation_patients:],
-                    y_times[-n_validation_patients:],
-                    censored_events[-n_validation_patients:],
-                    risk[-n_validation_patients:] if risk is not None else None,
-                )
+                if not self.k_fold:
+                    n_validation_patients = (
+                        int(n_patients * self.val_split) if self.val_split else n_patients
+                    )
+                    dataset = DatasetRisk(
+                        x_covar[-n_validation_patients:],
+                        y_times[-n_validation_patients:],
+                        censored_events[-n_validation_patients:],
+                        risk[-n_validation_patients:] if risk is not None else None,
+                    )
+                else:
+                    kth_fold, total_folds = self.k_fold
+                    shift = int(kth_fold * (n_patients / total_folds))
+                    remove_idx = range(shift, shift + int(n_patients / total_folds))
+                    fold_idx = list(remove_idx)
+                    dataset = DatasetRisk(
+                        x_covar[fold_idx],
+                        y_times[fold_idx],
+                        censored_events[fold_idx],
+                        risk[fold_idx] if risk is not None else None,
+                    )
+
                 shuffle = False
             else:
                 raise Exception("Stage must be either 'train' or 'val' ")

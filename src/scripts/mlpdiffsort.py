@@ -1,11 +1,12 @@
 import torch
+from pytorch_lightning.cli import ArgsType
 from pytorch_lightning.utilities.cli import LightningCLI
 
 from data.datamodules import DataModuleRisk
 from modules.mlp import MultilayerDiffsort, MultilayerRisk
 
 
-class CustomLightningCLI(LightningCLI):
+class DiffsortLightningCLI(LightningCLI):
     def add_arguments_to_parser(self, parser):
         # Automatically set model input dim based on data
         # TODO: remove symbols from label space?
@@ -35,15 +36,18 @@ class CustomLightningCLI(LightningCLI):
 #         # self.parser.save(self.config, config_path, skip_none=False)
 
 
-def cli_main():
-    cli = CustomLightningCLI(
+def diffsort_cli_main(args: ArgsType = None, run=True):
+    cli = DiffsortLightningCLI(
         MultilayerDiffsort,
         DataModuleRisk,
         seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,
+        args=args,
+        run=run,
     )
+    return cli
 
 
 if __name__ == "__main__":
-    cli_main()
+    diffsort_cli_main()
