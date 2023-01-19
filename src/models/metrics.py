@@ -53,7 +53,7 @@ def sorted_list_concordance_index(events, time, predictions):
 
 class ExactMatch(torchmetrics.Metric):
     def __init__(self):
-        super().__init__()
+        super().__init__(full_state_update=False)
         self.add_state("exact_match", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("element_wise", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("exact_match5", default=torch.tensor(0), dist_reduce_fx="sum")

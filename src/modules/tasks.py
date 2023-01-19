@@ -291,7 +291,7 @@ class SortingRiskMixin(RiskMixin):
                 all_observed,
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
-            self.valid_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1))
+            self.valid_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1))
 
         # return loss, predictions, perm_prediction, perm_ground_truth
 

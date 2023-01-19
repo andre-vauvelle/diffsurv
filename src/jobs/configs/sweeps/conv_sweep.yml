@@ -1,0 +1,25 @@
+# wandb sweep
+program: scripts/convdiffsort.py
+method: grid
+metric:
+  name: val/c_index/all
+  goal: maximize
+parameters:
+  data.risk_set_size:
+    values: [2,4,8,16,32,64]
+  data.batch_size:
+    value: 128
+  data.num_workers:
+    value: -1
+  trainer.strategy:
+    value: ddp
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - fit
+  - "--config"
+  - "jobs/configs/convdiffsort.yml"
+  - ${args}
+project: diffsurv
+entity: cardiors
