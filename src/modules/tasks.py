@@ -1,3 +1,4 @@
+import math
 from typing import Any, Dict, Literal, Optional
 
 import numpy as np
@@ -182,7 +183,7 @@ class SortingRiskMixin(RiskMixin):
     def __init__(
         self,
         sorting_network: Literal["odd_even", "bitonic"],
-        steepness: float = 30.0,
+        steepness: Optional[float] = None,
         art_lambda: float = 0.2,
         distribution="cauchy",
         sorter_size: int = 128,
@@ -195,6 +196,13 @@ class SortingRiskMixin(RiskMixin):
         super().__init__(*args, **kwargs)
         self.sorter_size = sorter_size
         self.ignore_impossible = ignore_impossible
+        if steepness is None:
+            if sorting_network == "odd_even":
+                steepness = 2 * self.sorter_size
+            else:
+                steepness = math.log2(self.sorter_size) * (
+                    1 + math.log2(self.sorter_size)
+                )  # bitonic layers
 
         self.sorter = CustomDiffSortNet(
             sorting_network_type=sorting_network,

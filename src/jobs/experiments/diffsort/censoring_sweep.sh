@@ -6,13 +6,13 @@ DATAPATH=/lustre/home/rmhivau/ehrgnn/data/synthetic/pysurv_gaussian
 # Partial likelihood
 #for c in "${CENSORINGS[@]}"; do
 #    python scripts/mlp.py fit \
-#        --config jobs/configs/risk/mlp.yaml \
+#        --config jobs/configs/mlp.yaml \
 #        --data.path "$DATAPATH"_"$c".pt
 #done
 
 #for c in ${CENSORINGS[@]}; do
 #    python scripts/mlp.py fit \
-#        --config jobs/configs/risk/mlp.yaml \
+#        --config jobs/configs/mlp.yaml \
 #        --data.path "$DATAPATH"_"$c".pt \
 #        --model.head_layers=1
 #done
@@ -20,13 +20,13 @@ DATAPATH=/lustre/home/rmhivau/ehrgnn/data/synthetic/pysurv_gaussian
 #Diffsort CE
 #for c in ${CENSORINGS[@]}; do
 #    python scripts/mlpdiffsort.py fit \
-#        --config jobs/configs/risk/mlpdiffsort.yaml \
+#        --config jobs/configs/mlpdiffsort.yaml \
 #        --data.path "$DATAPATH"_"$c".pt
 #done
 
 for c in ${CENSORINGS[@]}; do
     python scripts/mlpdiffsort_synthetic.py fit \
-        --config jobs/configs/risk/mlpdiffsort_synthetic.yaml \
+        --config jobs/configs/mlpdiffsort_synthetic.yaml \
         --data.path "$DATAPATH"_"$c".pt \
         --model.head_layers=1
 done

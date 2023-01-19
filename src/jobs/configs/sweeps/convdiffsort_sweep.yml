@@ -1,0 +1,23 @@
+# wandb sweep
+program: scripts/mlpdiffsort.py
+method: random
+metric:
+  name: val/loss
+  goal: minimize
+parameters:
+  model.sorting_network:
+    values: [odd_even, bitonic]
+  data.risk_set_size:
+    values: [2,4,8,16,32,64]
+  data.batch_size:
+    value: 128
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - fit
+  - "--config"
+  - "jobs/configs/convdiffsort.yml"
+  - ${args}
+project: diffsurv
+entity: cardiors
