@@ -118,7 +118,6 @@ def preprocess_pycox(
             "sample.yr",
             "kappa",
             "lambda",
-            "flc.grp_0",
             "flc.grp_1",
             "flc.grp_2",
             "flc.grp_3",
@@ -128,6 +127,7 @@ def preprocess_pycox(
             "flc.grp_7",
             "flc.grp_8",
             "flc.grp_9",
+            "flc.grp_10",
             "creatinine",
             "mgus",
         ]
@@ -141,9 +141,11 @@ def preprocess_pycox(
     elif name == "nwtco.pt":
         # This had a few weird columns in the pycox...
         x_covar_columns = [
-            "stage_0",
             "stage_1",
+            "stage_2",
             "stage_3",
+            "stage_4",
+            "in.subcohort",
             "age",
             "instit_2",
             "histol_2",
@@ -280,7 +282,6 @@ def preprocess_kkbox(
         "registered_via",
     ]
 
-    data_store = dict()
     for stage, dataset in datasets.items():
         dataset = preprocess_columns(dataset, columns_to_scale, columns_to_one_hot, 0.001)
         x_covar = dataset.loc[:, x_covar_columns].to_numpy()
@@ -290,8 +291,6 @@ def preprocess_kkbox(
         x_covar = torch.Tensor(x_covar).float()
         y_times = torch.Tensor(y_times).float().unsqueeze(-1)
         censored_events = torch.Tensor(censored_events).long().unsqueeze(-1)
-
-        data = {"x_covar": x_covar, "y_times": y_times, "censored_events": censored_events}
 
         data = {
             "x_covar": x_covar,
@@ -303,7 +302,6 @@ def preprocess_kkbox(
 
         torch.save(data, os.path.join(save_path, name))
         print(f"Saved pycox realworld dataset to: {save_path}")
-        data_store[name] = data
 
     if save_artifact:
         N = sum(df.shape[0] for df in datasets.values())
@@ -330,20 +328,20 @@ def preprocess_kkbox(
 
 if __name__ == "__main__":
     # support = from_deepsurv._Support().read_df().sample(frac=1)
-    metabric = from_deepsurv._Metabric().read_df().sample(frac=1)
+    # metabric = from_deepsurv._Metabric().read_df().sample(frac=1)
     # gbsg = from_deepsurv._Gbsg().read_df().sample(frac=1)
     # flchain = from_rdatasets._Flchain().read_df().sample(frac=1)
-    # nwtco = from_rdatasets._Nwtco().read_df().sample(frac=1)
+    nwtco = from_rdatasets._Nwtco().read_df().sample(frac=1)
     # sac3 = from_simulations._SAC3().read_df().sample(frac=1)
     # rr_nl_nhp = from_simulations._RRNLNPH().read_df().sample(frac=1)
     # sac_admin5 = from_simulations._SACAdmin5().read_df().sample(frac=1)
     #
     datasets = {
         # "support.pt": support,
-        "metabric.pt": metabric,
+        # "metabric.pt": metabric,
         # "gbsg.pt": gbsg,
         # "flchain.pt": flchain,
-        # "nwtco.pt": nwtco,
+        "nwtco.pt": nwtco,
         # 'kkbox': kkbox,
         # "sac3.pt": sac3,
         # "rr_nl_nhp.pt": rr_nl_nhp,
@@ -353,4 +351,4 @@ if __name__ == "__main__":
     for n, d in datasets.items():
         preprocess_pycox(n, d, save_artfifact=True)
 
-    # preprocess_kkbox(save_artifact=True)
+    preprocess_kkbox(save_artifact=True)

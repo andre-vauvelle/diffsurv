@@ -5,6 +5,7 @@ from torchmetrics import MetricCollection, Precision
 
 from data.preprocess.utils import SYMBOL_IDX
 from models.heads import PredictionHead
+from models.imaging import SVHNConvNet
 from modules.base import BaseModel
 from modules.tasks import RiskMixin, SortingRiskMixin
 
@@ -57,6 +58,7 @@ class MultilayerBase(BaseModel):
         else:
             head_input_dim = embedding_dim + self.cov_size
 
+        # else:
         self.head = PredictionHead(
             in_features=head_input_dim,
             out_features=output_dim,
@@ -70,15 +72,7 @@ class MultilayerBase(BaseModel):
         self.output_dim = output_dim
 
         # TODO: consider moving to mixin
-        metrics = MetricCollection(
-            [
-                # AveragePrecision(num_classes=self.output_dim, compute_on_step=False, average='weighted'),
-                Precision(compute_on_step=False, average="micro"),
-                # Accuracy(compute_on_step=False, average='micro'),
-                # AUROC(num_classes=self.output_dim, compute_on_step=False)
-            ]
-        )
-
+        metrics = MetricCollection([Precision(compute_on_step=False, average="micro")])
         self.valid_metrics = metrics.clone(prefix="val/")
         self.save_hyperparameters()
 

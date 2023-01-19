@@ -4,10 +4,10 @@ wandb sweep jobs/configs/risk/sweeps/realworld/mlp_flchain.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_gbsg.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_metabric.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_nwtco.yaml
+wandb sweep jobs/configs/risk/sweeps/realworld/mlp_support.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_rr_nl_nhp.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_sac3.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_sac_admin5.yaml
-wandb sweep jobs/configs/risk/sweeps/realworld/mlp_support.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlp_kkbox.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlpdiffsort_flchain.yaml
 wandb sweep jobs/configs/risk/sweeps/realworld/mlpdiffsort_gbsg.yaml

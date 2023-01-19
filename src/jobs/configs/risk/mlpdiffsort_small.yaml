@@ -29,7 +29,8 @@ data:
 #  local_path: "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_5_0.3_unif.pt"
 #  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv27_linear_exp_nocensoring_ties5_0.pt
 #  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv27_linear_exp_independent_ties5_1.pt
-  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties5_1.pt
+#  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties5_1.pt
+  local_path: /Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_beta5_exp.pt
 #  wandb_artifact: pysurv_linear_exp_nocensoring_ties5_9.pt:latest
 #  wandb_artifact: pysurv27_linear_exp_independent_ties5_0.pt:latest
   batch_size: 32

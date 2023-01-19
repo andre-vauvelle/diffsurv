@@ -1,4 +1,5 @@
 # wandb sweep
+name: metabric_mlp
 method: random
 program: scripts/mlp.py
 metric:
@@ -8,21 +9,20 @@ parameters:
   model.batch_norm:
     value: False
   model.lr:
-    distribution: log_uniform_values
-    min: 1e-4 # 0.0001
-    max: 3e-2
+    values: [0.001, 0.005, 0.0001]
   model.head_layers:
-    values: [1, 2, 3]
+    values: [1, 2]
   model.head_hidden_dim:
-    values: [64, 128, 256, 512, 1024]
+    values: [64, 128, 256]
   model.hidden_dropout_prob:
-    min: 0.0
-    max: 0.6
+    values: [0, 0.1, 0.2]
   data.batch_size:
-    values: [16, 32, 64, 84, 128]
+    values: [16, 64, 128]
+  data.risk_set_size:
+    values: [2, 5, 10, 20, 30]
 command:
   - ${env}
-  - ${interpreter}
+  - python3
   - ${program}
   - fit
   - "--config"

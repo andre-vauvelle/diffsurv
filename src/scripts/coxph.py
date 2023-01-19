@@ -18,7 +18,10 @@ path = os.path.join(DATA_DIR, "synthetic", "linear_exp_synthetic.pt")
 # path = "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties9000_nocensoring.pt"
 # path = "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_nocensoring_unif.pt"
 # path = "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties_10000_0.3_unif.pt"
-path = "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties3_10000_0.3_unif.pt"
+# path = "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties3_10000_0.3_unif.pt"
+# path = '/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_beta_exp.pt'
+path = "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_beta5_exp.pt"
+# path = '/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_beta10_exp_nocen.pt'
 
 
 data = torch.load(os.path.join(path))

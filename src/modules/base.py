@@ -6,23 +6,11 @@ from pytorch_lightning.utilities import rank_zero_warn
 
 
 class BaseModel(pl.LightningModule):
-    def __init__(
-        self,
-        input_dim=1390,
-        output_dim=1390,
-        used_covs=("age_ass", "sex"),
-        optimizer: Literal["adam", "sgd"] = "adam",
-        weight_decay=0,
-    ):
+    def __init__(self, optimizer: Literal["adam", "sgd"] = "adam", weight_decay=0, lr=0.1):
         super().__init__()
         self.optimizer = optimizer
         self.weight_decay = weight_decay
-
-    def forward(self, covariates) -> torch.Tensor:
-        pooled = torch.cat((pooled, covariates), dim=1)
-
-        logits = self.head(pooled)
-        return logits
+        self.lr = lr
 
     def configure_optimizers(self):
         sparse = [p for n, p in self.named_parameters() if "embed" in n]

@@ -7,7 +7,7 @@ from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 
 import wandb
-from data.datasets import CaseControlBatchSampler, CaseControlRiskDataset, DatasetRisk
+from data.datasets import CaseControlRiskDataset, DatasetRisk
 
 
 class DataModuleRisk(pl.LightningDataModule):
@@ -199,17 +199,3 @@ class DataModuleRisk(pl.LightningDataModule):
     def test_dataloader(self):
         test_dataloader = self.get_dataloader(stage="test")
         return test_dataloader
-
-
-class CustomDataLoader(DataLoader):
-    """Only adds updated len due to custom case control sampling, this is for tqdm"""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __len__(self):
-        if self.batch_sampler is None:
-            super().__len__()
-        else:
-            self.batch_sampler: CaseControlBatchSampler
-            return self.batch_sampler.total_batches
