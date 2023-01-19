@@ -70,21 +70,34 @@ class DatasetRisk(Dataset):
     ):
         self.x_covar = x_covar
         self.y_times = y_times
-        self.censored_events = censored_events
+        self.censored_events = (
+            censored_events
+            if isinstance(censored_events, torch.Tensor)
+            else torch.Tensor(censored_events)
+        )
         self.risk = risk
+        self.transform = transforms.Compose(
+            [
+                transforms.RandomCrop([54, 54]),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
 
     def __getitem__(self, index):
         covariates = self.x_covar[index]
-
-        future_label_multihot = 1 - self.censored_events[index]
+        if covariates.dim() == 3:
+            covariates = Image.fromarray(np.transpose(covariates.numpy(), (1, 2, 0)))
+            covariates = self.transform(covariates)
+        future_label_multihot = 1 - self.censored_events[index].unsqueeze(-1)
         future_label_times = self.y_times[index]
         censorings = self.censored_events[index]
-        exclusions = torch.zeros_like(censorings)
+        exclusions = torch.zeros_like(censorings).unsqueeze(-1)
 
         output = {
             # labels
             "labels": future_label_multihot,
-            "label_times": future_label_times,
+            "label_times": future_label_times.unsqueeze(-1),
             "censorings": censorings,
             "exclusions": exclusions,
             # input
