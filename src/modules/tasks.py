@@ -112,7 +112,7 @@ class RiskMixin(pl.LightningModule):
         # if not torch.isnan(loss):
         #     self.log("val/loss", loss, prog_bar=True)
 
-        self.valid_em.update(logits.squeeze(-1), label_times)
+        self.valid_em.update(-logits.squeeze(-1), label_times)
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
 
