@@ -1,27 +1,33 @@
 #!/bin/bash -l
-#$ -l tmem=32G
+#$ -l tmem=10G
 #$ -l h_rt=50:0:0
 #$ -l gpu=true,gpu_type=(v100|p100)
 #$ -S /bin/bash
 #$ -j y
-#$ -N bert_mlm
+#$ -N big_submit
 
 #$ -o /home/vauvelle/pycharm-sftp/diffsurv/src/jobs/logs
-
 hostname
 date
-SOURCE_DIR='/home/vauvelle/pycharm-sftp/diffsurv/'
+SOURCE_DIR='/home/vauvelle/diffsurv/src'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
-cd $SOURCE_DIR/src/ || exit
-source /share/apps/source_files/cuda/cuda-10.1.source
-#source ~/.bashrc
-conda activate
+cd $SOURCE_DIR || exit
+source ~/.bashrc
+
+# These are may need to be reset for local installs...
+export PATH=/share/apps/python-3.9.5-shared/bin:${PATH}
+export LD_LIBRARY_PATH=/share/apps/python-3.9.5-shared/lib:${LD_LIBRARY_PATH}
+export PATH=/usr/local/cuda/bin:${PATH} # CUDA 11.5
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+export PATH=/home/vauvelle/.local/bin:${PATH}
 
 #python scripts/bert_mlm.py fit --config="${CONFIG_FILE:=jobs/configs/mlm/bert_phecode.yaml}"
 echo Using command:
-echo python $@
+echo $@
 
-python $@
+$@
+
 date
 
 qstat -j $JOB_ID
+
