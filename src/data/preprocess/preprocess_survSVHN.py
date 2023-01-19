@@ -262,11 +262,11 @@ if __name__ == "__main__":
 
         data = {
             "x_covar": images,
-            "y_times": y_times[idx == 1],
-            "censored_events": censored_events[idx == 1],
-            "risk": BX[idx == 1],
-            "numbers": numbers[idx == 1],
-            "y_times_uncensored": survival_times[idx == 1],
+            "y_times": y_times[idx == 1].float().unsqueeze(-1),
+            "censored_events": torch.Tensor(censored_events[idx == 1]).long().unsqueeze(-1),
+            "risk": BX[idx == 1].float().unsqueeze(-1),
+            "numbers": numbers[idx == 1].float().unsqueeze(-1),
+            "y_times_uncensored": survival_times[idx == 1].unsqueeze(-1),
         }
         name = f"{s}.pt"
         create_folder(save_path)
