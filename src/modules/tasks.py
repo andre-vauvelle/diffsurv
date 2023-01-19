@@ -191,14 +191,12 @@ class SortingRiskMixin(RiskMixin):
         distribution="cauchy",
         sorter_size: int = 128,
         ignore_censoring: bool = True,
-        ignore_impossible: bool = False,
         norm_risk: bool = True,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.sorter_size = sorter_size
-        self.ignore_impossible = ignore_impossible
         if steepness is None:
             if sorting_network == "odd_even":
                 steepness = 2 * self.sorter_size
@@ -242,23 +240,12 @@ class SortingRiskMixin(RiskMixin):
         else:
             predictions = possible_predictions
 
-        if self.ignore_impossible:
-            loss = torch.nn.BCELoss()(
-                torch.clamp(predictions, 1e-8, 1 - 1e-8),
-                torch.ones_like(predictions),
-            )
-        else:
-            # impossible_predictions = ((1 - perm_ground_truth) * perm_prediction).sum(dim=1)
-            impossible_predictions = 1 - possible_predictions
-            predictions = torch.concat((possible_predictions, impossible_predictions))
-            truths = torch.concat(
-                (
-                    torch.ones_like(possible_predictions),
-                    torch.zeros_like(impossible_predictions),
-                )
-            )
+        loss = torch.nn.BCELoss()(
+            torch.clamp(predictions, 1e-8, 1 - 1e-8),
+            torch.ones_like(predictions),
+        )
 
-            loss = torch.nn.BCELoss()(torch.clamp(predictions, 1e-8, 1 - 1e-8), truths)
+        loss = torch.nn.BCELoss()(torch.clamp(predictions_, 1e-8, 1 - 1e-8), truths)
 
         return loss, lh, perm_prediction, perm_ground_truth
 
