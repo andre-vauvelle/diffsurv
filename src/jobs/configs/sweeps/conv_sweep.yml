@@ -1,5 +1,6 @@
 # wandb sweep
-program: scripts/convdiffsort.py
+name: conv_svhn
+program: scripts/conv.py
 method: grid
 metric:
   name: val/c_index/all
@@ -19,7 +20,7 @@ command:
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/convdiffsort.yml"
+  - "jobs/configs/conv.yml"
   - ${args}
 project: diffsurv
 entity: cardiors

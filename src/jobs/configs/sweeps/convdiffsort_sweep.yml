@@ -1,4 +1,5 @@
 # wandb sweep
+name: diffsort_svhn
 program: scripts/convdiffsort.py
 method: grid
 metric:
