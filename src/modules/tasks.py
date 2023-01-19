@@ -78,7 +78,7 @@ class RiskMixin(pl.LightningModule):
         if self.loss_func_w is not None:
             loss = self.loss_func_w(logits, label_multihot, label_times)
         else:
-            loss = self.loss_func(logits, label_multihot, label_times)
+            loss = self.loss_func(logits, label_multihot, label_times.unsqueeze(-1))
 
         self.log("train/loss", loss, prog_bar=True)
         if self.log_weights:
