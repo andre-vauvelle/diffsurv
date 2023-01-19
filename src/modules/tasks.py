@@ -139,7 +139,7 @@ class RiskMixin(pl.LightningModule):
         self._group_cindex(output, key="val/c_index/")
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
-        self.log("hp_metric", output["val/c_index/all"], prog_bar=True, sync_dist=Tre)
+        self.log("hp_metric", output["val/c_index/all"], prog_bar=True, sync_dist=True)
 
         if self.setting == "synthetic":
             output = self.valid_cindex_risk.compute()
