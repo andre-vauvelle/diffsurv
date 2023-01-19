@@ -29,6 +29,7 @@ trainer:
   max_epochs: 2
   check_val_every_n_epoch: 1
   log_every_n_steps: 1
+  limit_val_batches: 1
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
@@ -38,7 +39,7 @@ data:
   risk_set_size: 32
   num_workers: 1
 model:
-  lr: 0.03 # from auto lr find
+  lr: 0.0003 # from auto lr find
   sorting_network: bitonic
   steepness: 19.0
   distribution: cauchy

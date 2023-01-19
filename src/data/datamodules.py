@@ -72,7 +72,9 @@ class DataModuleRisk(pl.LightningDataModule):
         self.save_hyperparameters()
 
     def get_dataloader(self, stage: Literal["train", "val", "test"]):
-        if self.wandb_artifact and "kkbox_v1:" in self.wandb_artifact:
+        if self.wandb_artifact and (
+            "kkbox_v1:" in self.wandb_artifact or "SVNH" in self.wandb_artifact
+        ):
             # Pre-split provided
             if stage == "train":
                 wandb_path = [p for p in os.listdir(self.wandb_dir) if "train" in p][0]
@@ -97,7 +99,7 @@ class DataModuleRisk(pl.LightningDataModule):
                 x_covar,
                 y_times,
                 censored_events,
-                risk=None,
+                risk=None if "kkbox_v1" in self.wandb_artifact else data["risk"],
                 inc_censored_in_ties=self.inc_censored_in_ties,
             )
         else:

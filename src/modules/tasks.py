@@ -6,7 +6,7 @@ import torch
 from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
 
-from models.metrics import CIndex
+from models.metrics import CIndex, ExactMatch
 from modules.loss import CoxPHLoss, CustomBCEWithLogitsLoss, RankingLoss
 from modules.sorter import CustomDiffSortNet
 from omni.common import safe_string, unsafe_string
@@ -43,12 +43,12 @@ class RiskMixin(pl.LightningModule):
         )
         self.valid_cindex = c_index_metrics.clone(prefix="val/")
 
-        c_index_metric_names = list(self.label_vocab["token2idx"].keys())
-        c_index_metrics = MetricCollection(
-            {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
-        )
+        metrics = MetricCollection([ExactMatch()])
+        self.valid_em = metrics.clone(prefix="val/")
+
         if self.setting == "synthetic":
             self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
+            self.valid_em_risk = metrics.clone(prefix="val/")
 
         if loss_str == "cox":
             self.loss_func = CoxPHLoss(method=cph_method)
@@ -108,8 +108,7 @@ class RiskMixin(pl.LightningModule):
         # if not torch.isnan(loss):
         #     self.log("val/loss", loss, prog_bar=True)
 
-        predictions = torch.sigmoid(logits)
-        self.valid_metrics.update(predictions, label_multihot.int())
+        self.valid_em.update(logits, label_times)
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
 
@@ -124,10 +123,11 @@ class RiskMixin(pl.LightningModule):
                 all_observed,
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
+            self.valid_em_risk.update(logits, batch["risk"])
 
     def on_validation_epoch_end(self) -> None:
-        output = self.valid_metrics.compute()
-        self.valid_metrics.reset()
+        output = self.valid_em.compute()
+        self.valid_em.reset()
         self.log_dict(output, prog_bar=False)
 
         # Get calc cindex metric with collected inputs
@@ -141,6 +141,10 @@ class RiskMixin(pl.LightningModule):
             output = self.valid_cindex_risk.compute()
             self._group_cindex(output, key="val/c_index_risk/")
             self.valid_cindex_risk.reset()
+            self.log_dict(output, prog_bar=False)
+
+            output = self.valid_em_risk.compute()
+            self.valid_em_risk.reset()
             self.log_dict(output, prog_bar=False)
 
     def test_step(self, batch, batch_idx):
@@ -261,14 +265,11 @@ class SortingRiskMixin(RiskMixin):
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
-        # self.log("val/loss", loss, prog_bar=True)
-
-        self.valid_metrics.update(logits, label_multihot.int())
-        # label_times = batch['label_times']
         exclusions = batch["exclusions"]
 
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
+        self.valid_em.update(logits, label_times)
 
         if self.setting == "synthetic":
             all_observed = torch.ones_like(label_multihot)
@@ -279,6 +280,7 @@ class SortingRiskMixin(RiskMixin):
                 all_observed,
                 batch["risk"],
             )
+            self.valid_em_risk.update(logits, batch["risk"].squeeze(-1))
 
         # return loss, predictions, perm_prediction, perm_ground_truth
 

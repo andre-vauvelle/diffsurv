@@ -51,9 +51,42 @@ def sorted_list_concordance_index(events, time, predictions):
     return num / den
 
 
+class ExactMatch(torchmetrics.Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("exact_match", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("element_wise", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("exact_match5", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total_elements", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total_sets", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        preds = preds.squeeze(2)
+        assert preds.shape == target.shape
+        acc = torch.argsort(target, dim=-1) == torch.argsort(preds, dim=-1)
+
+        self.exact_match += acc.all(-1).sum()
+        self.element_wise += acc.sum()
+
+        preds5 = preds[:, :5]
+        target5 = target[:, :5]
+        acc5 = torch.argsort(target5, dim=-1) == torch.argsort(preds5, dim=-1)
+        self.exact_match5 += acc5.all(-1).sum()
+
+        self.total_elements += target.numel()
+        self.total_sets += target.shape[0]
+
+    def compute(self):
+        return dict(
+            exact_match=self.exact_match / self.total_sets,
+            element_wise=self.element_wise / self.total_elements,
+            exact_match_5=self.exact_match5 / self.total_sets,
+        )
+
+
 class CIndex(torchmetrics.Metric):
     def __init__(self, dist_sync_on_step=False, method="sorted_list"):
-        super().__init__(dist_sync_on_step=dist_sync_on_step)
+        super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
         if method == "loop":
             self.cindex_fn = loop_cindex
         elif method == "sorted_list":
