@@ -30,4 +30,5 @@ class ConvRisk(RiskMixin, ConvModule):
 class ConvDiffsort(SortingRiskMixin, ConvModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        steepness = self.steepness
         self.save_hyperparameters()

@@ -61,7 +61,6 @@ class ExactMatch(torchmetrics.Metric):
         self.add_state("total_sets", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
-        preds = preds.squeeze(2)
         assert preds.shape == target.shape
         acc = torch.argsort(target, dim=-1) == torch.argsort(preds, dim=-1)
 

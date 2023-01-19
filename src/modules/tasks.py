@@ -48,8 +48,11 @@ class RiskMixin(pl.LightningModule):
         self.valid_em = metrics.clone(prefix="val/")
 
         if self.setting == "synthetic":
+            c_index_metrics = MetricCollection(
+                {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
+            )
             self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
-            self.valid_em_risk = metrics.clone(prefix="val/")
+            self.valid_em_risk = metrics.clone(prefix="val/", postfix="_risk")
 
         if loss_str == "cox":
             self.loss_func = CoxPHLoss(method=cph_method)
@@ -109,7 +112,7 @@ class RiskMixin(pl.LightningModule):
         # if not torch.isnan(loss):
         #     self.log("val/loss", loss, prog_bar=True)
 
-        self.valid_em.update(logits, label_times)
+        self.valid_em.update(logits.squeeze(-1), label_times)
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
 
@@ -124,7 +127,7 @@ class RiskMixin(pl.LightningModule):
                 all_observed,
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
-            self.valid_em_risk.update(logits, batch["risk"])
+            self.valid_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1))
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_em.compute()
@@ -277,7 +280,7 @@ class SortingRiskMixin(RiskMixin):
 
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
-        self.valid_em.update(logits, label_times)
+        self.valid_em.update(logits.squeeze(-1), label_times)
 
         if self.setting == "synthetic":
             all_observed = torch.ones_like(label_multihot)
@@ -286,9 +289,9 @@ class SortingRiskMixin(RiskMixin):
                 exclusions,
                 logits,
                 all_observed,
-                batch["risk"],
+                batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
-            self.valid_em_risk.update(logits, batch["risk"].squeeze(-1))
+            self.valid_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1))
 
         # return loss, predictions, perm_prediction, perm_ground_truth
 
