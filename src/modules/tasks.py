@@ -132,24 +132,24 @@ class RiskMixin(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         output = self.valid_em.compute()
         self.valid_em.reset()
-        self.log_dict(output, prog_bar=False)
+        self.log_dict(output, prog_bar=False, sync_dist=True)
 
         # Get calc cindex metric with collected inputs
         output = self.valid_cindex.compute()
         self._group_cindex(output, key="val/c_index/")
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
-        self.log("hp_metric", output["val/c_index/all"], prog_bar=True)
+        self.log("hp_metric", output["val/c_index/all"], prog_bar=True, sync_dist=Tre)
 
         if self.setting == "synthetic":
             output = self.valid_cindex_risk.compute()
             self._group_cindex(output, key="val/c_index_risk/")
             self.valid_cindex_risk.reset()
-            self.log_dict(output, prog_bar=False)
+            self.log_dict(output, prog_bar=False, sync_dist=True)
 
             output = self.valid_em_risk.compute()
             self.valid_em_risk.reset()
-            self.log_dict(output, prog_bar=False)
+            self.log_dict(output, prog_bar=False, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         # TODO: implement
