@@ -36,7 +36,7 @@ trainer:
 data:
   wandb_artifact: cardiors/diffsurv/SVNH:v0
   batch_size: 128
-  risk_set_size: 32
+  risk_set_size: 2
   num_workers: 1
 model:
   lr: 0.0003 # from auto lr find

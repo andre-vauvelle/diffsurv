@@ -52,8 +52,13 @@ def sorted_list_concordance_index(events, time, predictions):
 
 
 class ExactMatch(torchmetrics.Metric):
-    def __init__(self):
+    """
+    :param size: size of the set on which to calc exact match and element wise match
+    """
+
+    def __init__(self, size: int):
         super().__init__(full_state_update=False)
+        self.size = size
         self.add_state("exact_match", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("element_wise", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("exact_match5", default=torch.tensor(0), dist_reduce_fx="sum")
@@ -62,18 +67,20 @@ class ExactMatch(torchmetrics.Metric):
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
         assert preds.shape == target.shape
-        acc = torch.argsort(target, dim=-1) == torch.argsort(preds, dim=-1)
+        acc = torch.argsort(target[: self.size], dim=-1) == torch.argsort(
+            preds[: self.size], dim=-1
+        )
 
         self.exact_match += acc.all(-1).sum()
         self.element_wise += acc.sum()
 
-        preds5 = preds[:, :5]
-        target5 = target[:, :5]
+        preds5 = preds[:5]
+        target5 = target[:5]
         acc5 = torch.argsort(target5, dim=-1) == torch.argsort(preds5, dim=-1)
         self.exact_match5 += acc5.all(-1).sum()
 
-        self.total_elements += target.numel()
-        self.total_sets += target.shape[0]
+        self.total_elements += self.size
+        self.total_sets += 1
 
     def compute(self):
         return dict(

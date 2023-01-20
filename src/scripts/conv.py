@@ -13,6 +13,7 @@ class ConvLightningCLI(LightningCLI):
         parser.link_arguments(
             "data.grouping_labels", "model.grouping_labels", apply_on="instantiate"
         )
+        parser.link_arguments("data.risk_set_size", "model.sorter_size", apply_on="instantiate")
         parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
 
 

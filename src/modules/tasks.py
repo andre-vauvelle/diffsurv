@@ -27,6 +27,7 @@ class RiskMixin(pl.LightningModule):
         weightings=None,
         use_weighted_loss=False,
         setting: str = "realworld",
+        sorter_size: int = 128,
         log_weights=False,
         cph_method: str = "efron",
         **kwargs,
@@ -37,6 +38,7 @@ class RiskMixin(pl.LightningModule):
         self.grouping_labels = grouping_labels
         self.setting = setting
         self.loss_str = loss_str
+        self.sorter_size = sorter_size
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
@@ -44,7 +46,7 @@ class RiskMixin(pl.LightningModule):
         )
         self.valid_cindex = c_index_metrics.clone(prefix="val/")
 
-        metrics = MetricCollection([ExactMatch()])
+        metrics = MetricCollection([ExactMatch(size=self.sorter_size)])
         self.valid_em = metrics.clone(prefix="val/")
 
         if self.setting == "synthetic":
@@ -112,7 +114,7 @@ class RiskMixin(pl.LightningModule):
         # if not torch.isnan(loss):
         #     self.log("val/loss", loss, prog_bar=True)
 
-        self.valid_em.update(-logits.squeeze(-1), label_times)
+        self.valid_em.update(-logits.squeeze(-1), label_times.squeeze(-1))
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
 
@@ -127,7 +129,7 @@ class RiskMixin(pl.LightningModule):
                 all_observed,
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
-            self.valid_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1))
+            self.valid_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1).squeeze(-1))
 
     def on_validation_epoch_end(self) -> None:
         output = self.valid_em.compute()
@@ -195,7 +197,7 @@ class SortingRiskMixin(RiskMixin):
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(sorter_size=sorter_size, *args, **kwargs)
         self.sorter_size = sorter_size
         if steepness is None:
             if sorting_network == "odd_even":
@@ -259,13 +261,16 @@ class SortingRiskMixin(RiskMixin):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
+        covariates = batch["covariates"]
+        label_multihot = batch["labels"]
+        label_times = batch["label_times"]
+        logits = self(covariates)
 
         exclusions = batch["exclusions"]
 
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
-        self.valid_em.update(logits.squeeze(-1), label_times)
+        self.valid_em.update(logits.squeeze(-1), label_times.squeeze(-1))
 
         if self.setting == "synthetic":
             all_observed = torch.ones_like(label_multihot)
@@ -276,7 +281,7 @@ class SortingRiskMixin(RiskMixin):
                 all_observed,
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
-            self.valid_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1))
+            self.valid_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1).squeeze(-1))
 
         # return loss, predictions, perm_prediction, perm_ground_truth
 

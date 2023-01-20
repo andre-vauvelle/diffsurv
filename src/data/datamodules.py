@@ -94,14 +94,22 @@ class DataModuleRisk(pl.LightningDataModule):
                 data["y_times"],
                 data["censored_events"],
             )
-            dataset = CaseControlRiskDataset(
-                self.controls_per_case,
-                x_covar,
-                y_times,
-                censored_events,
-                risk=None if "kkbox_v1" in self.wandb_artifact else data["risk"],
-                inc_censored_in_ties=self.inc_censored_in_ties,
-            )
+            if stage == "train":
+                dataset = CaseControlRiskDataset(
+                    self.controls_per_case,
+                    x_covar,
+                    y_times,
+                    censored_events,
+                    risk=None if "kkbox_v1" in self.wandb_artifact else data["risk"],
+                    inc_censored_in_ties=self.inc_censored_in_ties,
+                )
+            else:
+                dataset = DatasetRisk(
+                    x_covar,
+                    y_times,
+                    censored_events,
+                    risk=None if "kkbox_v1" in self.wandb_artifact else data["risk"],
+                )
         else:
             # Manually split data
             if self.wandb_artifact:
@@ -178,9 +186,13 @@ class DataModuleRisk(pl.LightningDataModule):
 
         # Validation must be not have casecontrol sampling (Otherwise not all patients included)
         # if self.controls_per_case is None or stage == "val":
+        if self.risk_set_size >= 5:
+            val_batch_size = self.risk_set_size
+        else:
+            val_batch_size = 5  # ensures that EM6 metric can be calculated
         return DataLoader(
             dataset,
-            batch_size=self.batch_size if stage == "train" else self.val_batch_size,
+            batch_size=self.batch_size if stage == "train" else val_batch_size,
             num_workers=self.num_workers,
             drop_last=False,  # TODO: Do we need to drop?
             shuffle=shuffle,
