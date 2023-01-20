@@ -31,6 +31,7 @@ class DataModuleRisk(pl.LightningDataModule):
         return_perm_mat: bool = True,
         inc_censored_in_ties: bool = True,
         k_fold: Optional[tuple] = (1, 5),
+        use_risk: bool = False,
     ):
         super().__init__()
         self.val_batch_size = val_batch_size
@@ -41,6 +42,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.wandb_artifact = wandb_artifact
         self.val_split = val_split
         self.batch_size = batch_size
+        self.use_risk = use_risk
         self.num_workers = os.cpu_count() if num_workers == -1 else num_workers
         self.return_perm_mat = return_perm_mat
         if wandb_artifact is not None:
@@ -98,7 +100,7 @@ class DataModuleRisk(pl.LightningDataModule):
                 dataset = CaseControlRiskDataset(
                     self.controls_per_case,
                     x_covar,
-                    y_times,
+                    y_times if not self.use_risk else data["risk"],
                     censored_events,
                     risk=None if "kkbox_v1" in self.wandb_artifact else data["risk"],
                     inc_censored_in_ties=self.inc_censored_in_ties,
