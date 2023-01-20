@@ -193,7 +193,7 @@ class SortingRiskMixin(RiskMixin):
         distribution="cauchy",
         sorter_size: int = 128,
         ignore_censoring: bool = True,
-        norm_risk: bool = True,
+        norm_risk: bool = False,
         *args,
         **kwargs,
     ):
