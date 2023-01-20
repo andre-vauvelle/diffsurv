@@ -245,8 +245,6 @@ class SortingRiskMixin(RiskMixin):
             torch.ones_like(predictions),
         )
 
-        loss = torch.nn.BCELoss()(torch.clamp(predictions_, 1e-8, 1 - 1e-8), truths)
-
         return loss, lh, perm_prediction, perm_ground_truth
 
     def training_step(self, batch, batch_idx, optimizer_idx: Optional[int] = None, *args, **kwargs):
