@@ -9,9 +9,9 @@ parameters:
   data.risk_set_size:
     values: [2,4,8,16,32,64]
   data.batch_size:
-    value: 128
+    value: 100
   data.num_workers:
-    value: -1
+    value: 4
   trainer.strategy:
     value: ddp
 command:
