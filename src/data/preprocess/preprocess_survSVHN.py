@@ -1,3 +1,4 @@
+import collections
 import os
 import os.path
 
@@ -15,33 +16,123 @@ from definitions import DATA_DIR
 from omni.common import create_folder
 
 
-class SVHNMultiDigit(VisionDataset):
-    """`Preprocessed SVHN-Multi <>`_ Dataset.
-    Note: The preprocessed SVHN dataset is based on the the `Format 1` official dataset.
-    By cropping the numbers from the images, adding a margin of :math:`30\\%` , and resizing to :math:`64\times64` ,
-    the dataset has been preprocessed.
-    The data split is as follows:
-        * ``train``: (30402 of 33402 original ``train``) + (200353 of 202353 original ``extra``)
-        * ``val``: (3000 of 33402 original ``train``) + (2000 of 202353 original ``extra``)
-        * ``test``: (all of 13068 original ``test``)
-    Each ```train / val`` split has been performed using
-    ``sklearn.model_selection import train_test_split(data_X_y_tuples, test_size=3000 / 2000, random_state=0)`` .
-    This is the closest that we could come to the
-    `work by Goodfellow et al. 2013 <https://arxiv.org/pdf/1312.6082.pdf>`_ .
-    Args:
-        root (string): Root directory of dataset where directory
-            ``SVHNMultiDigit`` exists.
-        split (string): One of {'train', 'val', 'test'}.
-            Accordingly dataset is selected.
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop`` .
-            (default = random 54x54 crop + normalization)
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
-        download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
-            downloaded again.
-    """
+def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_oracle=None):
+    numbers = numbers[:10_000]
+
+    T500, BX = time_function(numbers, beta=500)
+    T1, BX = time_function(numbers, beta=1)
+    lambda_exp_BX = (1 / 1) * np.exp(BX / 1)  # scale to mean 30 days
+    lambda_exp_BX = lambda_exp_BX.flatten()
+    T_oracle = -np.log(0.5) / (lambda_exp_BX)
+
+    fig, axs = plt.subplots(1, 3, figsize=(9.25, 5), sharey=True, sharex=True, dpi=200)
+    axs[0].scatter(numbers, T1, alpha=0.1, s=1, label="beta=1", c="b")
+    axs[1].scatter(numbers, T500, alpha=0.1, s=1, label="beta=500", c="darkorange")
+    axs[2].scatter(numbers, T_oracle, alpha=0.1, s=1, label="Oracle", c="r")
+    axs[0].set_xlim([0.8, 100000])
+    axs[0].set_ylim([0, 7.5])
+    axs[0].title.set_text("Beta=1 (Uniform)")
+    axs[1].title.set_text("Beta=500")
+    axs[2].title.set_text("Oracle")
+    axs[0].set_xscale("log")
+    axs[1].set_xscale("log")
+    axs[2].set_xscale("log")
+    axs[0].set_ylabel("Simulated Survival Time")
+    axs[1].set_xlabel("Door Number")
+    # axs[2].set_yscale('log')
+    plt.show()
+
+    idx = torch.argsort(numbers)
+    fig, axs = plt.subplots(1, 3, figsize=(9.25, 5), sharey=True, sharex=True, dpi=200)
+    axs[0].scatter(numbers[idx], T1[idx].argsort() / max(T1[idx].argsort()), alpha=0.1, s=1, c="b")
+    axs[1].scatter(
+        numbers[idx], T500[idx].argsort() / max(T500[idx].argsort()), alpha=0.1, s=1, c="darkorange"
+    )
+    axs[2].scatter(
+        numbers[idx],
+        T_oracle[idx].argsort() / max(T_oracle[idx].argsort()),
+        alpha=0.1,
+        s=0.5,
+        c="r",
+    )
+    # axs[0].set_xlim([0.8, 100000])
+    # axs[0].set_ylim([0, 7.5])
+    axs[0].title.set_text("Beta=1 (Uniform)")
+    axs[1].title.set_text("Beta=500")
+    axs[2].title.set_text("Oracle")
+    axs[0].set_xscale("log")
+    axs[1].set_xscale("log")
+    axs[2].set_xscale("log")
+    axs[0].set_ylabel("Simulated Survival Rank")
+    axs[1].set_xlabel("Door Number")
+    # axs[2].set_yscale('log')
+
+    plt.scatter(numbers, lambda_exp_BX, s=1, c="r", alpha=0.1)
+    plt.scatter(log_numbers, lambda_exp_BX, s=1, c="r", alpha=0.1)
+    plt.show()
+    print(T.mean())
+
+    idx = torch.argsort(numbers)
+    T = T[idx]
+    log_numbers = log_numbers[idx]
+    numbers = numbers[idx]
+
+    plt.scatter(log_numbers, T, alpha=0.1, s=1)
+    df = pd.DataFrame.from_dict({"log_numbers": log_numbers, "T": T})
+    medians = df.groupby("log_numbers")["T"].median()
+    plt.scatter(log_numbers, T.argsort() / max(T.argsort()), alpha=0.1, s=1)
+    plt.scatter(medians.index, medians, s=1)
+    plt.scatter(medians.index, medians.argsort() / max(medians.argsort()), s=1)
+
+    plt.scatter(numbers, T.argsort(), alpha=0.1, s=1)
+
+    # Oracle performance
+    if calc_oracle:
+        k = 5
+        perm = torch.randperm(T.argsort().size(0))
+        idx = perm[:k]
+
+        plt.scatter(log_numbers[idx], T.argsort()[idx], alpha=1, s=5)
+
+        T_oracle = -np.log(0.5) / (lambda_exp_BX)
+        plt.scatter(log_numbers, T_oracle[idx], alpha=0.1, s=1)
+        plt.scatter(
+            log_numbers, T_oracle[idx].argsort() / max(T_oracle[idx].argsort()), alpha=0.1, s=1
+        )
+        plt.show()
+
+        results_store = collections.defaultdict(dict)
+        samples = 10_000
+        k = 5
+        for k in [2, 4, 5, 8, 16, 32, 64]:
+            EM_total = 0
+            EW_total = 0
+            for _ in range(samples):
+                perm = torch.randperm(T.argsort().size(0))
+                idx = perm[:k]
+                rank_sample = T.argsort()[idx]
+                rank_oracle = T_oracle.argsort()[idx]
+                matches = rank_sample.argsort() == rank_oracle.argsort()
+                if matches.all():
+                    EM_total += 1
+                EW_total += matches.sum()
+
+            EM = EM_total / samples
+            EW = EW_total / (k * samples)
+            print(f"EM{k}: {EM}, EW{k}: {EW}")
+            results_store[k] = {"EM": EM, "EW": EW}
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    import torch
+    import torchvision.transforms as transforms
+
+    beta = 1
+    censored_proportion = 0.3
+    save_path = os.path.join(DATA_DIR, "synthetic", "SVNH")
 
     split_list = {
         "train": [
@@ -61,146 +152,17 @@ class SVHNMultiDigit(VisionDataset):
         ],
     }
 
-    def __init__(
-        self,
-        root,
-        split="train",
-        transform=transforms.Compose(
-            [
-                transforms.RandomCrop([54, 54]),
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        ),
-        target_transform=None,
-        download=False,
-    ):
-        super().__init__(root, transform=transform, target_transform=target_transform)
-        self.split = verify_str_arg(split, "split", tuple(self.split_list.keys()))
-        self.url = self.split_list[split][0]
-        self.filename = self.split_list[split][1]
-        self.file_md5 = self.split_list[split][2]
+    if not os.path.exists(os.path.join(DATA_DIR, "data-svhn")):
+        split = verify_str_arg("train", "split", tuple(split_list.keys()))
+        url = split_list[split][0]
+        filename = split_list[split][1]
+        file_md5 = split_list[split][2]
+        md5 = split_list[split][2]
+        download_url(url, os.path.join(DATA_DIR, "data-svhn"), filename, md5)
 
-        if download:
-            self.download()
-
-        if not self._check_integrity():
-            raise RuntimeError(
-                "Dataset not found or corrupted." + " You can use download=True to download it"
-            )
-
-        data = torch.load(os.path.join(self.root, self.filename))
-
-        self.data = data[0]
-        # loading gives an np array of type np.uint8
-        # converting to np.int64, so that we have a LongTensor after
-        # the conversion from the numpy array
-        # the squeeze is needed to obtain a 1D tensor
-        self.labels = data[1].type(torch.LongTensor)
-
-    def __getitem__(self, index):
-        """
-        Args:
-            index (int): Index
-        Returns:
-            tuple: (image, target) where target is index of the target class.
-        """
-        img, target = self.data[index], int(self.labels[index])
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        img = Image.fromarray(np.transpose(img.numpy(), (1, 2, 0)))
-
-        if self.transform is not None:
-            img = self.transform(img)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return img, target
-
-    def __len__(self):
-        return len(self.data)
-
-    def _check_integrity(self):
-        root = self.root
-        md5 = self.split_list[self.split][2]
-        fpath = os.path.join(root, self.filename)
-        return check_integrity(fpath, md5)
-
-    def download(self):
-        md5 = self.split_list[self.split][2]
-        download_url(self.url, self.root, self.filename, md5)
-
-    def extra_repr(self):
-        return "Split: {split}".format(**self.__dict__)
-
-
-# def investigate_time_function():
-# plt.scatter(numbers, lambda_exp_BX, s=1, c='r', alpha=0.1)
-# plt.scatter(log_numbers, lambda_exp_BX, s=1, c='r', alpha=0.1)
-# plt.show()
-# print(T.mean())
-#
-# idx = torch.argsort(log_numbers)
-# T = T[idx]
-# log_numbers = log_numbers[idx]
-# numbers = numbers[idx]
-
-
-# plt.scatter(log_numbers, T, alpha=0.1, s=1)
-# df = pd.DataFrame.from_dict({"log_numbers": log_numbers, 'T':T})
-# medians = df.groupby('log_numbers')['T'].median()
-# plt.scatter(log_numbers, T.argsort()/max(T.argsort()), alpha=0.1, s=1)
-# plt.scatter(medians.index, medians, s=1)
-# plt.scatter(medians.index, medians.argsort()/max(medians.argsort()), s=1)
-
-# plt.scatter(numbers, T.argsort(), alpha=0.1, s=1)
-
-# Oracle performance
-# if calc_oracle:
-#     k = 5
-#     perm = torch.randperm(T.argsort().size(0))
-#     idx = perm[:k]
-#     plt.scatter(log_numbers[idx], T.argsort()[idx], alpha=1, s=5)
-#
-#     T_oracle= -np.log(0.5)/(lambda_exp_BX)
-#     plt.scatter(log_numbers, T_oracle, alpha=0.1, s=1)
-#     plt.scatter(log_numbers, T_oracle.argsort()/max(T_oracle.argsort()), alpha=0.1, s=1)
-#     plt.show()
-#
-#     samples = 1_000
-#     k = 16
-#     EM_total = 0
-#     EW_total = 0
-#     for _ in range(samples):
-#         perm = torch.randperm(T.argsort().size(0))
-#         idx = perm[:k]
-#         rank_sample = T.argsort()[idx]
-#         rank_oracle = T_oracle.argsort()[idx]
-#         matches = rank_sample.argsort() == rank_oracle.argsort()
-#         if matches.all():
-#             EM_total += 1
-#         EW_total += matches.sum()
-#
-#     EM = EM_total/samples
-#     EW = EW_total/(k*samples)
-#     print(f'EM{k}: {EM}, EW{k}: {EW}')
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-    import torch
-    import torchvision.transforms as transforms
-
-    beta = 500
-    censored_proportion = 0.3
-    save_path = os.path.join(DATA_DIR, "synthetic", "SVNH")
-
-    data_train = torch.load("data/data-svhn/svhn-multi-digit-3x64x64_train.p")
-    data_val = torch.load("data/data-svhn/svhn-multi-digit-3x64x64_val.p")
-    data_test = torch.load("data/data-svhn/svhn-multi-digit-3x64x64_test.p")
+    data_train = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_train.p"))
+    data_val = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_val.p"))
+    data_test = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_test.p"))
     n_train = len(data_train[1])
     n_val = len(data_val[1])
     n_test = len(data_test[1])
