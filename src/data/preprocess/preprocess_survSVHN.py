@@ -163,6 +163,7 @@ if __name__ == "__main__":
     data_train = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_train.p"))
     data_val = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_val.p"))
     data_test = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_test.p"))
+
     n_train = len(data_train[1])
     n_val = len(data_val[1])
     n_test = len(data_test[1])
