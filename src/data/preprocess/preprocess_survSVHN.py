@@ -153,12 +153,13 @@ if __name__ == "__main__":
     }
 
     if not os.path.exists(os.path.join(DATA_DIR, "data-svhn")):
-        split = verify_str_arg("train", "split", tuple(split_list.keys()))
-        url = split_list[split][0]
-        filename = split_list[split][1]
-        file_md5 = split_list[split][2]
-        md5 = split_list[split][2]
-        download_url(url, os.path.join(DATA_DIR, "data-svhn"), filename, md5)
+        for stage in ["train", "val", "test"]:
+            split = verify_str_arg(stage, "split", tuple(split_list.keys()))
+            url = split_list[split][0]
+            filename = split_list[split][1]
+            file_md5 = split_list[split][2]
+            md5 = split_list[split][2]
+            download_url(url, os.path.join(DATA_DIR, "data-svhn"), filename, md5)
 
     data_train = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_train.p"))
     data_val = torch.load(os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_val.p"))
