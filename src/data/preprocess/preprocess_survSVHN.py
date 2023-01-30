@@ -1,4 +1,5 @@
 import collections
+import itertools
 import os
 import os.path
 
@@ -6,14 +7,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms as transforms
-from PIL import Image
-from torchvision.datasets.utils import check_integrity, download_url, verify_str_arg
-from torchvision.datasets.vision import VisionDataset
+from torchvision.datasets.utils import download_url, verify_str_arg
 
 import wandb
 from definitions import DATA_DIR
 from omni.common import create_folder
+
+
+def time_function(numbers: torch.Tensor, beta):
+    """
+    Generates survival times from numbers with a sampling using beta distrubiont Beta(beta, beta) and exponential
+    parametersization
+    :param numbers:
+    :param beta:
+    :return:
+    """
+    # standardize
+    log_numbers = np.log(numbers + 1)
+    # pd.DataFrame(np.log(numbers+1)).hist(bins=100)
+    BX = (log_numbers - log_numbers.float().mean()) / torch.std(log_numbers.float())
+    # pd.DataFrame(np.exp(BX)).hist(bins=100)
+
+    num_samples = BX.shape[0]
+    lambda_exp_BX = (1 / 1) * np.exp(BX / 1)  # scale to mean 30 days
+    lambda_exp_BX = lambda_exp_BX.flatten()
+
+    # Generating beta samples
+    U = np.random.beta(beta, beta, num_samples)
+
+    # Exponential
+    T = -np.log(U) / (lambda_exp_BX)
+    return T, BX
 
 
 def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_oracle=None):
@@ -123,15 +147,11 @@ def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_o
             results_store[k] = {"EM": EM, "EW": EW}
 
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-    import torch
-    import torchvision.transforms as transforms
-
-    beta = 1
-    censored_proportion = 0.6
+def gen_survSVHN(beta=1, censored_proportion=0.6):
+    """Generate synthetic survival times based on street view house numbers
+    :param beta: beta distribution sampling parameter. if 1 then uniform sampling, if inf then samples the median
+    :param censored_proportion: propotion of patients to be independently randomly censored Unif[0, true_event_time]
+    """
     save_path = os.path.join(DATA_DIR, "synthetic", "SVNH")
 
     split_list = {
@@ -175,24 +195,6 @@ if __name__ == "__main__":
 
     # max_numbers = 10000
     # numbers[numbers > max_numbers] = max_numbers
-
-    def time_function(numbers: torch.Tensor, beta):
-        # standardize
-        log_numbers = np.log(numbers + 1)
-        # pd.DataFrame(np.log(numbers+1)).hist(bins=100)
-        BX = (log_numbers - log_numbers.float().mean()) / torch.std(log_numbers.float())
-        # pd.DataFrame(np.exp(BX)).hist(bins=100)
-
-        num_samples = BX.shape[0]
-        lambda_exp_BX = (1 / 1) * np.exp(BX / 1)  # scale to mean 30 days
-        lambda_exp_BX = lambda_exp_BX.flatten()
-
-        # Generating beta samples
-        U = np.random.beta(beta, beta, num_samples)
-
-        # Exponential
-        T = -np.log(U) / (lambda_exp_BX)
-        return T, BX
 
     survival_times, BX = time_function(numbers, beta=500)
     censoring_times = np.random.uniform(0, survival_times, size=n)
@@ -252,6 +254,15 @@ if __name__ == "__main__":
     }
 
     run = wandb.init(job_type="preprocess_survSVNH", project="diffsurv", entity="cardiors")
-    artifact = wandb.Artifact("SVNH", type="dataset", metadata=config)
+    artifact = wandb.Artifact(
+        f"SVNH_beta{str(beta)}_cen{str(censored_proportion)}", type="dataset", metadata=config
+    )
     artifact.add_dir(save_path)
     run.log_artifact(artifact)
+
+
+if __name__ == "__main__":
+    betas = [1, 500]
+    censored_proportions = [0.3, 0.6]
+    for beta, censored_proportion in itertools.product(betas, censored_proportions):
+        gen_survSVHN(beta=beta, censored_proportion=censored_proportion)
