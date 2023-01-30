@@ -131,7 +131,7 @@ if __name__ == "__main__":
     import torchvision.transforms as transforms
 
     beta = 1
-    censored_proportion = 0.3
+    censored_proportion = 0.6
     save_path = os.path.join(DATA_DIR, "synthetic", "SVNH")
 
     split_list = {

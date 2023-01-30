@@ -89,15 +89,15 @@ class DatasetRisk(Dataset):
         if covariates.dim() == 3:
             covariates = Image.fromarray(np.transpose(covariates.numpy(), (1, 2, 0)))
             covariates = self.transform(covariates)
-        future_label_multihot = 1 - self.censored_events[index].unsqueeze(-1)
+        future_label_multihot = 1 - self.censored_events[index]
         future_label_times = self.y_times[index]
         censorings = self.censored_events[index]
-        exclusions = torch.zeros_like(censorings).unsqueeze(-1)
+        exclusions = torch.zeros_like(censorings)
 
         output = {
             # labels
             "labels": future_label_multihot,
-            "label_times": future_label_times.unsqueeze(-1),
+            "label_times": future_label_times,
             "censorings": censorings,
             "exclusions": exclusions,
             # input
