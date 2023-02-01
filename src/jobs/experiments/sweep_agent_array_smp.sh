@@ -1,12 +1,14 @@
 #!/bin/bash -l
-#$ -l tmem=20G
+#$ -l tmem=1G
 #$ -l h_rt=50:0:0
 #$ -S /bin/bash
 #$ -l gpu=true
 #$ -j y
 #$ -N sweep_agent_array
-#$ -t 1-8
-#$ -tc 8
+#$ -t 1-20
+#$ -tc 2
+#$ -R y
+#$ -pe smp 20
 
 #$ -o /home/vauvelle/diffsurv/src/jobs/logs
 #$ -e /home/vauvelle/diffsurv/src/jobs/logs/errors
