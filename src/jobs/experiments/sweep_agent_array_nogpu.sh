@@ -1,12 +1,11 @@
 #!/bin/bash -l
-#$ -l tmem=20G
-#$ -l h_rt=50:0:0
+#$ -l tmem=10G
+#$ -l h_rt=8:0:0
 #$ -S /bin/bash
-#$ -l gpu=true
 #$ -j y
 #$ -N sweep_agent_array
-#$ -t 1-8
-#$ -tc 8
+#$ -t 1-30
+#$ -tc 3
 
 #$ -o /home/vauvelle/diffsurv/src/jobs/logs
 #$ -e /home/vauvelle/diffsurv/src/jobs/logs/errors
@@ -24,6 +23,8 @@ export LD_LIBRARY_PATH=/share/apps/python-3.9.5-shared/lib:${LD_LIBRARY_PATH}
 export PATH=/usr/local/cuda/bin:${PATH} # CUDA 11.5
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
 export PATH=/home/vauvelle/.local/bin:${PATH}
+#export WANDB_MODE=offline
+alias python=python3
 
 #python scripts/bert_mlm.py fit --config="${CONFIG_FILE:=jobs/configs/mlm/bert_phecode.yaml}"
 echo Using command:
