@@ -6,7 +6,7 @@ from pytorch_lightning.utilities import rank_zero_warn
 
 
 class BaseModel(pl.LightningModule):
-    def __init__(self, optimizer: Literal["adam", "sgd"] = "adam", weight_decay=0, lr=0.1):
+    def __init__(self, optimizer: Literal["adam", "sgd", "adamw"] = "adam", weight_decay=0, lr=0.1):
         super().__init__()
         self.optimizer = optimizer
         self.weight_decay = weight_decay
