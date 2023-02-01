@@ -17,6 +17,8 @@ class BaseModel(pl.LightningModule):
         not_sparse = [p for n, p in self.named_parameters() if "embed" not in n]
         if self.optimizer == "adam":
             optimizer = torch.optim.Adam(not_sparse, lr=self.lr)
+        if self.optimizer == "adamw":
+            optimizer = torch.optim.AdamW(not_sparse, lr=self.lr, weight_decay=self.weight_decay)
         elif self.optimizer == "sgd":
             optimizer = torch.optim.SGD(not_sparse, lr=self.lr, weight_decay=self.weight_decay)
 
