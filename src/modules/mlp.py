@@ -66,6 +66,7 @@ class MultilayerBase(BaseModel):
             n_layers=head_layers,
             dropout=hidden_dropout_prob,
             batch_norm=batch_norm,
+            norm=nn.BatchNorm1d,
         )
 
         self.input_dim = input_dim
