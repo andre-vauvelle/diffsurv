@@ -127,6 +127,7 @@ class CaseControlRiskDataset(Dataset):
         return_perm_mat: bool = True,
         n_cases: int = 1,
         inc_censored_in_ties: bool = False,
+        random_sample: bool = False,
     ):
         self.inc_censored_in_ties = inc_censored_in_ties
         self.n_controls = n_controls
@@ -147,16 +148,31 @@ class CaseControlRiskDataset(Dataset):
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]
         )
+        self.random_sample = random_sample
+        if random_sample:
+
+            def gen_sample(idxs: list):
+                while True:
+                    idxs_copy = idxs[:]
+                    while idxs_copy:
+                        yield idxs_copy.pop()
+
+            random_idxs = list(range(x_covar.shape[0]))
+            random.shuffle(random_idxs)
+            self.gen_random_idx = gen_sample(random_idxs)
 
     def __getitem__(self, index):
         idx_durations = self.y_times
         events = 1 - self.censored_events
-        idxs = get_case_control_idxs(
-            n_cases=self.n_cases,
-            n_controls=self.n_controls,
-            idx_durations=idx_durations.numpy().astype(float),
-            events=events.numpy().astype(bool),
-        )
+        if not self.random_sample:
+            idxs = get_case_control_idxs(
+                n_cases=self.n_cases,
+                n_controls=self.n_controls,
+                idx_durations=idx_durations.numpy().astype(float),
+                events=events.numpy().astype(bool),
+            )
+        else:
+            idxs = [next(self.gen_random_idx) for _ in range(self.n_cases + self.n_controls)]
 
         if events.dim() == 1:
             events = events.unsqueeze(-1)
@@ -206,6 +222,8 @@ class CaseControlRiskDataset(Dataset):
         return output
 
     def __len__(self):
+        if self.random_sample:
+            return self.x_covar.shape[0] // self.n_controls + self.n_cases
         return int((1 - self.censored_events).sum())
 
 

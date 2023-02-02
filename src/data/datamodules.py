@@ -32,8 +32,10 @@ class DataModuleRisk(pl.LightningDataModule):
         inc_censored_in_ties: bool = True,
         k_fold: Optional[tuple] = (1, 5),
         use_risk: bool = False,
+        random_sample: bool = False,
     ):
         super().__init__()
+        self.random_sample = random_sample
         self.val_batch_size = val_batch_size
         self.k_fold = k_fold
         self.inc_censored_in_ties = inc_censored_in_ties
@@ -62,8 +64,7 @@ class DataModuleRisk(pl.LightningDataModule):
                     f" local path, currently: {setting}"
                 )
             data = torch.load(os.path.join(self.path))
-            self.setting = "synthetic"
-            setting = "synthetic"
+            self.setting = setting
             self.input_dim = data["x_covar"].shape[1]
             self.cov_size = data["x_covar"].shape[1]
             self.output_dim = data["y_times"].shape[1]
@@ -141,6 +142,7 @@ class DataModuleRisk(pl.LightningDataModule):
                         risk[:n_training_patients] if risk is not None else None,
                         return_perm_mat=self.return_perm_mat,
                         inc_censored_in_ties=self.inc_censored_in_ties,
+                        random_sample=self.random_sample,
                     )
                 else:
                     idx = set(range(n_patients))
@@ -157,6 +159,7 @@ class DataModuleRisk(pl.LightningDataModule):
                         risk[fold_idx] if risk is not None else None,
                         return_perm_mat=self.return_perm_mat,
                         inc_censored_in_ties=self.inc_censored_in_ties,
+                        random_sample=self.random_sample,
                     )
                 shuffle = True
             elif stage == "val":
