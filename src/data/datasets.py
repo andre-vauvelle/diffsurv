@@ -159,7 +159,8 @@ class CaseControlRiskDataset(Dataset):
 
             random_idxs = list(range(x_covar.shape[0]))
             random.shuffle(random_idxs)
-            self.gen_random_idx = gen_sample(random_idxs)
+            # self.gen_random_idx = gen_sample(random_idxs)
+            self.gen_random_ids = random_idxs
 
     def __getitem__(self, index):
         idx_durations = self.y_times
@@ -172,7 +173,8 @@ class CaseControlRiskDataset(Dataset):
                 events=events.numpy().astype(bool),
             )
         else:
-            idxs = [next(self.gen_random_idx) for _ in range(self.n_cases + self.n_controls)]
+            # idxs = [next(self.gen_random_idx) for _ in range(self.n_cases + self.n_controls)]
+            idxs = list(np.random.choice(self.gen_random_ids, size=self.n_cases + self.n_controls))
 
         if events.dim() == 1:
             events = events.unsqueeze(-1)
