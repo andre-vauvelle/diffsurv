@@ -65,9 +65,3 @@ class BaseModel(pl.LightningModule):
         self.valid_metrics.reset()
         self.log_dict(output, prog_bar=True)
         self.log("hp_metric", output["val/AveragePrecision"])
-
-    def test_step(self, batch, batch_idx):
-        super().validation_step(batch_idx)
-
-    def on_test_epoch_end(self):
-        super().on_validation_epoch_end()

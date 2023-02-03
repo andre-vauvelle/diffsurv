@@ -173,6 +173,12 @@ class RiskMixin(pl.LightningModule):
                 average_value = sum(values) / len(values)
                 output.update({key + safe_string(name): average_value})
 
+    def test_step(self, batch, batch_idx):
+        self.validation_step(batch_idx, batch_idx)
+
+    def on_test_epoch_end(self):
+        self.on_validation_epoch_end()
+
 
 class SortingRiskMixin(RiskMixin):
     """Needs a seperate mixin due to loss function requiring permutation matrices
