@@ -67,9 +67,7 @@ class BaseModel(pl.LightningModule):
         self.log("hp_metric", output["val/AveragePrecision"])
 
     def test_step(self, batch, batch_idx):
-        rank_zero_warn("`test_step` must be implemented to be used with the Lightning Trainer")
+        super().validation_step(batch_idx)
 
     def on_test_epoch_end(self):
-        output = self.test_metrics.compute()
-        self.test_metrics.reset()
-        self.log_dict(output, prog_bar=True)
+        super().on_validation_epoch_end()

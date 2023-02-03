@@ -153,12 +153,6 @@ class RiskMixin(pl.LightningModule):
             self.valid_em_risk.reset()
             self.log_dict(output, prog_bar=False, sync_dist=True)
 
-    def test_step(self, batch, batch_idx):
-        # TODO: implement
-        rank_zero_warn(
-            "`test_step` must be implemented to be used with the Lightning Trainer testing"
-        )
-
     def _group_cindex(self, output, key="val/c_index/"):
         """
         Group c-index by label
