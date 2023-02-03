@@ -7,11 +7,13 @@ metric:
   goal: maximize
 parameters:
   data.risk_set_size:
-    values: [2,4,8,16,32,64]
+    values: [2,4,8,16,32]
+  model.cph_method:
+    value: ranked_list
   data.batch_size:
     value: 100
   data.num_workers:
-    value: 4
+    value: -1
   trainer.strategy:
     value: ddp
 command:
@@ -21,6 +23,8 @@ command:
   - fit
   - "--config"
   - "jobs/configs/conv.yml"
+  - "--data.wandb_artifact"
+  - cardiors/diffsurv/SVNH_beta1_cen0.3:v0
   - ${args}
 project: diffsurv
 entity: cardiors
