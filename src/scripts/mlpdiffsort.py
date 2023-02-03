@@ -50,4 +50,5 @@ def diffsort_cli_main(args: ArgsType = None, run=True):
 
 
 if __name__ == "__main__":
-    diffsort_cli_main()
+    cli = diffsort_cli_main()
+    cli.trainer.test(ckpt_path="best")

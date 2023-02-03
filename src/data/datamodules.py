@@ -45,7 +45,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.val_split = val_split
         self.batch_size = batch_size
         self.use_risk = use_risk
-        self.num_workers = os.cpu_count() if num_workers == -1 else num_workers
+        self.num_workers = os.cpu_count() - 2 if num_workers == -1 else num_workers
         self.return_perm_mat = return_perm_mat
         if wandb_artifact is not None:
             api = wandb.Api(overrides={"project": "diffsurv", "entity": "cardiors"})
@@ -162,7 +162,7 @@ class DataModuleRisk(pl.LightningDataModule):
                         random_sample=self.random_sample,
                     )
                 shuffle = True
-            elif stage == "val":
+            elif stage == "val" or stage == "test":
                 if not self.k_fold:
                     n_validation_patients = (
                         int(n_patients * self.val_split) if self.val_split else n_patients
@@ -187,7 +187,7 @@ class DataModuleRisk(pl.LightningDataModule):
 
                 shuffle = False
             else:
-                raise Exception("Stage must be either 'train' or 'val' ")
+                raise Exception("Stage must be either 'train' or 'val' or 'test' ")
 
         # Validation must be not have casecontrol sampling (Otherwise not all patients included)
         # if self.controls_per_case is None or stage == "val":

@@ -45,4 +45,5 @@ def mlp_cli_main():
 
 
 if __name__ == "__main__":
-    mlp_cli_main()
+    cli = mlp_cli_main()
+    cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())

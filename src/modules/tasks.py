@@ -45,9 +45,11 @@ class RiskMixin(pl.LightningModule):
             {"c_index/" + safe_string(name): CIndex() for name in c_index_metric_names}
         )
         self.valid_cindex = c_index_metrics.clone(prefix="val/")
+        self.test_cindex = c_index_metrics.clone(prefix="test/")
 
         metrics = MetricCollection([ExactMatch(size=self.sorter_size)])
         self.valid_em = metrics.clone(prefix="val/")
+        self.test_em = metrics.clone(prefix="test/")
 
         if self.setting == "synthetic":
             c_index_metrics = MetricCollection(
@@ -55,6 +57,8 @@ class RiskMixin(pl.LightningModule):
             )
             self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
             self.valid_em_risk = metrics.clone(prefix="val/", postfix="_risk")
+            self.test_cindex_risk = c_index_metrics.clone(prefix="test/")
+            self.test_em_risk = metrics.clone(prefix="test/", postfix="_risk")
 
         if loss_str == "cox":
             self.loss_func = CoxPHLoss(method=cph_method)
@@ -104,15 +108,6 @@ class RiskMixin(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
-        # calc and use weighted loss
-
-        # if self.loss_func_w is not None:
-        #     loss = self.loss_func_w(logits, label_multihot, label_times)
-        # else:
-        #     loss = self.loss_func(logits, label_multihot, label_times)
-        #
-        # if not torch.isnan(loss):
-        #     self.log("val/loss", loss, prog_bar=True)
 
         self.valid_em.update(-logits.squeeze(-1), label_times.squeeze(-1))
         label_times = batch["label_times"]
@@ -174,10 +169,46 @@ class RiskMixin(pl.LightningModule):
                 output.update({key + safe_string(name): average_value})
 
     def test_step(self, batch, batch_idx):
-        self.validation_step(batch, batch_idx)
+        logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
-    def on_test_epoch_end(self):
-        self.on_validation_epoch_end()
+        self.test_em.update(-logits.squeeze(-1), label_times.squeeze(-1))
+        label_times = batch["label_times"]
+        exclusions = batch["exclusions"]
+
+        # c-index is applied per label, collect inputs
+        self.log_cindex(self.test_cindex, exclusions, logits, label_multihot, label_times)
+        if self.setting == "synthetic":
+            all_observed = torch.ones_like(label_multihot)
+            self.log_cindex(
+                self.test_cindex_risk,
+                exclusions,
+                -logits,
+                all_observed,
+                batch["risk"],  # *-1 since lower times is higher risk and vice versa
+            )
+            self.test_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1).squeeze(-1))
+
+    def on_test_epoch_end(self) -> None:
+        output = self.test_em.compute()
+        self.test_em.reset()
+        self.log_dict(output, prog_bar=False, sync_dist=True)
+
+        # Get calc cindex metric with collected inputs
+        output = self.test_cindex.compute()
+        self._group_cindex(output, key="test/c_index/")
+        self.test_cindex.reset()
+        self.log_dict(output, prog_bar=False)
+        self.log("hp_metric", output["test/c_index/all"], prog_bar=True, sync_dist=True)
+
+        if self.setting == "synthetic":
+            output = self.test_cindex_risk.compute()
+            self._group_cindex(output, key="test/c_index_risk/")
+            self.test_cindex_risk.reset()
+            self.log_dict(output, prog_bar=False, sync_dist=True)
+
+            output = self.test_em_risk.compute()
+            self.test_em_risk.reset()
+            self.log_dict(output, prog_bar=False, sync_dist=True)
 
 
 class SortingRiskMixin(RiskMixin):
@@ -282,6 +313,31 @@ class SortingRiskMixin(RiskMixin):
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
             self.valid_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1).squeeze(-1))
+
+    def test_step(self, batch, batch_idx):
+        covariates = batch["covariates"]
+        label_multihot = batch["labels"]
+        label_times = batch["label_times"]
+        logits = self(covariates)
+
+        exclusions = batch["exclusions"]
+
+        # c-index is applied per label, collect inputs
+        self.log_cindex(self.test_cindex, exclusions, -logits, label_multihot, label_times)
+        self.test_em.update(logits.squeeze(-1), label_times.squeeze(-1))
+
+        if self.setting == "synthetic":
+            all_observed = torch.ones_like(label_multihot)
+            self.log_cindex(
+                self.test_cindex_risk,
+                exclusions,
+                logits,
+                all_observed,
+                batch["risk"],  # *-1 since lower times is higher risk and vice versa
+            )
+            self.test_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1).squeeze(-1))
+
+        # return loss, predictions, perm_prediction, perm_ground_truth
 
         # return loss, predictions, perm_prediction, perm_ground_truth
 
