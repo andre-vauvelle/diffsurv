@@ -34,7 +34,7 @@ trainer:
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 data:
-  wandb_artifact: cardiors/diffsurv/SVNH:v5
+  wandb_artifact: cardiors/diffsurv/cardiors/diffsurv/SVNH_beta1_cen0.3:v0
   batch_size: 128
   risk_set_size: 2
   num_workers: 1
