@@ -174,7 +174,7 @@ class RiskMixin(pl.LightningModule):
                 output.update({key + safe_string(name): average_value})
 
     def test_step(self, batch, batch_idx):
-        self.validation_step(batch_idx, batch_idx)
+        self.validation_step(batch, batch_idx)
 
     def on_test_epoch_end(self):
         self.on_validation_epoch_end()
