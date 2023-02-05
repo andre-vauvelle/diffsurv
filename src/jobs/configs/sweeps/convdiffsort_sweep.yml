@@ -1,11 +1,13 @@
 # wandb sweep
-name: diffsort_svhn
+name: diffsort_svhn_1
 program: scripts/convdiffsort.py
 method: grid
 metric:
   name: val/c_index/all
   goal: maximize
 parameters:
+  seed_everything:
+    values: [1,2,3,4,5] # will act as trails
   model.sorting_network:
     values: [odd_even, bitonic]
   data.risk_set_size:
@@ -16,6 +18,8 @@ parameters:
     value: -1
   trainer.strategy:
     value: ddp
+  model.ignore_censoring:
+    value: False
 command:
   - ${env}
   - python3

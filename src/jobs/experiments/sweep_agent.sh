@@ -1,6 +1,6 @@
 #!/bin/bash -l
-#$ -l tmem=64G
-#$ -l h_rt=50:0:0
+#$ -l tmem=16G
+#$ -l h_rt=20:0:0
 #$ -l gpu=true
 #$ -S /bin/bash
 #$ -j y

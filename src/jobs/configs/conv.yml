@@ -17,6 +17,7 @@ trainer:
         auto_insert_metric_name: False
         monitor: hp_metric
         filename: '{epoch}-{hp_metric:.4f}'
+        mode: max
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
         patience: 80
