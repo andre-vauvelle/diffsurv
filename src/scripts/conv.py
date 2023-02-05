@@ -21,7 +21,6 @@ def diffsort_cli_main(args: ArgsType = None, run=True):
     cli = ConvLightningCLI(
         ConvRisk,
         DataModuleRisk,
-        seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,
         args=args,

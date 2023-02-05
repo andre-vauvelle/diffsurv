@@ -1,0 +1,54 @@
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - fit
+  - --config
+  - jobs/configs/mlp.yaml
+  - --data.wandb_artifact
+  - cardiors/diffsurv/flchain.pt:latest
+  - ${args}
+entity: cardiors
+method: random
+metric:
+  goal: maximize
+  name: hp_metric
+name: flchain_mlp
+parameters:
+  data.batch_size:
+    values:
+      - 16
+      - 64
+      - 128
+  data.risk_set_size:
+    values:
+      - 2
+      - 5
+      - 10
+      - 20
+      - 30
+  model.batch_norm:
+    value: false
+  model.head_hidden_dim:
+    values:
+      - 64
+      - 128
+      - 256
+  model.head_layers:
+    values:
+      - 1
+      - 2
+  model.hidden_dropout_prob:
+    values:
+      - 0
+      - 0.1
+      - 0.2
+  model.lr:
+    values:
+      - 0.001
+      - 0.005
+      - 0.0001
+  mode.cph_method:
+    value: ranked_list
+program: scripts/mlp.py
+project: diffsurv
