@@ -1,4 +1,5 @@
 import torch
+from pytorch_lightning.cli import ArgsType
 from pytorch_lightning.utilities.cli import LightningCLI
 
 from data.datamodules import DataModuleRisk
@@ -33,13 +34,15 @@ class MLPLightningCLI(LightningCLI):
 #         # self.parser.save(self.config, config_path, skip_none=False)
 
 
-def mlp_cli_main():
+def mlp_cli_main(args: ArgsType = None, run=True):
     cli = MLPLightningCLI(
         MultilayerRisk,
         DataModuleRisk,
         seed_everything_default=42,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,
+        args=args,
+        run=run,
     )
     return cli
 
