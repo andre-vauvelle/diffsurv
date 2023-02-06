@@ -51,4 +51,4 @@ def diffsort_cli_main(args: ArgsType = None, run=True):
 
 if __name__ == "__main__":
     cli = diffsort_cli_main()
-    cli.trainer.test(ckpt_path="best")
+    cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())
