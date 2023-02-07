@@ -30,10 +30,8 @@ Ensure that the OnTrainEndResults callback is on. This will automatically save a
 
 If you've a model already trained you can run something like:
 ```{bash}
-python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsort_synthetic.yaml --ckpt_path path/to/model.ckpt
+python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsort.yaml --ckpt_path path/to/model.ckpt
 ```
 
 To extract results for the predict_dataloader and a specified checkpoint. Also saved an artifact.
 
-### Wandb
-[wandb project](https://wandb.ai/anon/diffsurv)
