@@ -1,6 +1,6 @@
 # wandb sweep
-name: diffsort_svhn_1
-program: scripts/convdiffsort.py
+name: diffsort_svhn
+program: /home/wildb/dev/projects/diffsurv/src/scripts/convdiffsort.py
 method: grid
 metric:
   name: val/c_index/all

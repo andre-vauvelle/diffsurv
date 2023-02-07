@@ -1,6 +1,5 @@
 import torch
-from pytorch_lightning.cli import ArgsType
-from pytorch_lightning.utilities.cli import LightningCLI
+from pytorch_lightning.cli import ArgsType, LightningCLI
 
 from data.datamodules import DataModuleRisk
 from modules.mlp import MultilayerRisk
@@ -35,6 +34,8 @@ class MLPLightningCLI(LightningCLI):
 
 
 def mlp_cli_main(args: ArgsType = None, run=True):
+    torch.set_float32_matmul_precision("medium")
+
     cli = MLPLightningCLI(
         MultilayerRisk,
         DataModuleRisk,

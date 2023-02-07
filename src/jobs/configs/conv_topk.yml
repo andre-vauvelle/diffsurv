@@ -11,6 +11,7 @@ fit:
             - risk
             - case-control-sampling
             - svnh
+            - topk-experiment-coxph
     callbacks:
       - class_path: pytorch_lightning.callbacks.ModelCheckpoint
         init_args:
@@ -26,9 +27,9 @@ fit:
     accumulate_grad_batches: 1
   data:
     wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
-    batch_size: 8
-    risk_set_size: 128
-    val_batch_size: 128
+    batch_size: 100
+    risk_set_size: 32
+    val_batch_size: 32
     num_workers: 8
   model:
     lr: 0.0003 # from auto lr find

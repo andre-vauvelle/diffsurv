@@ -1,0 +1,28 @@
+# wandb sweep
+name: diffsort_svhn
+program: /home/wildb/dev/projects/diffsurv/src/scripts/convdiffsort.py
+method: grid
+metric:
+  name: val/topk
+  goal: maximize
+parameters:
+  model.optimize_topk:
+    values: [false, true]
+  data.risk_set_size:
+    values: [128,64,256,2,4,8,16,32]
+  data.batch_size:
+    value: 32
+  data.val_batch_size:
+    value: 128
+  data.num_workers:
+    value: 8
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - fit
+  - "--config"
+  - "/home/wildb/dev/projects/diffsurv/src/jobs/configs/convdiffsort.yml"
+  - ${args}
+project: diffsurv
+entity: cardiors

@@ -1,51 +1,49 @@
-trainer:
-  logger:
-    - class_path: pytorch_lightning.loggers.WandbLogger
-      init_args:
-        project: diffsurv
-        entity: cardiors
-        log_model: True
-        tags:
-          - conv
-          - risk
-          - diffsort
-          - case-control-sampling
-          - svnh
-  #        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
-  callbacks:
-    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
-      init_args:
-        auto_insert_metric_name: False
-        monitor: hp_metric
-        filename: '{epoch}-{hp_metric:.4f}'
-        mode: max
-    - class_path: pytorch_lightning.callbacks.EarlyStopping
-      init_args:
-        patience: 80
-        monitor: hp_metric
-        min_delta: 0.001
-        mode: max
-        verbose: True
-        check_finite: False
-  val_check_interval: 0.25
-  max_steps: 100_000
-  log_every_n_steps: 200
-#  limit_val_batches: 1
-  enable_checkpointing: True
-  num_sanity_val_steps: 0
-  accumulate_grad_batches: 1
-data:
-  wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
-  batch_size: 128
-  risk_set_size: 2
-  num_workers: 1
-model:
-  lr: 0.0003 # from auto lr find
-  sorting_network: bitonic
-  distribution: cauchy
-  ignore_censoring: true
-
-#  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
-#  embedding_dim: 32
-
-#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/diffsurv/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
+fit:
+  trainer:
+    logger:
+      - class_path: pytorch_lightning.loggers.WandbLogger
+        init_args:
+          project: diffsurv
+          entity: cardiors
+          log_model: True
+          tags:
+            - conv
+            - risk
+            - diffsort
+            - case-control-sampling
+            - svnh
+            - topk-experiment
+    callbacks:
+      - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+        init_args:
+          auto_insert_metric_name: False
+          monitor: val/topk
+          filename: '{epoch}-{hp_metric:.4f}'
+      #- class_path: pytorch_lightning.callbacks.EarlyStopping
+      #  init_args:
+      #    patience: 80
+      #    monitor: val/topk
+      #    min_delta: 0.001
+      #    mode: max
+      #    verbose: True
+      #    check_finite: False
+    val_check_interval: 0.25
+    max_steps: 100_000
+    log_every_n_steps: 200
+    enable_checkpointing: True
+    num_sanity_val_steps: 0
+    accumulate_grad_batches: 1
+  data:
+    wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
+    batch_size: 8
+    risk_set_size: 128
+    val_batch_size: 128
+    num_workers: 8
+  model:
+    lr: 0.0003 # from auto lr find
+    sorting_network: bitonic
+    distribution: cauchy
+    ignore_censoring: false
+    optimize_topk: false
+    optimize_combined: false
+    norm_risk: false

@@ -18,6 +18,8 @@ class ConvLightningCLI(LightningCLI):
 
 
 def diffsort_cli_main(args: ArgsType = None, run=True):
+    torch.set_float32_matmul_precision("medium")
+
     cli = ConvLightningCLI(
         ConvRisk,
         DataModuleRisk,

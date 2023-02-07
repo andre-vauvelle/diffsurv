@@ -9,8 +9,10 @@ fit:
           tags:
             - conv
             - risk
+            - diffsort
             - case-control-sampling
             - svnh
+            - topk-experiment-diffsort-topk
     callbacks:
       - class_path: pytorch_lightning.callbacks.ModelCheckpoint
         init_args:
@@ -18,6 +20,14 @@ fit:
           monitor: val/topk
           mode: max
           filename: '{epoch}-{hp_metric:.4f}'
+      #- class_path: pytorch_lightning.callbacks.EarlyStopping
+      #  init_args:
+      #    patience: 80
+      #    monitor: val/topk
+      #    min_delta: 0.001
+      #    mode: max
+      #    verbose: True
+      #    check_finite: False
     val_check_interval: 0.25
     max_steps: 100_000
     log_every_n_steps: 200
@@ -26,9 +36,15 @@ fit:
     accumulate_grad_batches: 1
   data:
     wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
-    batch_size: 8
-    risk_set_size: 128
-    val_batch_size: 128
+    batch_size: 100
+    risk_set_size: 32
+    val_batch_size: 32
     num_workers: 8
   model:
     lr: 0.0003 # from auto lr find
+    sorting_network: bitonic
+    distribution: cauchy
+    ignore_censoring: false
+    optimize_topk: true
+    optimize_combined: false
+    norm_risk: true
