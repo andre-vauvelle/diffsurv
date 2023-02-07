@@ -27,4 +27,4 @@ command:
 #  - "/Users/andre/Documents/UCL/diffsurv/data/synthetic/pysurv_linear_exp_independent_ties10000_99.pt"
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

@@ -25,4 +25,4 @@ command:
   - "/home/wildb/dev/projects/diffsurv/src/jobs/configs/convdiffsort.yml"
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

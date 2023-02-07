@@ -3,7 +3,7 @@ trainer:
     - class_path: pytorch_lightning.loggers.WandbLogger
       init_args:
         project: diffsurv
-        entity: cardiors
+        entity: anon
         log_model: True
         tags:
           - mlp
@@ -28,7 +28,7 @@ trainer:
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 data:
-  wandb_artifact: cardiors/diffsurv/nwtco.pt:latest
+  wandb_artifact: anon/diffsurv/nwtco.pt:latest
   batch_size: 64
   risk_set_size: 32
   val_batch_size: 32

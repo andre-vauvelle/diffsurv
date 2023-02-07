@@ -15,5 +15,6 @@ dependencies:
   - numba
   - pip:
       - pysurvival
+      - pycox # optional
       - jsonargparse[signatures]
       - diffsort

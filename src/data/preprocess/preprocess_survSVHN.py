@@ -253,7 +253,7 @@ def gen_survSVHN(beta=1, censored_proportion=0.6):
         "setting": "synthetic",
     }
 
-    run = wandb.init(job_type="preprocess_survSVNH", project="diffsurv", entity="cardiors")
+    run = wandb.init(job_type="preprocess_survSVNH", project="diffsurv", entity="anon")
     artifact = wandb.Artifact(
         f"SVNH_beta{str(beta)}_cen{str(censored_proportion)}", type="dataset", metadata=config
     )

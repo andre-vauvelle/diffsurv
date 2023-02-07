@@ -140,7 +140,7 @@ def gen_pysurvival(
             "tie_groups": tie_groups,
         }
 
-        run = wandb.init(job_type="preprocess_synthetic", project="diffsurv", entity="cardiors")
+        run = wandb.init(job_type="preprocess_synthetic", project="diffsurv", entity="anon")
         artifact = wandb.Artifact(name, type="dataset", metadata=config)
         artifact.add_file(os.path.join(save_path, name), name)
         run.log_artifact(artifact)

@@ -6,7 +6,7 @@ command:
   - --config
   - jobs/configs/mlpdiffsort_small.yaml
   - ${args}
-entity: cardiors
+entity: anon
 method: grid
 metric:
   goal: maximize

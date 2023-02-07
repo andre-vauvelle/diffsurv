@@ -42,7 +42,7 @@ command:
   - "--config"
   - "jobs/configs/mlpdiffsort.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/pysurv_square_independent_0.3.pt:latest"
+  - "anon/diffsurv/pysurv_square_independent_0.3.pt:latest"
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

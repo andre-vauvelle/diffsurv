@@ -31,7 +31,7 @@ command:
   - "--config"
   - "jobs/configs/mlp.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/kkbox_v1:latest"
+  - "anon/diffsurv/kkbox_v1:latest"
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

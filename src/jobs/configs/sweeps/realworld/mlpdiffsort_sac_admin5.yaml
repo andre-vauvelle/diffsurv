@@ -33,7 +33,7 @@ command:
   - "--config"
   - "jobs/configs/mlpdiffsort.yaml"
   - "--data.wandb_artifact"
-  - "cardiors/diffsurv/sac_admin5.pt:latest"
+  - "anon/diffsurv/sac_admin5.pt:latest"
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

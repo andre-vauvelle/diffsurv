@@ -26,7 +26,7 @@ command:
   - "--config"
   - "jobs/configs/conv.yml"
   - "--data.wandb_artifact"
-  - cardiors/diffsurv/SVNH_beta1_cen0.3:v0
+  - anon/diffsurv/SVNH_beta1_cen0.3:v0
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

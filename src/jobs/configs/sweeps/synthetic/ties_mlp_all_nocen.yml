@@ -19,4 +19,4 @@ command:
   - "jobs/configs/risk/mlp_small.yaml"
   - ${args}
 project: diffsurv
-entity: cardiors
+entity: anon

@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 import wandb
 from definitions import RESULTS_DIR
-from models.loggers import CustomWandbLogger
 from omni.common import _create_folder_if_not_exist
 
 
@@ -130,16 +129,3 @@ class LogPredictionsCallback(Callback):
                 images=[perm_ground_truth_asc, perm_prediction_asc],
                 caption=captions,
             )
-
-            # lt_dist = torch.nn.functional.normalize(label_times.squeeze()[idx], dim=0)
-            # pred_dist = torch.nn.functional.normalize(predictions[idx], dim=0)
-            #
-            # data = list(zip(lt_dist, pred_dist))
-            # table = wandb.Table(data=data, columns=["label", "value"])
-            # wandb_logger.({"my_bar_chart_id": wandb.plot.bar(table, "label", "value", title="Custom Bar Chart")})
-            #
-            # torch_show([perm_ground_truth_asc, perm_prediction_asc])
-            # plt.show()
-
-
-# log_predictions_callback = LogPredictionsCallback()

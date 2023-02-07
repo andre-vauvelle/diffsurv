@@ -1,11 +1,9 @@
 import torch
-import torch.nn.functional as f
 from torch import nn
 from torchmetrics import MetricCollection, Precision
 
 from data.preprocess.utils import SYMBOL_IDX
 from models.heads import PredictionHead
-from models.imaging import SVHNConvNet
 from modules.base import BaseModel
 from modules.tasks import RiskMixin, SortingRiskMixin
 
@@ -31,7 +29,6 @@ class MultilayerBase(BaseModel):
         super().__init__(**kwargs)
         self.lr = lr
 
-        # self.loss_func = nn.BCEWithLogitsLoss()  # Required for multihot training
         self.count = count
         self.cov_size = cov_size
         self.only_covs = only_covs

@@ -3,8 +3,6 @@ fit:
     logger:
       - class_path: pytorch_lightning.loggers.WandbLogger
         init_args:
-          project: diffsurv
-          entity: cardiors
           log_model: True
           tags:
             - conv
@@ -19,14 +17,6 @@ fit:
           auto_insert_metric_name: False
           monitor: val/topk
           filename: '{epoch}-{hp_metric:.4f}'
-      #- class_path: pytorch_lightning.callbacks.EarlyStopping
-      #  init_args:
-      #    patience: 80
-      #    monitor: val/topk
-      #    min_delta: 0.001
-      #    mode: max
-      #    verbose: True
-      #    check_finite: False
     val_check_interval: 0.25
     max_steps: 100_000
     log_every_n_steps: 200
@@ -34,13 +24,13 @@ fit:
     num_sanity_val_steps: 0
     accumulate_grad_batches: 1
   data:
-    wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
+    wandb_artifact: anon/anon/SVNH_beta1_cen0.3:v0
     batch_size: 8
     risk_set_size: 128
     val_batch_size: 128
     num_workers: 8
   model:
-    lr: 0.0003 # from auto lr find
+    lr: 0.0003
     sorting_network: bitonic
     distribution: cauchy
     ignore_censoring: false

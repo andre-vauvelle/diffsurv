@@ -207,7 +207,7 @@ def preprocess_pycox(
         run = wandb.init(
             job_type="preprocess_pycox",
             project="diffsurv",
-            entity="cardiors",
+            entity="anon",
         )
         artifact = wandb.Artifact(name, type="dataset", metadata=metadata)
         artifact.add_file(os.path.join(save_path, name), name)
@@ -318,7 +318,7 @@ def preprocess_kkbox(
         run = wandb.init(
             job_type="preprocess_pycox",
             project="diffsurv",
-            entity="cardiors",
+            entity="anon",
         )
         artifact = wandb.Artifact("kkbox_v1", type="dataset", metadata=metadata)
         artifact.add_dir(os.path.join(save_path))

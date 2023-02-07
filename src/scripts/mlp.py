@@ -25,14 +25,6 @@ class MLPLightningCLI(LightningCLI):
     #     )
 
 
-# class CustomSaveConfigCallback(SaveConfigCallback):
-#     def on_train_start(self, trainer, pl_module) -> None:
-#         pass
-#         # log_dir = trainer.log_dir or trainer.default_root_dir
-#         # config_path = os.path.join(log_dir, self.config_filename)
-#         # self.parser.save(self.config, config_path, skip_none=False)
-
-
 def mlp_cli_main(args: ArgsType = None, run=True):
     torch.set_float32_matmul_precision("medium")
 
