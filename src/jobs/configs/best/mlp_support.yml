@@ -10,7 +10,6 @@ trainer:
           - risk
           - diffsort
           - case-control-sampling
-#        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
