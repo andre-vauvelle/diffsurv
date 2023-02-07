@@ -327,21 +327,21 @@ def preprocess_kkbox(
 
 
 if __name__ == "__main__":
-    # support = from_deepsurv._Support().read_df().sample(frac=1)
+    support = from_deepsurv._Support().read_df().sample(frac=1)
     # metabric = from_deepsurv._Metabric().read_df().sample(frac=1)
     # gbsg = from_deepsurv._Gbsg().read_df().sample(frac=1)
     # flchain = from_rdatasets._Flchain().read_df().sample(frac=1)
-    nwtco = from_rdatasets._Nwtco().read_df().sample(frac=1)
+    # nwtco = from_rdatasets._Nwtco().read_df().sample(frac=1)
     # sac3 = from_simulations._SAC3().read_df().sample(frac=1)
     # rr_nl_nhp = from_simulations._RRNLNPH().read_df().sample(frac=1)
     # sac_admin5 = from_simulations._SACAdmin5().read_df().sample(frac=1)
     #
     datasets = {
-        # "support.pt": support,
+        "support.pt": support,
         # "metabric.pt": metabric,
         # "gbsg.pt": gbsg,
         # "flchain.pt": flchain,
-        "nwtco.pt": nwtco,
+        # "nwtco.pt": nwtco,
         # 'kkbox': kkbox,
         # "sac3.pt": sac3,
         # "rr_nl_nhp.pt": rr_nl_nhp,

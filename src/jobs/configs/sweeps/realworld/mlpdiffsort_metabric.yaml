@@ -1,6 +1,6 @@
 # wandb sweep
 name: metabric_diffsort
-method: grid
+method: bayes
 program: scripts/mlpdiffsort.py
 metric:
   name: hp_metric

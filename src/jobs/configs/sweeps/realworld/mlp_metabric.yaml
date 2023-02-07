@@ -1,6 +1,6 @@
 # wandb sweep
 name: metabric_mlp
-method: random
+method: bayes
 program: scripts/mlp.py
 metric:
   name: hp_metric
