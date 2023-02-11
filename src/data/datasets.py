@@ -1,5 +1,6 @@
+import os
 import random
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numba
 import numpy as np
@@ -8,6 +9,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data.dataset import Dataset
 
+from definitions import DATA_DIR
 from modules.tasks import _get_possible_permutation_matrix
 
 
@@ -67,6 +69,13 @@ class DatasetRisk(Dataset):
         y_times: torch.Tensor,
         censored_events: torch.Tensor,
         risk: Optional[torch.Tensor] = None,
+        transform=transforms.Compose(
+            [
+                transforms.RandomCrop([54, 54]),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        ),
     ):
         self.x_covar = x_covar
         self.y_times = y_times
@@ -76,17 +85,18 @@ class DatasetRisk(Dataset):
             else torch.Tensor(censored_events)
         )
         self.risk = risk
-        self.transform = transforms.Compose(
-            [
-                transforms.RandomCrop([54, 54]),
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        )
+        self.transform = transform
 
     def __getitem__(self, index):
         covariates = self.x_covar[index]
-        if covariates.dim() == 3:
+        if isinstance(self.x_covar[0], str):
+            stack = []
+            for path in covariates:
+                img = Image.open(os.path.join(DATA_DIR, "mimic", path))
+                img = self.transform(img)
+                stack.append(img)
+            covariates = torch.stack(stack)
+        elif covariates.dim() == 3:
             covariates = Image.fromarray(np.transpose(covariates.numpy(), (1, 2, 0)))
             covariates = self.transform(covariates)
         future_label_multihot = 1 - self.censored_events[index]
@@ -120,7 +130,7 @@ class CaseControlRiskDataset(Dataset):
     def __init__(
         self,
         n_controls: int,
-        x_covar: torch.Tensor,
+        x_covar: Union[torch.Tensor, np.ndarray[str]],
         y_times: torch.Tensor,
         censored_events: torch.Tensor,
         risk: Optional[torch.Tensor] = None,
@@ -128,6 +138,13 @@ class CaseControlRiskDataset(Dataset):
         n_cases: int = 1,
         inc_censored_in_ties: bool = False,
         random_sample: bool = False,
+        transform=transforms.Compose(
+            [
+                transforms.RandomCrop([54, 54]),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        ),
     ):
         self.inc_censored_in_ties = inc_censored_in_ties
         self.n_controls = n_controls
@@ -141,13 +158,7 @@ class CaseControlRiskDataset(Dataset):
         )
         self.risk = risk
         self.return_perm_mat = return_perm_mat
-        self.transform = transforms.Compose(
-            [
-                transforms.RandomCrop([54, 54]),
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        )
+        self.transform = transform
         self.random_sample = random_sample
         if random_sample:
 
@@ -191,7 +202,14 @@ class CaseControlRiskDataset(Dataset):
             )
 
         covariates = self.x_covar[idxs]
-        if covariates.dim() > 3:
+        if isinstance(self.x_covar[0], str):
+            stack = []
+            for path in covariates:
+                img = Image.open(os.path.join(DATA_DIR, "mimic", path))
+                img = self.transform(img)
+                stack.append(img)
+            covariates = torch.stack(stack)
+        elif covariates.dim() > 3:
             stack = []
             for img in covariates:
                 img = Image.fromarray(np.transpose(img.numpy(), (1, 2, 0)))

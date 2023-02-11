@@ -1,13 +1,118 @@
 import os
 from typing import Literal, Optional
 
+import pandas as pd
 import pytorch_lightning as pl
 import torch
+import torchvision.transforms as transforms
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 
 import wandb
 from data.datasets import CaseControlRiskDataset, DatasetRisk
+from definitions import DATA_DIR
+
+
+class DataModuleCXR(pl.LightningDataModule):
+    def __init__(
+        self,
+        local_path: str = os.path.join(DATA_DIR, "mimic", "splits.csv"),
+        batch_size: int = 32,
+        val_batch_size: Optional[int] = 32,
+        risk_set_size: Optional[int] = None,
+        num_workers: int = 0,
+        inc_censored_in_ties: bool = True,
+    ):
+        super().__init__()
+        self.batch_size = batch_size
+        self.val_batch_size = val_batch_size
+        self.risk_set_size = risk_set_size
+        self.controls_per_case = 1 - risk_set_size
+        self.num_workers = os.cpu_count() - 2 if num_workers == -1 else num_workers
+        self.setting = "realworld"
+        self.input_dim = 50
+        self.cov_size = 50
+        self.output_dim = 1
+        self.inc_censored_in_ties = inc_censored_in_ties
+        self.label_vocab = {"token2idx": {"event0": 0}, "idx2token": {0: "event0"}}
+        self.grouping_labels = {"all": ["event0"]}
+        self.local_path = local_path
+
+        self.save_hyperparameters()
+
+    def get_dataloader(self, stage: Literal["train", "val", "test"]):
+        # Pre-split provided
+        splits = pd.read_cvs(self.local_path)
+
+        idx = (splits.split == stage) & splits.exists
+
+        y_times = torch.Tensor(splits.loc[idx, "tte"]).float()
+        censored_events = 1 - torch.LongTensor(splits.loc[idx, "event"])
+        x_covar = splits.loc[idx, "path"].values
+
+        if stage == "train":
+            dataset = CaseControlRiskDataset(
+                1 - self.controls_per_case,
+                x_covar,
+                y_times,
+                censored_events,
+                inc_censored_in_ties=self.inc_censored_in_ties,
+                transform=transforms.Compose(
+                    [
+                        transforms.RandomHorizontalFlip(),
+                        transforms.RandomRotation(15),
+                        transforms.Resize(256),
+                        transforms.CenterCrop(256),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ]
+                ),
+            )
+        else:
+            dataset = DatasetRisk(
+                x_covar,
+                y_times,
+                censored_events,
+                transform=transforms.Compose(
+                    [
+                        transforms.Resize(256),
+                        transforms.CenterCrop(256),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ]
+                ),
+            )
+            # TODO: THe MOdel!
+
+        # Validation must be not have casecontrol sampling (Otherwise not all patients included)
+        # if self.controls_per_case is None or stage == "val":
+        if self.risk_set_size >= 5:
+            val_batch_size = self.risk_set_size
+        else:
+            val_batch_size = 5  # ensures that EM6 metric can be calculated
+        return DataLoader(
+            dataset,
+            batch_size=self.batch_size if stage == "train" else val_batch_size,
+            num_workers=self.num_workers,
+            drop_last=False,
+            shuffle=True if stage == "train" else False,
+            pin_memory=True,
+        )
+
+    def train_dataloader(self):
+        train_dataloader = self.get_dataloader(stage="train")
+        return train_dataloader
+
+    def val_dataloader(self):
+        val_dataloader = self.get_dataloader(stage="val")
+        return val_dataloader
+
+    def predict_dataloader(self) -> EVAL_DATALOADERS:
+        return self.val_dataloader()
+
+    def test_dataloader(self):
+        test_dataloader = self.get_dataloader(stage="test")
+        return test_dataloader
 
 
 class DataModuleRisk(pl.LightningDataModule):
