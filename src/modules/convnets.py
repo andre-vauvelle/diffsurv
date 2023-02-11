@@ -1,4 +1,6 @@
 import torch
+from torch import nn
+from torchvision.models import densenet121
 
 from models.imaging import SVHNConvNet
 from modules.base import BaseModel
@@ -6,9 +8,13 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 
 
 class ConvModule(BaseModel):
-    def __init__(self, **kwargs):
+    def __init__(self, model="svnh", **kwargs):
         super().__init__(**kwargs)
-        self.conv_net = SVHNConvNet()
+        if model == "densenet":
+            self.conv_net = densenet121(pretrained=True)
+            self.conv_net.classifier = nn.Linear(self.conv_net.classifier.in_features, 1)
+        else:
+            self.conv_net = SVHNConvNet()
 
     def forward(self, img) -> torch.Tensor:
         return self.conv_net(img)

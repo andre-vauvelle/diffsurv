@@ -107,8 +107,12 @@ def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
     if splits.exists.sum() != splits.shape[0]:
         warnings.warn(f"Warning only {splits.exists.sum()} images found")
 
-    splits.loc[:, ["subject_id", "study_id", "path", "exists", "tte", "event"]].to_csv(
-        os.path.join(DATA_DIR, "mimic", "splits.csv")
+    splits.loc[:, ["subject_id", "study_id", "path", "exists", "split", "tte", "event"]].to_csv(
+        os.path.join(DATA_DIR, "mimic", "splits.csv"), index=False
     )
 
     # TODO: add wandb
+
+
+if __name__ == "__main__":
+    preprocess_data()

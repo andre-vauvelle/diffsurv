@@ -42,12 +42,13 @@ class DataModuleCXR(pl.LightningDataModule):
 
     def get_dataloader(self, stage: Literal["train", "val", "test"]):
         # Pre-split provided
-        splits = pd.read_cvs(self.local_path)
+        splits = pd.read_csv(self.local_path)
+        _stage = "validate" if stage == "val" else stage
 
-        idx = (splits.split == stage) & splits.exists
+        idx = (splits.split == _stage) & splits.exists
 
-        y_times = torch.Tensor(splits.loc[idx, "tte"]).float()
-        censored_events = 1 - torch.LongTensor(splits.loc[idx, "event"])
+        y_times = torch.Tensor(splits.loc[idx, "tte"].values).float()
+        censored_events = 1 - torch.LongTensor(splits.loc[idx, "event"].values)
         x_covar = splits.loc[idx, "path"].values
 
         if stage == "train":
@@ -63,6 +64,7 @@ class DataModuleCXR(pl.LightningDataModule):
                         transforms.RandomRotation(15),
                         transforms.Resize(256),
                         transforms.CenterCrop(256),
+                        transforms.Grayscale(num_output_channels=3),
                         transforms.ToTensor(),
                         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ]
@@ -77,6 +79,7 @@ class DataModuleCXR(pl.LightningDataModule):
                     [
                         transforms.Resize(256),
                         transforms.CenterCrop(256),
+                        transforms.Grayscale(num_output_channels=3),
                         transforms.ToTensor(),
                         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ]

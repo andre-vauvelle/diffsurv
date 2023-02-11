@@ -90,18 +90,22 @@ class DatasetRisk(Dataset):
     def __getitem__(self, index):
         covariates = self.x_covar[index]
         if isinstance(self.x_covar[0], str):
-            stack = []
-            for path in covariates:
-                img = Image.open(os.path.join(DATA_DIR, "mimic", path))
-                img = self.transform(img)
-                stack.append(img)
-            covariates = torch.stack(stack)
+            img = Image.open(os.path.join(DATA_DIR, "mimic", covariates))
+            covariates = self.transform(img)
         elif covariates.dim() == 3:
             covariates = Image.fromarray(np.transpose(covariates.numpy(), (1, 2, 0)))
             covariates = self.transform(covariates)
         future_label_multihot = 1 - self.censored_events[index]
         future_label_times = self.y_times[index]
         censorings = self.censored_events[index]
+
+        if censorings.dim != 2:
+            censorings = censorings.unsqueeze(-1)
+        if future_label_multihot.dim != 2:
+            future_label_multihot = future_label_multihot.unsqueeze(-1)
+        if future_label_times.dim != 2:
+            future_label_times = future_label_times.unsqueeze(-1)
+
         exclusions = torch.zeros_like(censorings)
 
         output = {
