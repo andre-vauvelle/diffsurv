@@ -307,7 +307,7 @@ class DataModuleRisk(pl.LightningDataModule):
             dataset,
             batch_size=self.batch_size if stage == "train" else val_batch_size,
             num_workers=self.num_workers,
-            drop_last=False,  # TODO: Do we need to drop?
+            drop_last=True,  # Need to drop for efrons
             shuffle=shuffle,
             pin_memory=True,
         )
