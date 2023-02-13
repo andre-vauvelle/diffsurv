@@ -11,14 +11,14 @@ from definitions import DATA_DIR
 
 def download_data(path: str = f"{DATA_DIR}mimic/"):
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            "First download MIMIC IV and MIMIC-CXR with: wget -r -N -c -np --user <user>"
-            f" --ask-password https://physionet.org/files/mimic-cxr/2.0.0/files/ -P {path}wget -r"
-            " -N -c -np --user <user> --ask-password"
-            f" https://physionet.org/files/mimiciv/2.2/hosp/patients.csv.gz -P {path}wget -r -N -c"
-            " -np --user <user> --ask -password"
-            f" https://physionet.org/files/mimiciv/2.2/hosp/admissions.csv.gz -P {path}"
-        )
+        string = f"""
+            first download MIMIC IV and MIMIC-CXR with:
+            wget -r -N -c -np --user <user> --reject html --ask-password https://physionet.org/files/mimic-cxr-jpg/2.0.0/files/ -P {path}
+            wget -r -N -c -np --user <user> --reject html --ask-password https://physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-metadata.csv.gz -P {path}
+            wget -r -N -c -np --user <user> --reject html --ask-password https://physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-split.csv.gz -P {path}
+            wget -r -N -c -np --user <user> --ask-password https://physionet.org/files/mimiciv/2.0/hosp/patients.csv.gz -P {path}
+            wget -r -N -c -np --user <user> --ask -password https://physionet.org/files/mimiciv/2.0/hosp/admissions.csv.gz -P {path}
+            """
 
 
 def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
