@@ -18,14 +18,14 @@ trainer:
         monitor: hp_metric
         filename: '{epoch}-{hp_metric:.4f}'
         mode: max
-    - class_path: pytorch_lightning.callbacks.EarlyStopping
-      init_args:
-        patience: 80
-        monitor: hp_metric
-        min_delta: 0.001
-        mode: max
-        verbose: True
-        check_finite: False
+#   - class_path: pytorch_lightning.callbacks.EarlyStopping
+#     init_args:
+#       patience: 80
+#       monitor: hp_metric
+#       min_delta: 0.001
+#       mode: max
+#       verbose: True
+#       check_finite: False
 #  check_val_every_n_epoch: 1
   max_steps: 100_000
 #  limit_val_batches: 1
@@ -35,9 +35,9 @@ trainer:
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 data:
-  wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
+  wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.6:v0
   batch_size: 128
-  risk_set_size: 2
+  risk_set_size: 4
   num_workers: 1
 model:
   lr: 0.0003 # from auto lr find
