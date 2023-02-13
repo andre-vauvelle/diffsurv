@@ -17,9 +17,10 @@ trainer:
         auto_insert_metric_name: False
         monitor: hp_metric
         filename: '{epoch}-{hp_metric:.2f}'
+        mode: max
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
-        patience: 50
+        patience: 20
         monitor: hp_metric
         min_delta: 0.002
         mode: max
@@ -29,10 +30,10 @@ trainer:
 #      init_args:
 #        save_dir: "mlpdiffsort_synthetic"
 #        - class_path: src.callbacks.LogPredictionsCallback
-  max_epochs: 2
+  max_epochs: 10
   check_val_every_n_epoch: 1
   val_check_interval: 0.2
-  log_every_n_steps: 1
+  log_every_n_steps: 10
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
