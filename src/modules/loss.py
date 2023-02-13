@@ -118,7 +118,7 @@ class CoxPHLoss(torch.nn.Module):
         :return:
         """
         losses = []
-        if len(logh) == 2:
+        if logh.dim() == 2:
             logh = logh.unsqueeze(0)
             events = events.unsqueeze(0)
             durations = durations.unsqueeze(0)
