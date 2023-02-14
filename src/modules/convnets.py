@@ -17,7 +17,12 @@ class ConvModule(BaseModel):
             self.conv_net = SVHNConvNet()
 
     def forward(self, img) -> torch.Tensor:
-        return self.conv_net(img)
+        x_shape = img.shape
+        if len(x_shape) == 5:
+            img = img.view(-1, *x_shape[-3:])
+        img = self.conv_net(img)
+        img = img.view(*x_shape[:-3], 3 * 3 * 256)
+        return img
 
     def _shared_eval_step(self, batch, batch_idx):
         covariates = batch["covariates"]
