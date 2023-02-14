@@ -27,7 +27,7 @@ class DataModuleCXR(pl.LightningDataModule):
         self.batch_size = batch_size
         self.val_batch_size = val_batch_size
         self.risk_set_size = risk_set_size
-        self.controls_per_case = 1 - risk_set_size
+        self.controls_per_case = risk_set_size - 1
         self.num_workers = os.cpu_count() - 2 if num_workers == -1 else num_workers
         self.setting = "realworld"
         self.input_dim = 50
@@ -53,7 +53,7 @@ class DataModuleCXR(pl.LightningDataModule):
 
         if stage == "train":
             dataset = CaseControlRiskDataset(
-                1 - self.controls_per_case,
+                self.controls_per_case,
                 x_covar,
                 y_times,
                 censored_events,
