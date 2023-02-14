@@ -180,16 +180,15 @@ class CaseControlRiskDataset(Dataset):
     def __getitem__(self, index):
         idx_durations = self.y_times
         events = 1 - self.censored_events
-        if not self.random_sample:
+        if self.random_sample:
+            idxs = list(np.random.choice(self.gen_random_ids, size=self.n_cases + self.n_controls))
+        else:
             idxs = get_case_control_idxs(
                 n_cases=self.n_cases,
                 n_controls=self.n_controls,
                 idx_durations=idx_durations.numpy().astype(float),
                 events=events.numpy().astype(bool),
             )
-        else:
-            # idxs = [next(self.gen_random_idx) for _ in range(self.n_cases + self.n_controls)]
-            idxs = list(np.random.choice(self.gen_random_ids, size=self.n_cases + self.n_controls))
 
         if events.dim() == 1:
             events = events.unsqueeze(-1)
