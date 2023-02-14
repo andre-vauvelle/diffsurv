@@ -20,9 +20,9 @@ class ConvModule(BaseModel):
         x_shape = img.shape
         if len(x_shape) == 5:
             img = img.view(-1, *x_shape[-3:])
-        img = self.conv_net(img)
-        img = img.view(*x_shape[:-3], 3 * 3 * 256)
-        return img
+        logits = self.conv_net(img)
+        logits = img.view(*x_shape[:-3])
+        return logits
 
     def _shared_eval_step(self, batch, batch_idx):
         covariates = batch["covariates"]
