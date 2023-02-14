@@ -21,7 +21,7 @@ class ConvModule(BaseModel):
         if len(x_shape) == 5:
             img = img.view(-1, *x_shape[-3:])
         logits = self.conv_net(img)
-        logits = logits.view(*x_shape[:-3])
+        logits = logits.view(*x_shape[:-3], 1)
         return logits
 
     def _shared_eval_step(self, batch, batch_idx):
