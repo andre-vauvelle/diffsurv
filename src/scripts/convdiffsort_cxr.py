@@ -2,7 +2,7 @@ import torch
 from pytorch_lightning.cli import ArgsType, LightningCLI
 
 from data.datamodules import DataModuleCXR
-from modules.convnets import ConvRisk
+from modules.convnets import ConvDiffsort
 
 
 class ConvLightningCLI(LightningCLI):
@@ -17,9 +17,9 @@ class ConvLightningCLI(LightningCLI):
         parser.link_arguments("data.setting", "model.setting", apply_on="instantiate")
 
 
-def cxr_cli_main(args: ArgsType = None, run=True):
+def diffsort_cli_main(args: ArgsType = None, run=True):
     cli = ConvLightningCLI(
-        ConvRisk,
+        ConvDiffsort,
         DataModuleCXR,
         trainer_defaults={"gpus": -1 if torch.cuda.is_available() else 0},
         save_config_callback=None,
@@ -30,5 +30,5 @@ def cxr_cli_main(args: ArgsType = None, run=True):
 
 
 if __name__ == "__main__":
-    cli = cxr_cli_main()
+    cli = diffsort_cli_main()
     cli.trainer.test(ckpt_path="best", dataloaders=cli.datamodule.test_dataloader())
