@@ -17,9 +17,6 @@ class ConvModule(BaseModel):
             self.conv_net = SVHNConvNet()
 
     def forward(self, img) -> torch.Tensor:
-        x_shape = img.shape
-        if len(x_shape) == 5:
-            img = img.view(-1, *x_shape[-3:])
         return self.conv_net(img)
 
     def _shared_eval_step(self, batch, batch_idx):

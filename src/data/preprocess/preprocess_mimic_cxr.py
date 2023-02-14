@@ -22,6 +22,11 @@ def download_data(path: str = f"{DATA_DIR}mimic/"):
 
 
 def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
+    """
+    Once we've downloaded data we can get the survival times from metadata, admissions and patients tables
+    :param path:
+    :return:
+    """
     cxr_split_path = "physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-split.csv.gz"
     admission_path = "physionet.org/files/mimiciv/2.0/hosp/admissions.csv.gz"
     patients_path = "physionet.org/files/mimiciv/2.0/hosp/patients.csv.gz"
@@ -102,7 +107,10 @@ def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
         + image_name
     )
 
-    splits.loc[:, "exists"] = (DATA_DIR + "mimic/" + splits.path).apply(os.path.exists)
+    import multiprocessing as mp
+
+    with mp.Pool(mp.cpu_count() - 1) as pool:
+        splits.loc[:, "exists"] = pool.map(os.path.exists, DATA_DIR + "mimic/" + splits.path)
 
     if splits.exists.sum() != splits.shape[0]:
         warnings.warn(f"Warning only {splits.exists.sum()} images found")

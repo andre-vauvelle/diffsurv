@@ -122,6 +122,7 @@ class CoxPHLoss(torch.nn.Module):
             logh = logh.unsqueeze(0)
             events = events.unsqueeze(0)
             durations = durations.unsqueeze(0)
+
         for b in range(logh.shape[0]):
             for i in range(logh.shape[2]):
                 lh, d, e = logh[b, :, i], durations[b, :, i], events[b, :, i]
