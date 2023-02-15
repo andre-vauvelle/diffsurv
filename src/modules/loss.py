@@ -128,18 +128,17 @@ class CoxPHLoss(torch.nn.Module):
         for b in range(logh.shape[0]):
             for i in range(logh.shape[2]):
                 lh, d, e = logh[b, :, i], durations[b, :, i], events[b, :, i]
-                with torch.autocast(device_type="cuda", enabled=False):
-                    if self.method == "efron":
-                        loss = self._efron_loss(lh, d, e, eps)
-                    elif self.method == "breslow":
-                        loss = self._breslow_loss(lh, d, e, eps)
-                    elif self.method == "ranked_list":
-                        loss = self._loss_ranked_list(lh, d, e, eps)
-                    else:
-                        raise ValueError(
-                            f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
-                            ' "breslow"]'
-                        )
+                if self.method == "efron":
+                    loss = self._efron_loss(lh, d, e, eps)
+                elif self.method == "breslow":
+                    loss = self._breslow_loss(lh, d, e, eps)
+                elif self.method == "ranked_list":
+                    loss = self._loss_ranked_list(lh, d, e, eps)
+                else:
+                    raise ValueError(
+                        f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
+                        ' "breslow"]'
+                    )
                 losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
@@ -185,7 +184,8 @@ class CoxPHLoss(torch.nn.Module):
         event_ind = events.nonzero().flatten()
 
         # logcumsumexp of events
-        event_lcse = torch.logcumsumexp(log_h, dim=0)[event_ind]
+        with torch.autocast(device_type="cuda", enabled=False):
+            event_lcse = torch.logcumsumexp(log_h, dim=0)[event_ind]
 
         # number of events for each unique risk set
         _, tie_inverses, tie_count = torch.unique_consecutive(
