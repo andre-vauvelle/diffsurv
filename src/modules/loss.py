@@ -128,17 +128,18 @@ class CoxPHLoss(torch.nn.Module):
         for b in range(logh.shape[0]):
             for i in range(logh.shape[2]):
                 lh, d, e = logh[b, :, i], durations[b, :, i], events[b, :, i]
-                if self.method == "efron":
-                    loss = self._efron_loss(lh, d, e, eps)
-                elif self.method == "breslow":
-                    loss = self._breslow_loss(lh, d, e, eps)
-                elif self.method == "ranked_list":
-                    loss = self._loss_ranked_list(lh, d, e, eps)
-                else:
-                    raise ValueError(
-                        f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
-                        ' "breslow"]'
-                    )
+                with torch.autocast(device_type="cuda", enabled=False):
+                    if self.method == "efron":
+                        loss = self._efron_loss(lh, d, e, eps)
+                    elif self.method == "breslow":
+                        loss = self._breslow_loss(lh, d, e, eps)
+                    elif self.method == "ranked_list":
+                        loss = self._loss_ranked_list(lh, d, e, eps)
+                    else:
+                        raise ValueError(
+                            f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
+                            ' "breslow"]'
+                        )
                 losses.append(loss)
 
         # drop losses less than zero, ie no events in risk set
