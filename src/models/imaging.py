@@ -33,8 +33,11 @@ class SVHNConvNet(nn.Module):
         if len(x_shape) == 5:
             x = x.view(-1, *x_shape[-3:])
         x = torch.utils.checkpoint.checkpoint(self.convblock1, x)
+        x = F.max_pool2d(x, 2, 2)
         x = torch.utils.checkpoint.checkpoint(self.convblock2, x)
+        x = F.max_pool2d(x, 2, 2)
         x = torch.utils.checkpoint.checkpoint(self.convblock3, x)
+        x = F.max_pool2d(x, 2, 2)
         x = torch.utils.checkpoint.checkpoint(self.convblock4, x)
         x = F.max_pool2d(x, 2, 2)
         x = x.view(*x_shape[:-3], -1)
