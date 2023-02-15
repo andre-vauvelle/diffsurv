@@ -44,6 +44,7 @@ model:
   sorting_network: bitonic
   distribution: cauchy
   ignore_censoring: false
+  img_size: 256
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
