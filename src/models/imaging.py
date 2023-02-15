@@ -12,7 +12,7 @@ class SVHNConvNet(nn.Module):
             nn.Conv2d(3, 32, 5, 1, 2),
             nn.ReLU(),
         )
-        self.convblock1 = nn.Sequential(
+        self.convblock2 = nn.Sequential(
             nn.Conv2d(32, 64, 5, 1, 2),
             nn.ReLU(),
         )
