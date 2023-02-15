@@ -8,13 +8,13 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 
 
 class ConvModule(BaseModel):
-    def __init__(self, model="svnh", **kwargs):
+    def __init__(self, model="svnh", img_size=48, **kwargs):
         super().__init__(**kwargs)
         if model == "densenet":
             self.conv_net = densenet121(pretrained=True)
             self.conv_net.classifier = nn.Linear(self.conv_net.classifier.in_features, 1)
         else:
-            self.conv_net = SVHNConvNet()
+            self.conv_net = SVHNConvNet(img_size=img_size)
 
     def forward(self, img) -> torch.Tensor:
         x_shape = img.shape

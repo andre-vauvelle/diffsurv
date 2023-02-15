@@ -4,13 +4,15 @@ from torch import nn
 
 
 class SVHNConvNet(nn.Module):
-    def __init__(self):
+    def __init__(self, img_size=48):
+        scale = img_size / 48
+        fc1_size = int(3 * 3 * 256 * scale**2)
         super().__init__()
         self.conv1 = nn.Conv2d(3, 32, 5, 1, 2)
         self.conv2 = nn.Conv2d(32, 64, 5, 1, 2)
         self.conv3 = nn.Conv2d(64, 128, 5, 1, 2)
         self.conv4 = nn.Conv2d(128, 256, 5, 1, 2)
-        self.fc1 = nn.LazyLinear(64)
+        self.fc1 = nn.Linear(fc1_size, 64)
         self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
