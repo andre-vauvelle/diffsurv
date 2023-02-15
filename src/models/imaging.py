@@ -41,7 +41,7 @@ class SVHNConvNet(nn.Module):
         x = torch.utils.checkpoint.checkpoint(self.convblock4, x)
         x = F.max_pool2d(x, 2, 2)
         x = x.view(*x_shape[:-3], -1)
-        x = torch.utils.checkpoint.checkpoint(self.fc1(x))
+        x = torch.utils.checkpoint.checkpoint(self.fc1, x)
         x = F.relu(x)
         x = self.fc2(x)
         return x
