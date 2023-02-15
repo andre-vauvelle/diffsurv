@@ -10,7 +10,7 @@ class SVHNConvNet(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 5, 1, 2)
         self.conv3 = nn.Conv2d(64, 128, 5, 1, 2)
         self.conv4 = nn.Conv2d(128, 256, 5, 1, 2)
-        self.fc1 = nn.Linear(3 * 3 * 256, 64)
+        self.fc1 = nn.LazyLinear(64)
         self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
@@ -25,7 +25,7 @@ class SVHNConvNet(nn.Module):
         x = F.max_pool2d(x, 2, 2)
         x = F.relu(self.conv4(x))
         x = F.max_pool2d(x, 2, 2)
-        x = x.view(*x_shape[:-3], 3 * 3 * 256)
+        x = x.view(*x_shape[:-3], -1)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
