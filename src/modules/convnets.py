@@ -1,3 +1,5 @@
+from functools import partial
+
 import torch
 from torch import nn
 from torchvision.models import convnext_small, convnext_tiny, densenet121
@@ -10,6 +12,7 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 class ConvModule(BaseModel):
     def __init__(self, model="svnh", img_size=48, **kwargs):
         super().__init__(**kwargs)
+        norm_layer = partial(nn.LayerNorm, eps=1e-6)
         if model == "densenet":
             self.conv_net = densenet121(pretrained=True)
             self.conv_net.classifier = nn.Linear(
@@ -19,13 +22,13 @@ class ConvModule(BaseModel):
             self.conv_net = SVHNConvNet(img_size=img_size)
         elif model == "convnext_small":
             self.conv_net = convnext_small(pretrained=True)
-            self.conv_net.classifier = nn.Linear(
-                self.conv_net.classifier[2].out_features, 1, bias=False
+            self.conv_net.classifier = nn.Sequential(
+                norm_layer(49152), nn.Flatten(1), nn.Linear(49152, 1, bias=False)
             )
         elif model == "convnext_tiny":
             self.conv_net = convnext_tiny(pretrained=True)
-            self.conv_net.classifier = nn.Linear(
-                self.conv_net.classifier[2].out_features, 1, bias=False
+            self.conv_net.classifier = nn.Sequential(
+                norm_layer(49152), nn.Flatten(1), nn.Linear(49152, 1, bias=False)
             )
         else:
             raise ValueError(
