@@ -18,9 +18,15 @@ class ConvModule(BaseModel):
         elif model == "small":
             self.conv_net = SVHNConvNet(img_size=img_size)
         elif model == "convnext_small":
-            self.conv_net = convnext_small(pretrained=True, num_classes=1)
+            self.conv_net = convnext_small(pretrained=True)
+            self.conv_net.classifier = nn.Linear(
+                self.conv_net.classifier[2].out_features, 1, bias=False
+            )
         elif model == "convnext_tiny":
-            self.conv_net = convnext_tiny(pretrained=True, num_classes=1)
+            self.conv_net = convnext_tiny(pretrained=True)
+            self.conv_net.classifier = nn.Linear(
+                self.conv_net.classifier[2].out_features, 1, bias=False
+            )
         else:
             raise ValueError(
                 f"Model {model} not recongized, must be either densenet, small, convnext_small, "
