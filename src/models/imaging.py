@@ -26,7 +26,7 @@ class SVHNConvNet(nn.Module):
         )
 
         self.fc1 = nn.Linear(fc1_size, 64)
-        self.fc2 = nn.Linear(64, 1)
+        self.fc2 = nn.Linear(64, 1, bias=False)
 
     def forward(self, x):
         x_shape = x.shape
