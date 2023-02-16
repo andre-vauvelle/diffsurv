@@ -23,12 +23,12 @@ class ConvModule(BaseModel):
         elif model == "convnext_small":
             self.conv_net = convnext_small(pretrained=True)
             self.conv_net.classifier = nn.Sequential(
-                norm_layer(49152), nn.Flatten(1), nn.Linear(49152, 1, bias=False)
+                norm_layer(768), nn.Flatten(1), nn.Linear(768, 1, bias=False)
             )
         elif model == "convnext_tiny":
             self.conv_net = convnext_tiny(pretrained=True)
             self.conv_net.classifier = nn.Sequential(
-                norm_layer(49152), nn.Flatten(1), nn.Linear(49152, 1, bias=False)
+                norm_layer(768), nn.Flatten(1), nn.Linear(768, 1, bias=False)
             )
         else:
             raise ValueError(
