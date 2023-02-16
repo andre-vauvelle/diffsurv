@@ -2,7 +2,7 @@ from functools import partial
 
 import torch
 from torch import nn
-from torchvision.models import convnext_small, convnext_tiny, densenet121
+from torchvision.models import convnext_small, convnext_tiny, densenet121, efficientnet_b0
 
 from models.imaging import SVHNConvNet
 from modules.base import BaseModel
@@ -20,6 +20,11 @@ class ConvModule(BaseModel):
             )
         elif model == "small":
             self.conv_net = SVHNConvNet(img_size=img_size)
+        elif model == "efficientnet":
+            self.conv_net = efficientnet_b0(pretrained=True)
+            self.conv_net.classifier = nn.Linear(
+                self.conv_net.classifier[1].in_features, 1, bias=False
+            )
         elif model == "convnext_small":
             self.conv_net = convnext_small(pretrained=True)
             self.conv_net.classifier = nn.Sequential(
