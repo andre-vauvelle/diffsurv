@@ -56,7 +56,13 @@ class ConvModule(BaseModel):
             lr=self.lr,
             weight_decay=self.weight_decay,
         )
-        return optimizer
+        lr_schedulers = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, factor=0.5, mode="max", patience=2, verbose=True
+            ),
+            "monitor": "val/c_index/all",
+        }
+        return optimizer, lr_schedulers
 
     def forward(self, img) -> torch.Tensor:
         x_shape = img.shape
