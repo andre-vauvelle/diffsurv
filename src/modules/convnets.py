@@ -13,8 +13,10 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 
 
 class ConvModule(BaseModel):
-    def __init__(self, model="svnh", img_size=48, head_steps=5000, weight_decay=0, **kwargs):
+    def __init__(self, model="svnh", img_size=48, head_steps=200, weight_decay=0, **kwargs):
         super().__init__(**kwargs)
+        self.head_steps = head_steps
+        self.weight_decay = weight_decay
         norm_layer = partial(nn.LayerNorm, eps=1e-6)
         if model == "densenet":
             self.conv_net = densenet121(pretrained=True)
