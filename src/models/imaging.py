@@ -5,9 +5,9 @@ from torch import nn
 
 class SVHNConvNet(nn.Module):
     def __init__(self, img_size=48):
+        super().__init__()
         scale = img_size / 48
         fc1_size = int(3 * 3 * 256 * scale**2)
-        super().__init__()
         self.convblock1 = nn.Sequential(
             nn.Conv2d(3, 32, 5, 1, 2),
             nn.ReLU(),
@@ -24,9 +24,11 @@ class SVHNConvNet(nn.Module):
             nn.Conv2d(128, 256, 5, 1, 2),
             nn.ReLU(),
         )
-
-        self.fc1 = nn.Linear(fc1_size, 64)
-        self.fc2 = nn.Linear(64, 1, bias=False)
+        self.classifier = nn.Sequential(
+            nn.Linear(fc1_size, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1, bias=False),
+        )
 
     def forward(self, x):
         x_shape = x.shape
@@ -41,7 +43,5 @@ class SVHNConvNet(nn.Module):
         x = torch.utils.checkpoint.checkpoint(self.convblock4, x)
         x = F.max_pool2d(x, 2, 2)
         x = x.view(*x_shape[:-3], -1)
-        x = torch.utils.checkpoint.checkpoint(self.fc1, x)
-        x = F.relu(x)
-        x = self.fc2(x)
+        x = torch.utils.checkpoint.checkpoint(self.classifier, x)
         return x

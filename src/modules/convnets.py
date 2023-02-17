@@ -1,7 +1,10 @@
 from functools import partial
+from typing import Any, Callable, Optional, Union
 
 import torch
+from pytorch_lightning.core.optimizer import LightningOptimizer
 from torch import nn
+from torch.optim import Optimizer
 from torchvision.models import convnext_small, convnext_tiny, densenet121, efficientnet_b0
 
 from models.imaging import SVHNConvNet
@@ -10,7 +13,7 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 
 
 class ConvModule(BaseModel):
-    def __init__(self, model="svnh", img_size=48, **kwargs):
+    def __init__(self, model="svnh", img_size=48, head_steps=5000, weight_decay=0, **kwargs):
         super().__init__(**kwargs)
         norm_layer = partial(nn.LayerNorm, eps=1e-6)
         if model == "densenet":
@@ -40,6 +43,18 @@ class ConvModule(BaseModel):
                 f"Model {model} not recongized, must be either densenet, small, convnext_small, "
                 "convnext_tiny"
             )
+        self.save_hyperparameters()
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            [
+                {"params": self.conv_net.features.parameters()},
+                {"params": self.conv_net.classifier.parameters()},
+            ],
+            lr=self.lr,
+            weight_decay=self.weight_decay,
+        )
+        return optimizer
 
     def forward(self, img) -> torch.Tensor:
         x_shape = img.shape
@@ -55,6 +70,23 @@ class ConvModule(BaseModel):
         label_times = batch["label_times"]
         logits = self(covariates)
         return logits, label_multihot, label_times
+
+    def optimizer_step(
+        self,
+        epoch: int,
+        batch_idx: int,
+        optimizer: Union[Optimizer, LightningOptimizer],
+        optimizer_idx: int = 0,
+        optimizer_closure: Optional[Callable[[], Any]] = None,
+        on_tpu: bool = False,
+        using_native_amp: bool = False,
+        using_lbfgs: bool = False,
+    ) -> None:
+        # skip the first 500 steps
+        if self.trainer.global_step < self.head_steps:
+            lr_scale = min(1.0, float(self.trainer.global_step + 1) / 500.0)
+            for pg in optimizer.param_groups:
+                pg["lr"] = lr_scale * self.hparams.learning_rate
 
 
 class ConvRisk(RiskMixin, ConvModule):
