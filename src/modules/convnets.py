@@ -62,7 +62,7 @@ class ConvModule(BaseModel):
             ),
             "monitor": "val/c_index/all",
         }
-        return optimizer, lr_schedulers
+        return [optimizer], [lr_schedulers]
 
     def forward(self, img) -> torch.Tensor:
         x_shape = img.shape
