@@ -41,7 +41,7 @@ data:
   risk_set_size: 8
   num_workers: 1
 model:
-  model: small
+  model: efficientnet
   lr: 0.0003 # from auto lr find
   img_size: 224
   cph_method: ranked_list
