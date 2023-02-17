@@ -26,7 +26,8 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
-#  check_val_every_n_epoch: 1
+    - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+  #  check_val_every_n_epoch: 1
   max_steps: 100_000
 #  limit_val_batches: 1
   log_every_n_steps: 200
@@ -44,7 +45,7 @@ model:
   sorting_network: bitonic
   distribution: cauchy
   ignore_censoring: false
-  img_size: 256
+  img_size: 224
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
