@@ -13,10 +13,19 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 
 
 class ConvModule(BaseModel):
-    def __init__(self, model="svnh", img_size=48, head_steps=200, weight_decay=0, **kwargs):
+    def __init__(
+        self,
+        model="svnh",
+        img_size=48,
+        head_steps=200,
+        weight_decay=0,
+        lr_schedule: bool = True,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.head_steps = head_steps
         self.weight_decay = weight_decay
+        self.lr_schedule = lr_schedule
         norm_layer = partial(nn.LayerNorm, eps=1e-6)
         if model == "densenet":
             self.conv_net = densenet121(pretrained=True)
@@ -56,13 +65,16 @@ class ConvModule(BaseModel):
             lr=self.lr,
             weight_decay=self.weight_decay,
         )
-        lr_schedulers = {
-            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, factor=0.5, mode="max", patience=2, verbose=True
-            ),
-            "monitor": "val/c_index/all",
-        }
-        return [optimizer], [lr_schedulers]
+        if self.lr_schedule:
+            lr_schedulers = {
+                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, factor=0.5, mode="max", patience=2, verbose=True
+                ),
+                "monitor": "val/c_index/all",
+            }
+            return [optimizer], [lr_schedulers]
+
+        return optimizer
 
     def forward(self, img) -> torch.Tensor:
         x_shape = img.shape
