@@ -82,11 +82,13 @@ class ConvModule(BaseModel):
         using_native_amp: bool = False,
         using_lbfgs: bool = False,
     ) -> None:
-        # skip the first 500 steps
+        # skip training the features for the first head_steps
         if self.trainer.global_step < self.head_steps:
-            lr_scale = min(1.0, float(self.trainer.global_step + 1) / 500.0)
-            for pg in optimizer.param_groups:
-                pg["lr"] = lr_scale * self.hparams.learning_rate
+            optimizer.param_groups[0]["lr"] = 0
+        else:
+            optimizer.param_groups[0]["lr"] = self.lr
+
+        optimizer.step(closure=optimizer_closure)
 
 
 class ConvRisk(RiskMixin, ConvModule):
