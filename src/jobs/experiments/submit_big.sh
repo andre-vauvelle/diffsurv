@@ -1,12 +1,12 @@
 #!/bin/bash -l
-#$ -l tmem=10G
+#$ -l tmem=30G
 #$ -l h_rt=50:0:0
 #$ -l gpu=true,gpu_type=(v100|p100)
 #$ -S /bin/bash
 #$ -j y
 #$ -N big_submit
 
-#$ -o /home/vauvelle/pycharm-sftp/diffsurv/src/jobs/logs
+#$ -o /home/vauvelle/diffsurv/src/jobs/logs
 hostname
 date
 SOURCE_DIR='/home/vauvelle/diffsurv/src'

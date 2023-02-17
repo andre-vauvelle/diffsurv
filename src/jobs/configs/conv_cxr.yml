@@ -27,21 +27,23 @@ trainer:
         verbose: True
         check_finite: False
 #  check_val_every_n_epoch: 1
-  max_steps: 100_000
+  max_steps: 200_000
 #  limit_val_batches: 1
   log_every_n_steps: 200
-  val_check_interval: 0.25
+  val_check_interval: 0.1
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
+  precision: 16
 data:
-  batch_size: 128
+  batch_size: 4
   risk_set_size: 8
   num_workers: 1
 model:
-  model: densenet
+  model: small
   lr: 0.0003 # from auto lr find
-  img_size: 256
+  img_size: 224
+  cph_method: ranked_list
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
