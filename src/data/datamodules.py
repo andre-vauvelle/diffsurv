@@ -22,8 +22,12 @@ class DataModuleCXR(pl.LightningDataModule):
         risk_set_size: Optional[int] = None,
         num_workers: int = 0,
         inc_censored_in_ties: bool = True,
+        batch_risk_tuple: Optional[tuple] = None,
     ):
         super().__init__()
+        if batch_risk_tuple is not None:  # wandb hack
+            batch_size = batch_risk_tuple[0]
+            risk_set_size = batch_risk_tuple[1]
         self.batch_size = batch_size
         self.val_batch_size = val_batch_size
         self.risk_set_size = risk_set_size

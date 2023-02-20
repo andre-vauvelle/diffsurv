@@ -22,7 +22,7 @@ trainer:
       init_args:
         patience: 20
         monitor: hp_metric
-        min_delta: 0.001
+        min_delta: 0.0001
         mode: max
         verbose: True
         check_finite: False
