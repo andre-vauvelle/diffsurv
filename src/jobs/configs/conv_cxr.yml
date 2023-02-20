@@ -26,9 +26,11 @@ trainer:
         mode: max
         verbose: True
         check_finite: False
+        check_on_train_epoch_end: True
     - class_path: pytorch_lightning.callbacks.LearningRateMonitor
 #  check_val_every_n_epoch: 1
   max_steps: 100_000
+  max_time: '00:18:00:00'
 #  limit_val_batches: 1
   log_every_n_steps: 200
   val_check_interval: 0.1
