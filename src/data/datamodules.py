@@ -141,17 +141,21 @@ class DataModuleRisk(pl.LightningDataModule):
         k_fold: Optional[tuple] = (1, 5),
         use_risk: bool = False,
         random_sample: bool = False,
+        batch_risk_tuple: Optional[tuple] = None,
     ):
         super().__init__()
         self.random_sample = random_sample
         self.val_batch_size = val_batch_size
         self.k_fold = k_fold
         self.inc_censored_in_ties = inc_censored_in_ties
+        if batch_risk_tuple is not None:  # wandb hack
+            batch_size = batch_risk_tuple[0]
+            risk_set_size = batch_risk_tuple[1]
         self.risk_set_size = risk_set_size
+        self.batch_size = batch_size
         self.controls_per_case = risk_set_size - 1  # one is a case...
         self.wandb_artifact = wandb_artifact
         self.val_split = val_split
-        self.batch_size = batch_size
         self.use_risk = use_risk
         self.num_workers = os.cpu_count() - 2 if num_workers == -1 else num_workers
         self.return_perm_mat = return_perm_mat

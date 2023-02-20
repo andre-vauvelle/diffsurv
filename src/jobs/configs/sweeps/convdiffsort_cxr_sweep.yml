@@ -1,0 +1,36 @@
+# wandb sweep
+name: convdiffsort_cxr
+program: scripts/convdiffsort_cxr.py
+method: bayes
+run_cap: 300
+metric:
+  name: val/c_index/all
+  goal: maximize
+parameters:
+  data.batch_risk_tuple:
+    values: [(2, 64), (4, 32), (8, 16), (16, 8), (32, 4), (64, 2), (128, 1)]
+  seed_everything:
+    value: 42
+#    values: [1,2,3,4,5]  # will act as trails
+  model.weight_decay:
+    max: 0.01
+    min: 0.00001
+  model.lr:
+    max: 0.0003
+    min: 0.00001
+  model.sorting_network:
+    values: [bitonic, odd_even]
+  data.num_workers:
+    value: -1
+  trainer.strategy:
+    value: ddp
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - fit
+  - "--config"
+  - "jobs/configs/convdiffsort_cxr.yml"
+  - ${args}
+project: diffsurv
+entity: cardiors
