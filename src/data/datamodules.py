@@ -27,7 +27,7 @@ class DataModuleCXR(pl.LightningDataModule):
         super().__init__()
         if batch_risk_tuple is not None:  # wandb hack
             if isinstance(batch_risk_tuple, str):
-                batch_risk_tuple: list[int] = [int(i) for i in "batch_risk_tuple".split(",")]
+                batch_risk_tuple: list[int] = [int(i) for i in batch_risk_tuple.split(",")]
                 assert len(batch_risk_tuple) == 2
             batch_size = batch_risk_tuple[0]
             risk_set_size = batch_risk_tuple[1]
