@@ -1,5 +1,5 @@
 import os
-from typing import Literal, Optional
+from typing import List, Literal, Optional, Union
 
 import pandas as pd
 import pytorch_lightning as pl
@@ -22,10 +22,13 @@ class DataModuleCXR(pl.LightningDataModule):
         risk_set_size: Optional[int] = None,
         num_workers: int = 0,
         inc_censored_in_ties: bool = True,
-        batch_risk_tuple: Optional[tuple] = None,
+        batch_risk_tuple: Optional[Union[tuple, str]] = None,
     ):
         super().__init__()
         if batch_risk_tuple is not None:  # wandb hack
+            if isinstance(batch_risk_tuple, str):
+                batch_risk_tuple: list[int] = [int(i) for i in "batch_risk_tuple".split(",")]
+                assert len(batch_risk_tuple) == 2
             batch_size = batch_risk_tuple[0]
             risk_set_size = batch_risk_tuple[1]
         self.batch_size = batch_size

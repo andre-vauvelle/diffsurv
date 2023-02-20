@@ -8,7 +8,7 @@ metric:
   goal: maximize
 parameters:
   data.batch_risk_tuple:
-    values: [(2, 64), (4, 32), (8, 16), (16, 8), (32, 4), (64, 2), (128, 1)]
+    values: ['2, 64', '4, 32', '8, 16', '16, 8', '32, 4', '64, 2', '128, 1']
   seed_everything:
     value: 42
 #    values: [1,2,3,4,5]  # will act as trails
