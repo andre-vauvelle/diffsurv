@@ -1,4 +1,5 @@
 import os
+import random
 import warnings
 
 import numpy as np
@@ -40,7 +41,7 @@ def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
     admissions = pd.read_csv(os.path.join(path, admission_path))
     patients = pd.read_csv(os.path.join(path, patients_path))
 
-    print(f"Total starting patients form CXR splits: {splits.shape[0]}")
+    print(f"Total starting images from CXR splits: {splits.shape[0]}")
     splits = splits.merge(patients.loc[:, ["subject_id", "dod"]], on="subject_id", how="left")
     print(f"Total after merging with patients from MIMICIV (for DOD): {splits.shape[0]}")
     splits = splits.merge(
@@ -120,12 +121,18 @@ def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
 
     # reassign splits
     splits = splits.sample(frac=1).reset_index(drop=True)
+    patients = list(splits.subject_id.unique())
+    n_patients = len(patients)
+    random.shuffle(patients)
 
-    n_train, n_val = int(splits.shape[0] * train_split), int(splits.shape[0] * val_split)
+    n_train, n_val = int(n_patients * train_split), int(n_patients * val_split)
+    train_patients = patients[:n_train]
+    val_patients = patients[n_train : n_train + n_val]
+    test_patients = patients[n_train + n_val :]
 
-    splits.loc[:n_train, "split"] = "train"
-    splits.loc[n_train : n_train + n_val, "split"] = "val"
-    splits.loc[n_train + n_val :, "split"] = "test"
+    splits.loc[splits.subject_id.isin(train_patients), "split"] = "train"
+    splits.loc[splits.subject_id.isin(val_patients), "split"] = "val"
+    splits.loc[splits.subject_id.isin(test_patients), "split"] = "test"
 
     splits.loc[:, ["subject_id", "study_id", "path", "exists", "split", "tte", "event"]].to_csv(
         os.path.join(DATA_DIR, "mimic", "splits.csv"), index=False
