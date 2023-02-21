@@ -50,9 +50,8 @@ class DataModuleCXR(pl.LightningDataModule):
     def get_dataloader(self, stage: Literal["train", "val", "test"]):
         # Pre-split provided
         splits = pd.read_csv(self.local_path)
-        _stage = "validate" if stage == "val" else stage
 
-        idx = (splits.split == _stage) & splits.exists
+        idx = (splits.split == stage) & splits.exists
 
         y_times = torch.Tensor(splits.loc[idx, "tte"].values).float()
         censored_events = 1 - torch.LongTensor(splits.loc[idx, "event"].values)

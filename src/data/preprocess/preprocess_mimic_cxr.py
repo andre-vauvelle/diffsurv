@@ -27,6 +27,9 @@ def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
     :param path:
     :return:
     """
+    train_split = 0.8
+    val_split = 0.1
+
     cxr_split_path = "physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-split.csv.gz"
     admission_path = "physionet.org/files/mimiciv/2.0/hosp/admissions.csv.gz"
     patients_path = "physionet.org/files/mimiciv/2.0/hosp/patients.csv.gz"
@@ -114,6 +117,15 @@ def preprocess_data(path: str = f"{DATA_DIR}mimic/"):
 
     if splits.exists.sum() != splits.shape[0]:
         warnings.warn(f"Warning only {splits.exists.sum()} images found")
+
+    # reassign splits
+    splits = splits.sample(frac=1).reset_index(drop=True)
+
+    n_train, n_val = int(splits.shape[0] * train_split), int(splits.shape[0] * val_split)
+
+    splits.loc[:n_train, "split"] = "train"
+    splits.loc[n_train : n_train + n_val, "split"] = "val"
+    splits.loc[n_train + n_val :, "split"] = "test"
 
     splits.loc[:, ["subject_id", "study_id", "path", "exists", "split", "tte", "event"]].to_csv(
         os.path.join(DATA_DIR, "mimic", "splits.csv"), index=False
