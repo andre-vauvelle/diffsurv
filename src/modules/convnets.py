@@ -106,7 +106,7 @@ class ConvModule(BaseModel):
         if self.trainer.global_step < self.head_steps:
             optimizer.param_groups[0]["lr"] = 0
         else:
-            optimizer.param_groups[0]["lr"] = self.lr
+            optimizer.param_groups[0]["lr"] = optimizer.param_groups[1]["lr"]
 
         optimizer.step(closure=optimizer_closure)
 
