@@ -7,7 +7,7 @@ import torch
 from pytorch_lightning.utilities import rank_zero_warn
 from torchmetrics import MetricCollection
 
-from models.metrics import CIndex, ExactMatch
+from models.metrics import CIndex, ExactMatch, TopK
 from modules.loss import CoxPHLoss, CustomBCEWithLogitsLoss, RankingLoss
 from modules.sorter import CustomDiffSortNet
 from omni.common import safe_string, unsafe_string
@@ -47,6 +47,10 @@ class RiskMixin(pl.LightningModule):
         self.valid_cindex = c_index_metrics.clone(prefix="val/")
         self.test_cindex = c_index_metrics.clone(prefix="test/")
 
+        metrics = MetricCollection([TopK()])
+        self.valid_topk = metrics.clone(prefix="val/")
+        self.test_topk = metrics.clone(prefix="test/")
+
         metrics = MetricCollection([ExactMatch(size=self.sorter_size)])
         self.valid_em = metrics.clone(prefix="val/")
         self.test_em = metrics.clone(prefix="test/")
@@ -56,9 +60,15 @@ class RiskMixin(pl.LightningModule):
                 {"c_index_risk/" + safe_string(name): CIndex() for name in c_index_metric_names}
             )
             self.valid_cindex_risk = c_index_metrics.clone(prefix="val/")
-            self.valid_em_risk = metrics.clone(prefix="val/", postfix="_risk")
             self.test_cindex_risk = c_index_metrics.clone(prefix="test/")
+
+            metrics = MetricCollection([ExactMatch(size=self.sorter_size)])
+            self.valid_em_risk = metrics.clone(prefix="val/", postfix="_risk")
             self.test_em_risk = metrics.clone(prefix="test/", postfix="_risk")
+
+            metrics = MetricCollection([TopK()])
+            self.valid_topk_risk = metrics.clone(prefix="val/", postfix="_risk")
+            self.test_topk_risk = metrics.clone(prefix="test/", postfix="_risk")
 
         if loss_str == "cox":
             self.loss_func = CoxPHLoss(method=cph_method)
@@ -109,6 +119,10 @@ class RiskMixin(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
+        self.valid_topk.update(
+            -logits.squeeze(-1), label_multihot.squeeze(-1), label_times.squeeze(-1)
+        )
+
         self.valid_em.update(-logits.squeeze(-1), label_times.squeeze(-1))
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
@@ -125,8 +139,17 @@ class RiskMixin(pl.LightningModule):
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
             self.valid_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1).squeeze(-1))
+            self.valid_topk_risk.update(
+                logits.squeeze(-1),
+                torch.ones_like(label_multihot.squeeze(-1)),
+                batch["risk"].squeeze(-1).squeeze(-1),
+            )
 
     def on_validation_epoch_end(self) -> None:
+        output = self.valid_topk.compute()
+        self.valid_topk.reset()
+        self.log_dict(output, prog_bar=False, sync_dist=True)
+
         output = self.valid_em.compute()
         self.valid_em.reset()
         self.log_dict(output, prog_bar=False, sync_dist=True)
@@ -146,6 +169,10 @@ class RiskMixin(pl.LightningModule):
 
             output = self.valid_em_risk.compute()
             self.valid_em_risk.reset()
+            self.log_dict(output, prog_bar=False, sync_dist=True)
+
+            output = self.valid_topk_risk.compute()
+            self.valid_topk_risk.reset()
             self.log_dict(output, prog_bar=False, sync_dist=True)
 
     def _group_cindex(self, output, key="val/c_index/"):
@@ -171,6 +198,10 @@ class RiskMixin(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         logits, label_multihot, label_times = self._shared_eval_step(batch, batch_idx)
 
+        self.test_topk.update(
+            -logits.squeeze(-1), label_multihot.squeeze(-1), label_times.squeeze(-1)
+        )
+
         self.test_em.update(-logits.squeeze(-1), label_times.squeeze(-1))
         label_times = batch["label_times"]
         exclusions = batch["exclusions"]
@@ -187,8 +218,17 @@ class RiskMixin(pl.LightningModule):
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
             self.test_em_risk.update(logits.squeeze(-1), batch["risk"].squeeze(-1).squeeze(-1))
+            self.test_topk_risk.update(
+                logits.squeeze(-1),
+                torch.ones_like(label_multihot.squeeze(-1)),
+                batch["risk"].squeeze(-1).squeeze(-1),
+            )
 
     def on_test_epoch_end(self) -> None:
+        output = self.test_topk.compute()
+        self.test_topk.reset()
+        self.log_dict(output, prog_bar=False, sync_dist=True)
+
         output = self.test_em.compute()
         self.test_em.reset()
         self.log_dict(output, prog_bar=False, sync_dist=True)
@@ -210,6 +250,10 @@ class RiskMixin(pl.LightningModule):
             self.test_em_risk.reset()
             self.log_dict(output, prog_bar=False, sync_dist=True)
 
+            output = self.test_topk_risk.compute()
+            self.test_topk_risk.reset()
+            self.log_dict(output, prog_bar=False, sync_dist=True)
+
 
 class SortingRiskMixin(RiskMixin):
     """Needs a seperate mixin due to loss function requiring permutation matrices
@@ -225,6 +269,8 @@ class SortingRiskMixin(RiskMixin):
         sorter_size: int = 128,
         ignore_censoring: bool = True,
         norm_risk: bool = False,
+        optimize_topk: bool = False,
+        optimize_combined: bool = False,
         *args,
         **kwargs,
     ):
@@ -248,6 +294,8 @@ class SortingRiskMixin(RiskMixin):
         self.ignore_censoring = ignore_censoring
         self.norm_risk = norm_risk
         self.steepness = steepness
+        self.optimize_topk = optimize_topk or optimize_combined
+        self.optimize_combined = optimize_combined
 
     def sorting_step(self, logits, perm_ground_truth, events):
         lh = logits
@@ -267,17 +315,49 @@ class SortingRiskMixin(RiskMixin):
 
         possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
 
+        top_k_loss = 0.0
+        if self.optimize_topk:
+            risk_set_size = perm_ground_truth.shape[-1]
+
+            losses = None
+            for pgt, pp in zip(perm_ground_truth, perm_prediction):
+                possible_top_k_idxs = torch.argwhere(
+                    pgt[:, -max(risk_set_size // 10, 0) :].sum(axis=1) > 0
+                ).flatten()
+
+                top_k_loss = -pp[
+                    possible_top_k_idxs,
+                    -max(risk_set_size // 10, 0) :,
+                ].sum()
+
+                if losses is None:
+                    losses = top_k_loss
+                else:
+                    losses = losses + top_k_loss
+
+            top_k_loss = losses / len(perm_ground_truth)
+
+            """
+            possible_top_k_mask = perm_ground_truth[:, :, -risk_set_size // 10 :].sum(axis=-1) > 0
+            top_k_loss = -perm_prediction[:, :, -risk_set_size // 10 :][possible_top_k_mask].mean()
+            """
+
+            if not self.optimize_combined:
+                return top_k_loss, lh, perm_prediction, perm_ground_truth
+
         if self.ignore_censoring:
             possible_events_only = possible_predictions.flatten()[events.flatten() == 1]
             predictions = possible_events_only
         else:
             predictions = possible_predictions
 
-        with torch.autocast(device_type="cuda", enabled=False):
-            loss = torch.nn.functional.binary_cross_entropy(
-                torch.clamp(predictions, 1e-8, 1 - 1e-8),
-                torch.ones_like(predictions),
-            )
+        loss = torch.nn.BCELoss()(
+            torch.clamp(predictions, 1e-8, 1 - 1e-8),
+            torch.ones_like(predictions),
+        )
+
+        if self.optimize_combined:
+            loss = loss + top_k_loss
 
         return loss, lh, perm_prediction, perm_ground_truth
 
@@ -303,6 +383,9 @@ class SortingRiskMixin(RiskMixin):
         # c-index is applied per label, collect inputs
         self.log_cindex(self.valid_cindex, exclusions, -logits, label_multihot, label_times)
         self.valid_em.update(logits.squeeze(-1), label_times.squeeze(-1))
+        self.valid_topk.update(
+            logits.squeeze(-1), label_multihot.squeeze(-1), label_times.squeeze(-1)
+        )
 
         if self.setting == "synthetic":
             all_observed = torch.ones_like(label_multihot)
@@ -314,6 +397,11 @@ class SortingRiskMixin(RiskMixin):
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
             self.valid_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1).squeeze(-1))
+            self.valid_topk_risk.update(
+                logits.squeeze(-1),
+                torch.ones_like(label_multihot.squeeze(-1)),
+                batch["risk"].squeeze(-1).squeeze(-1),
+            )
 
     def test_step(self, batch, batch_idx):
         covariates = batch["covariates"]
@@ -326,6 +414,9 @@ class SortingRiskMixin(RiskMixin):
         # c-index is applied per label, collect inputs
         self.log_cindex(self.test_cindex, exclusions, -logits, label_multihot, label_times)
         self.test_em.update(logits.squeeze(-1), label_times.squeeze(-1))
+        self.test_topk.update(
+            logits.squeeze(-1), label_multihot.squeeze(-1), label_times.squeeze(-1)
+        )
 
         if self.setting == "synthetic":
             all_observed = torch.ones_like(label_multihot)
@@ -337,10 +428,11 @@ class SortingRiskMixin(RiskMixin):
                 batch["risk"],  # *-1 since lower times is higher risk and vice versa
             )
             self.test_em_risk.update(logits.squeeze(-1), -batch["risk"].squeeze(-1).squeeze(-1))
-
-        # return loss, predictions, perm_prediction, perm_ground_truth
-
-        # return loss, predictions, perm_prediction, perm_ground_truth
+            self.test_topk_risk.update(
+                logits.squeeze(-1),
+                torch.ones_like(label_multihot.squeeze(-1)),
+                batch["risk"].squeeze(-1).squeeze(-1),
+            )
 
     def predict_step(
         self, batch: Any, batch_idx: int, dataloader_idx: int = 0

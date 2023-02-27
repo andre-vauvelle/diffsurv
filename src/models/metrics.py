@@ -125,3 +125,67 @@ class CIndex(torchmetrics.Metric):
                 )
             ]
         )
+
+
+class TopK(torchmetrics.Metric):
+    def __init__(self, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
+
+        self.add_state("scores", default=[], dist_reduce_fx="cat")
+
+        self.add_state("events", default=[], dist_reduce_fx="cat")
+        self.add_state("times", default=[], dist_reduce_fx="cat")
+        self.add_state("logits", default=[], dist_reduce_fx="cat")
+
+    def update(self, logits: torch.Tensor, events: torch.Tensor, times: torch.Tensor):
+        # TODO: prevent circular dependency
+        from modules.tasks import _get_possible_permutation_matrix
+
+        events = events.bool()
+
+        self.logits.append(logits)
+        self.events.append(events)
+        self.times.append(times.flatten())
+
+        possible_perm = _get_possible_permutation_matrix(events, times)
+
+        possible_top_k_idxs = set(
+            torch.argwhere(possible_perm[:, -max(len(possible_perm) // 10, 1) :].sum(axis=-1) > 0)
+            .flatten()
+            .detach()
+            .cpu()
+            .data.numpy()
+        )
+        pred_topk = set(torch.argsort(logits)[-max(len(logits) // 10, 1) :].tolist())
+
+        score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
+
+        self.scores.append(score)
+
+    def compute(self):
+        batched_score = np.mean(self.scores)
+
+        # TODO: prevent circular dependency
+        from modules.tasks import _get_possible_permutation_matrix
+
+        if isinstance(self.events, list):
+            events = torch.cat(self.events)
+        if isinstance(self.logits, list):
+            logits = torch.cat(self.logits)
+        if isinstance(self.times, list):
+            times = torch.cat(self.times)
+
+        possible_perm = _get_possible_permutation_matrix(events, times)
+
+        possible_top_k_idxs = set(
+            torch.argwhere(possible_perm[:, -max(len(possible_perm) // 10, 1) :].sum(axis=-1) > 0)
+            .flatten()
+            .detach()
+            .cpu()
+            .data.numpy()
+        )
+        pred_topk = set(torch.argsort(logits)[-max(len(logits) // 10, 1) :].tolist())
+
+        score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
+
+        return dict(batch_topk=batched_score, topk=score)
