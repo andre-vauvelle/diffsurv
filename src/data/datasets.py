@@ -134,7 +134,7 @@ class CaseControlRiskDataset(Dataset):
     def __init__(
         self,
         n_controls: int,
-        x_covar: Union[torch.Tensor, np.ndarray[str]],
+        x_covar,
         y_times: torch.Tensor,
         censored_events: torch.Tensor,
         risk: Optional[torch.Tensor] = None,

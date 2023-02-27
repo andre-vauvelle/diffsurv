@@ -33,7 +33,7 @@ trainer:
   max_time: '00:18:00:00'
   limit_train_batches: 2000
 #  limit_val_batches: 1
-  log_every_n_steps: 200
+  log_every_n_steps: 400
   val_check_interval: 0.1
   enable_checkpointing: True
   num_sanity_val_steps: 0
