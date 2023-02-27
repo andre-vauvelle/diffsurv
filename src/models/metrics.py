@@ -163,7 +163,7 @@ class TopK(torchmetrics.Metric):
         self.scores.append(score)
 
     def compute(self):
-        batched_score = np.mean(self.scores)
+        batched_score = torch.mean(self.scores)
 
         # TODO: prevent circular dependency
         from modules.tasks import _get_possible_permutation_matrix
