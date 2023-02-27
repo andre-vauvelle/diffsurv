@@ -158,7 +158,7 @@ class TopK(torchmetrics.Metric):
         )
         pred_topk = set(torch.argsort(logits)[-max(len(logits) // 10, 1) :].tolist())
 
-        score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
+        score = torch.FloatTensor(len(pred_topk & possible_top_k_idxs) / len(pred_topk))
 
         self.scores.append(score)
 
