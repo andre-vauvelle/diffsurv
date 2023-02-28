@@ -131,7 +131,7 @@ class TopK(torchmetrics.Metric):
     def __init__(self, dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
 
-        self.add_state("scores", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("scores", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
         self.add_state("events", default=[], dist_reduce_fx="cat")
         self.add_state("times", default=[], dist_reduce_fx="cat")
