@@ -131,7 +131,8 @@ class TopK(torchmetrics.Metric):
     def __init__(self, dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
 
-        self.add_state("scores", default=[], dist_reduce_fx="cat")
+        self.add_state("scores", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
         self.add_state("events", default=[], dist_reduce_fx="cat")
         self.add_state("times", default=[], dist_reduce_fx="cat")
@@ -160,10 +161,11 @@ class TopK(torchmetrics.Metric):
 
         score = torch.FloatTensor([len(pred_topk & possible_top_k_idxs) / len(pred_topk)])
 
-        self.scores.append(score)
+        self.scores += score
+        self.total += score.numel()
 
     def compute(self):
-        batched_score = torch.mean(self.scores)
+        batched_score = self.scores / self.total
 
         # TODO: prevent circular dependency
         from modules.tasks import _get_possible_permutation_matrix
