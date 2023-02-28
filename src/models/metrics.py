@@ -167,13 +167,15 @@ class TopK(torchmetrics.Metric):
         from modules.tasks import _get_possible_permutation_matrix
 
         if isinstance(self.events, list):
-            events = torch.cat(self.events)
+            self.events = torch.cat(self.events)
         if isinstance(self.logits, list):
-            logits = torch.cat(self.logits)
+            self.logits = torch.cat(self.logits)
         if isinstance(self.times, list):
-            times = torch.cat(self.times)
+            self.times = torch.cat(self.times)
 
-        possible_perm = _get_possible_permutation_matrix(events, times)
+        possible_perm = _get_possible_permutation_matrix(
+            self.events.detach().cpu(), self.times.detach().cpu()
+        )
 
         possible_top_k_idxs = set(
             torch.argwhere(possible_perm[:, -max(len(possible_perm) // 10, 1) :].sum(axis=-1) > 0)
@@ -182,10 +184,10 @@ class TopK(torchmetrics.Metric):
             .cpu()
             .data.numpy()
         )
-        pred_topk = set(torch.argsort(logits)[-max(len(logits) // 10, 1) :].tolist())
+        pred_topk = set(torch.argsort(self.logits)[-max(len(self.logits) // 10, 1) :].tolist())
 
         score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
 
-        batched_score = self.scores / times.shape[0]
+        batched_score = self.scores / self.times.shape[0]
 
         return dict(batch_topk=batched_score, topk=score)
