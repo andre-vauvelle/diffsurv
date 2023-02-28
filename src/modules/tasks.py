@@ -351,10 +351,11 @@ class SortingRiskMixin(RiskMixin):
         else:
             predictions = possible_predictions
 
-        loss = torch.nn.BCELoss()(
-            torch.clamp(predictions, 1e-8, 1 - 1e-8),
-            torch.ones_like(predictions),
-        )
+        with torch.autocast(device_type="cuda", enabled=False):
+            loss = torch.nn.functional.binary_cross_entropy(
+                torch.clamp(predictions, 1e-8, 1 - 1e-8),
+                torch.ones_like(predictions),
+            )
 
         if self.optimize_combined:
             loss = loss + top_k_loss
