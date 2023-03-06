@@ -1,6 +1,6 @@
 # wandb sweep
-name: conv_cxr
-program: scripts/conv_cxr.py
+name: convdiffsort_cxr
+program: scripts/convdiffsort_cxr.py
 method: bayes
 run_cap: 300
 metric:
@@ -20,19 +20,23 @@ parameters:
     distribution: loguniform
     max: 0.0001
     min: 0.000001
-  model.cph_method:
-    value: ranked_list
   data.num_workers:
     value: -1
+  model.cph_method:
+    value: ranked_list
   trainer.strategy:
     value: ddp
+  model.optimize_combined:
+    value: True
+  model.optimize_topk:
+    value: True
 command:
   - ${env}
   - python3
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/conv_cxr.yml"
+  - "jobs/configs/convdiffsort_cxr.yml"
   - ${args}
 project: diffsurv
 entity: cardiors

@@ -193,6 +193,7 @@ class CaseControlRiskDataset(Dataset):
         if events.dim() == 1:
             events = events.unsqueeze(-1)
         assert events.shape[1] == 1, "does not support multi class yet.."
+
         if self.return_perm_mat:
             possible_perm_mat = _get_possible_permutation_matrix(
                 events[idxs].flatten(),

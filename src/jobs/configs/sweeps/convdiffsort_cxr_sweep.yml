@@ -13,10 +13,12 @@ parameters:
     value: 42
 #    values: [1,2,3,4,5]  # will act as trails
   model.weight_decay:
-    max: 0.01
-    min: 0.00001
+    distribution: loguniform
+    max: 0.001
+    min: 0.000001
   model.lr:
-    max: 0.0003
+    distribution: loguniform
+    max: 0.0001
     min: 0.00001
   model.sorting_network:
     values: [bitonic, odd_even]
