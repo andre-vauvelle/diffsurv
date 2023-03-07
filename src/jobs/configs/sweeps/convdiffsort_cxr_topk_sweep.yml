@@ -27,7 +27,7 @@ parameters:
   trainer.strategy:
     value: ddp
   model.optimize_combined:
-    value: True
+    value: False
   model.optimize_topk:
     value: True
 command:
