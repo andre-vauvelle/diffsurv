@@ -41,7 +41,7 @@ trainer:
   precision: 16
 data:
   batch_size: 4
-  risk_set_size: 8
+  risk_set_size: 16
   num_workers: 1
 model:
   model: efficientnet

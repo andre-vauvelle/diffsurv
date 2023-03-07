@@ -150,13 +150,13 @@ class TopK(torchmetrics.Metric):
         possible_perm = _get_possible_permutation_matrix(events, times)
 
         possible_top_k_idxs = set(
-            torch.argwhere(possible_perm[:, -max(len(possible_perm) // 10, 1) :].sum(axis=-1) > 0)
+            torch.argwhere(possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0)
             .flatten()
             .detach()
             .cpu()
             .data.numpy()
         )
-        pred_topk = set(torch.argsort(logits)[-max(len(logits) // 10, 1) :].tolist())
+        pred_topk = set(torch.argsort(logits)[: max(len(logits) // 10, 1)].tolist())
 
         score = torch.tensor(len(pred_topk & possible_top_k_idxs) / len(pred_topk))
 
@@ -178,13 +178,13 @@ class TopK(torchmetrics.Metric):
         )
 
         possible_top_k_idxs = set(
-            torch.argwhere(possible_perm[:, -max(len(possible_perm) // 10, 1) :].sum(axis=-1) > 0)
+            torch.argwhere(possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0)
             .flatten()
             .detach()
             .cpu()
             .data.numpy()
         )
-        pred_topk = set(torch.argsort(self.logits)[-max(len(self.logits) // 10, 1) :].tolist())
+        pred_topk = set(torch.argsort(self.logits)[: max(len(self.logits) // 10, 1)].tolist())
 
         score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
 

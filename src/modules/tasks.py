@@ -312,35 +312,23 @@ class SortingRiskMixin(RiskMixin):
             lh = lh.reshape(-1, lh.shape[1])
 
         sort_out, perm_prediction = self.sorter(lh)
-
         possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
 
         top_k_loss = 0.0
         if self.optimize_topk:
-            risk_set_size = perm_ground_truth.shape[-1]
+            batch_size, risk_set_size = perm_ground_truth.shape[:2]
 
-            losses = None
-            for pgt, pp in zip(perm_ground_truth, perm_prediction):
-                possible_top_k_idxs = torch.argwhere(
-                    pgt[:, -max(risk_set_size // 10, 0) :].sum(axis=1) > 0
-                ).flatten()
-
-                top_k_loss = -pp[
-                    possible_top_k_idxs,
-                    -max(risk_set_size // 10, 0) :,
-                ].sum()
-
-                if losses is None:
-                    losses = top_k_loss
-                else:
-                    losses = losses + top_k_loss
-
-            top_k_loss = losses / len(perm_ground_truth)
-
-            """
-            possible_top_k_mask = perm_ground_truth[:, :, -risk_set_size // 10 :].sum(axis=-1) > 0
-            top_k_loss = -perm_prediction[:, :, -risk_set_size // 10 :][possible_top_k_mask].mean()
-            """
+            possible_top_k_idxs = perm_ground_truth[:, :, : risk_set_size // 10].sum(axis=2) > 0
+            top_k_loss = (
+                -torch.log(
+                    perm_prediction[possible_top_k_idxs][:, : risk_set_size // 10].sum(axis=1)
+                ).sum()
+                - torch.log(
+                    perm_prediction[~possible_top_k_idxs][:, risk_set_size // 10 :].sum(axis=1)
+                ).sum()
+                / risk_set_size
+                * batch_size
+            )
 
             if not self.optimize_combined:
                 return top_k_loss, lh, perm_prediction, perm_ground_truth

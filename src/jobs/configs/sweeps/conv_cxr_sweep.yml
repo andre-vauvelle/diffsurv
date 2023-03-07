@@ -13,17 +13,17 @@ parameters:
     value: 42
 #    values: [1,2,3,4,5]  # will act as trails
   model.weight_decay:
-    distribution: loguniform
+    distribution: log_uniform_values
     max: 0.001
     min: 0.000001
   model.lr:
-    distribution: loguniform
-    max: 0.0001
-    min: 0.000001
-  model.cph_method:
-    value: ranked_list
+    distribution: log_uniform_values
+    max: 0.001
+    min: 0.00001
   data.num_workers:
     value: -1
+  model.cph_method:
+    value: ranked_list
   trainer.strategy:
     value: ddp
 command:

@@ -1,6 +1,7 @@
 # wandb sweep
-name: convdiffsort_cxr
-program: scripts/convdiffsort_cxr.py
+#TODO: IMPLEMENT TOP K FOR CONV CXR
+name: conv_cxr_NOTIMPLEMENTED
+program: scripts/conv_cxr.py
 method: bayes
 run_cap: 300
 metric:
@@ -13,11 +14,11 @@ parameters:
     value: 42
 #    values: [1,2,3,4,5]  # will act as trails
   model.weight_decay:
-    distribution: loguniform
+    distribution: log_uniform
     max: 0.001
     min: 0.000001
   model.lr:
-    distribution: loguniform
+    distribution: log_uniform
     max: 0.0001
     min: 0.000001
   data.num_workers:
@@ -26,17 +27,13 @@ parameters:
     value: ranked_list
   trainer.strategy:
     value: ddp
-  model.optimize_combined:
-    value: True
-  model.optimize_topk:
-    value: True
 command:
   - ${env}
   - python3
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/convdiffsort_cxr.yml"
+  - "jobs/configs/conv_cxr.yml"
   - ${args}
 project: diffsurv
 entity: cardiors
