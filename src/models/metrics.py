@@ -132,6 +132,7 @@ class TopK(torchmetrics.Metric):
         super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
 
         self.add_state("scores", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("count", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
         self.add_state("events", default=[], dist_reduce_fx="cat")
         self.add_state("times", default=[], dist_reduce_fx="cat")
@@ -161,6 +162,7 @@ class TopK(torchmetrics.Metric):
         score = torch.tensor(len(pred_topk & possible_top_k_idxs) / len(pred_topk))
 
         self.scores += score
+        self.count += 1
 
     def compute(self):
         # TODO: prevent circular dependency
@@ -184,10 +186,41 @@ class TopK(torchmetrics.Metric):
             .cpu()
             .data.numpy()
         )
+
         pred_topk = set(torch.argsort(self.logits)[: max(len(self.logits) // 10, 1)].tolist())
 
         score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
 
-        batched_score = self.scores / self.times.shape[0]
+        batched_score = self.scores / self.count
 
         return dict(batch_topk=batched_score, topk=score)
+
+
+def test_topk():
+    topk = TopK()
+    logits = torch.arange(0, 16)  # .flip(dims=(0,))
+    times = torch.arange(0, 16)
+    events = torch.ones_like(logits)
+
+    topk.update(logits, events, times)
+    ans = topk.compute()
+
+    assert ans["batch_topk"] == 1 and ans["topk"] == 1
+
+
+if __name__ == "__main__":
+    test_topk()
+
+    topk = TopK()
+    risk_set_size = 64
+    batches = 100
+    logits = torch.rand(batches, risk_set_size)
+    times = torch.arange(0, risk_set_size).repeat(batches).reshape((batches, risk_set_size))
+    events = torch.ones_like(logits)
+
+    for i in range(batches):
+        topk.update(logits[i, :], events[i, :], times[i, :])
+
+    ans = topk.compute()
+
+    assert ans == 1
