@@ -128,6 +128,14 @@ class CIndex(torchmetrics.Metric):
 
 
 class TopK(torchmetrics.Metric):
+    """TopK metric
+    Currently only implented for top 10 percentile performance,
+
+    If risk set size is <10 then percentile won't be ~10%
+
+    High logits, high times, low risk. Warning CPH must be *-1 as loss uses inverse relation with logit and risk.
+    """
+
     def __init__(self, dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
 
