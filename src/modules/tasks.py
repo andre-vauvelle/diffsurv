@@ -297,7 +297,7 @@ class SortingRiskMixin(RiskMixin):
         self.optimize_topk = optimize_topk or optimize_combined
         self.optimize_combined = optimize_combined
 
-    def sorting_step(self, logits, perm_ground_truth, events):
+    def sorting_step(self, logits, perm_ground_truth, events, eps=torch.tensor(0.0001)):
         lh = logits
 
         # Normalize within risk set...
@@ -312,7 +312,6 @@ class SortingRiskMixin(RiskMixin):
             lh = lh.reshape(-1, lh.shape[1])
 
         sort_out, perm_prediction = self.sorter(lh)
-        possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
 
         top_k_loss = 0.0
         if self.optimize_topk:
@@ -321,10 +320,11 @@ class SortingRiskMixin(RiskMixin):
             possible_top_k_idxs = perm_ground_truth[:, :, : risk_set_size // 10].sum(axis=2) > 0
             top_k_loss = (
                 -torch.log(
-                    perm_prediction[possible_top_k_idxs][:, : risk_set_size // 10].sum(axis=1)
+                    perm_prediction[possible_top_k_idxs][:, : risk_set_size // 10].sum(axis=1) + eps
                 ).sum()
                 - torch.log(
                     perm_prediction[~possible_top_k_idxs][:, risk_set_size // 10 :].sum(axis=1)
+                    + eps
                 ).sum()
                 / risk_set_size
                 * batch_size
@@ -332,6 +332,8 @@ class SortingRiskMixin(RiskMixin):
 
             if not self.optimize_combined:
                 return top_k_loss, lh, perm_prediction, perm_ground_truth
+
+        possible_predictions = (perm_ground_truth * perm_prediction).sum(dim=1)
 
         if self.ignore_censoring:
             possible_events_only = possible_predictions.flatten()[events.flatten() == 1]

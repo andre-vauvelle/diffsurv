@@ -1,3 +1,0 @@
-model:
-  optimize_topk: True
-  optimize_combined: False

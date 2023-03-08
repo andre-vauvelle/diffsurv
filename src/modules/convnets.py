@@ -68,7 +68,7 @@ class ConvModule(BaseModel):
         if self.lr_schedule:
             lr_schedulers = {
                 "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, factor=0.25, mode="max", patience=4, verbose=True, threshold=0.000001
+                    optimizer, factor=0.25, mode="max", patience=3, verbose=True, threshold=0.000001
                 ),
                 "monitor": "val/c_index/all",
             }

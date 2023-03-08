@@ -4,11 +4,11 @@ program: scripts/convdiffsort_cxr.py
 method: bayes
 run_cap: 300
 metric:
-  name: val/c_index/all
+  name: val/topk
   goal: maximize
 parameters:
   data.batch_risk_tuple:
-    values: ['1, 128', '2, 64', '4, 32', '8, 16', '16, 8', '32, 4', '64, 2']
+    values: ['1, 128', '4, 32', '16, 8', '64, 2']
   seed_everything:
     value: 42
 #    values: [1,2,3,4,5]  # will act as trails
