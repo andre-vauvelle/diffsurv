@@ -208,11 +208,9 @@ def test_topk():
     assert ans["batch_topk"] == 1 and ans["topk"] == 1
 
 
-if __name__ == "__main__":
-    test_topk()
-
+def test_topk_random():
     topk = TopK()
-    risk_set_size = 64
+    risk_set_size = 256
     batches = 100
     logits = torch.rand(batches, risk_set_size)
     times = torch.arange(0, risk_set_size).repeat(batches).reshape((batches, risk_set_size))
@@ -223,4 +221,10 @@ if __name__ == "__main__":
 
     ans = topk.compute()
 
-    assert ans == 1
+    assert torch.isclose(ans["batch_topk"], torch.tensor(0.1), atol=0.05)
+    assert torch.isclose(ans["topk"], torch.tensor(0.1), atol=0.05)
+
+
+if __name__ == "__main__":
+    test_topk()
+    test_topk_random()
