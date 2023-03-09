@@ -1,5 +1,5 @@
 # wandb sweep
-name: convdiffsort_cxr_topk
+name: convdiffsort_cxr_topk_vanilla
 program: scripts/convdiffsort_cxr.py
 method: bayes
 run_cap: 300
@@ -29,7 +29,7 @@ parameters:
   model.optimize_combined:
     value: False
   model.optimize_topk:
-    value: True
+    value: False
 command:
   - ${env}
   - python3

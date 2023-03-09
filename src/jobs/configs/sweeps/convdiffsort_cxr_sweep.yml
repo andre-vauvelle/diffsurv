@@ -1,5 +1,5 @@
 # wandb sweep
-name: convdiffsort_cxr_topk
+name: convdiffsort_cxr
 program: scripts/convdiffsort_cxr.py
 method: bayes
 run_cap: 300
@@ -13,23 +13,23 @@ parameters:
     value: 42
 #    values: [1,2,3,4,5]  # will act as trails
   model.weight_decay:
-    distribution: log_uniform
+    distribution: log_uniform_values
     max: 0.001
     min: 0.000001
   model.lr:
-    distribution: log_uniform
+    distribution: log_uniform_values
     max: 0.0001
     min: 0.000001
+  model.sorting_network:
+    values: [bitonic, odd_even]
   data.num_workers:
     value: -1
-  model.cph_method:
-    value: ranked_list
   trainer.strategy:
     value: ddp
   model.optimize_combined:
     value: False
   model.optimize_topk:
-    value: True
+    value: False
 command:
   - ${env}
   - python3
