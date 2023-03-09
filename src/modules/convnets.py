@@ -15,11 +15,11 @@ from modules.tasks import RiskMixin, SortingRiskMixin
 class ConvModule(BaseModel):
     def __init__(
         self,
-        model="svnh",
+        model="small",
         img_size=48,
         head_steps=200,
         weight_decay=0,
-        lr_schedule: bool = True,
+        lr_schedule: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
