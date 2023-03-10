@@ -297,7 +297,7 @@ class SortingRiskMixin(RiskMixin):
         self.optimize_topk = optimize_topk or optimize_combined
         self.optimize_combined = optimize_combined
 
-    def sorting_step(self, logits, perm_ground_truth, events, eps=torch.tensor(0.0001)):
+    def sorting_step(self, logits, perm_ground_truth, events):
         lh = logits
 
         # Normalize within risk set...
@@ -315,21 +315,7 @@ class SortingRiskMixin(RiskMixin):
 
         top_k_loss = 0.0
         if self.optimize_topk:
-            batch_size, risk_set_size = perm_ground_truth.shape[:2]
-
-            possible_top_k_idxs = perm_ground_truth[:, :, : risk_set_size // 10].sum(axis=2) > 0
-            top_k_loss = (
-                -torch.log(
-                    perm_prediction[possible_top_k_idxs][:, : risk_set_size // 10].sum(axis=1) + eps
-                ).sum()
-                - torch.log(
-                    perm_prediction[~possible_top_k_idxs][:, risk_set_size // 10 :].sum(axis=1)
-                    + eps
-                ).sum()
-                / risk_set_size
-                * batch_size
-            )
-
+            top_k_loss = get_top_k_loss(perm_ground_truth, perm_prediction)
             if not self.optimize_combined:
                 return top_k_loss, lh, perm_prediction, perm_ground_truth
 
@@ -638,8 +624,50 @@ def test_ties_inc_get_possible_permutation_matrix():
     assert torch.allclose(required_perm_matrix, perm_matrix)
 
 
+def get_top_k_loss(perm_ground_truth, perm_prediction, eps=torch.tensor(0.0001)):
+    batch_size, risk_set_size = perm_ground_truth.shape[:2]
+
+    # inshape: batch x starting ranks x sorted ranks
+    possible_top_k_idxs = perm_ground_truth[:, :, : risk_set_size // 10].sum(axis=2) > 0
+    # outshape: batch x risk_setsize, indicies for each batch showing which are in topk
+    top_k_loss = (
+        # Probabilites of correctly permuting into top k
+        -torch.log(
+            perm_prediction[possible_top_k_idxs][:, : risk_set_size // 10].sum(axis=1) + eps
+        ).sum()
+        # Probabilites of correctly permuting into not top k
+        # - torch.log(
+        #     perm_prediction[~possible_top_k_idxs][:, risk_set_size // 10 :].sum(axis=1)
+        / (risk_set_size * batch_size)
+    )
+    return top_k_loss
+
+
+def test_get_top_k_loss():
+    torch.Tensor()
+    test_events = torch.Tensor([1, 1, 0, 1, 1, 0, 0, 0, 0, 0])
+    test_durations = torch.Tensor([1, 2, 3, 4, 4, 4, 5, 7, 8, 9])
+    logh = torch.Tensor([9, 2, 1, 3, 4, 5, 6, 5, 7, 8])
+
+    perm_ground_truth = _get_possible_permutation_matrix(test_events, test_durations)
+
+    risk_set_size = test_events.shape[0]
+
+    sorter = CustomDiffSortNet(
+        sorting_network_type="odd_even",
+        size=risk_set_size,
+        steepness=2 * risk_set_size,
+    )
+    _, perm_prediction = sorter(logh.unsqueeze(0))
+
+    ans = get_top_k_loss(perm_ground_truth.unsqueeze(0), perm_prediction)
+
+    assert torch.isclose(ans, torch.tensor(1.0))
+
+
 if __name__ == "__main__":
     test_ties_get_possible_permutation_matrix()
     test_ties_inc_get_possible_permutation_matrix()
     test_ties_all_events_get_possible_permutation_matrix()
     test_get_possible_permutation_matrix()
+    test_get_top_k_loss()
