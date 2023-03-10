@@ -51,7 +51,7 @@ model:
   ignore_censoring: false
   img_size: 224
   head_steps: 2000
-  lr_schedule: True
+  lr_schedule: False
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32

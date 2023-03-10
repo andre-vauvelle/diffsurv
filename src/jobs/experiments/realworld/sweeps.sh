@@ -18,3 +18,9 @@ wandb sweep jobs/configs/sweeps/realworld/mlpdiffsort_sac3.yaml
 wandb sweep jobs/configs/sweeps/realworld/mlpdiffsort_sac_admin5.yaml
 wandb sweep jobs/configs/sweeps/realworld/mlpdiffsort_support.yaml
 wandb sweep jobs/configs/sweeps/realworld/mlpdiffsort_kkbox.yaml
+
+
+
+wandb sweep jobs/configs/sweeps/conv_cxr_sweep.yml
+wandb sweep jobs/configs/sweeps/convdiffsort_cxr_sweep.yml
+wandb sweep jobs/configs/sweeps/convdiffsort_cxr_topk_sweep.yml
