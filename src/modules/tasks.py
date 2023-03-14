@@ -30,6 +30,7 @@ class RiskMixin(pl.LightningModule):
         sorter_size: int = 128,
         log_weights=False,
         cph_method: str = "efron",
+        hp_metric_str: str = "val/c_index/all",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -39,6 +40,7 @@ class RiskMixin(pl.LightningModule):
         self.setting = setting
         self.loss_str = loss_str
         self.sorter_size = sorter_size
+        self.hp_metric_str = hp_metric_str
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
@@ -159,7 +161,7 @@ class RiskMixin(pl.LightningModule):
         self._group_cindex(output, key="val/c_index/")
         self.valid_cindex.reset()
         self.log_dict(output, prog_bar=False)
-        self.log("hp_metric", output["val/c_index/all"], prog_bar=True, sync_dist=True)
+        self.log("hp_metric", output[self.hp_metric_str], prog_bar=True, sync_dist=True)
 
         if self.setting == "synthetic":
             output = self.valid_cindex_risk.compute()
