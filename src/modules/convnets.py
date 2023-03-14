@@ -117,10 +117,11 @@ class ConvModule(BaseModel):
         using_lbfgs: bool = False,
     ) -> None:
         # skip training the features for the first head_steps
-        if self.trainer.global_step < self.head_steps:
-            optimizer.param_groups[0]["lr"] = 0
-        else:
-            optimizer.param_groups[0]["lr"] = optimizer.param_groups[1]["lr"]
+        if self.head_steps != 0:
+            if self.trainer.global_step < self.head_steps:
+                optimizer.param_groups[0]["lr"] = 0
+            else:
+                optimizer.param_groups[0]["lr"] = optimizer.param_groups[1]["lr"]
 
         optimizer.step(closure=optimizer_closure)
 
