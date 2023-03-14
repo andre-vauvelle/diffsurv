@@ -17,7 +17,7 @@ class ConvModule(BaseModel):
         self,
         model="small",
         img_size=48,
-        head_steps=200,
+        head_steps=0,
         weight_decay=0,
         lr_schedule: bool = False,
         **kwargs,
@@ -57,22 +57,36 @@ class ConvModule(BaseModel):
         self.save_hyperparameters()
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            [
-                {"params": self.conv_net.features.parameters()},
-                {"params": self.conv_net.classifier.parameters()},
-            ],
-            lr=self.lr,
-            weight_decay=self.weight_decay,
-        )
-        if self.lr_schedule:
-            lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, factor=0.25, mode="max", patience=3, verbose=True, threshold=0.000001
-                ),
-                "monitor": "val/c_index/all",
-            }
-            return [optimizer], [lr_schedulers]
+        if hasattr(self.conv_net, "features"):
+            optimizer = torch.optim.Adam(
+                [
+                    {"params": self.conv_net.features.parameters()},
+                    {"params": self.conv_net.classifier.parameters()},
+                ],
+                lr=self.lr,
+                weight_decay=self.weight_decay,
+            )
+            if self.lr_schedule:
+                lr_schedulers = {
+                    "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                        optimizer,
+                        factor=0.25,
+                        mode="max",
+                        patience=3,
+                        verbose=True,
+                        threshold=0.000001,
+                    ),
+                    "monitor": "val/c_index/all",
+                }
+                return [optimizer], [lr_schedulers]
+        else:
+            optimizer = torch.optim.Adam(
+                [
+                    {"params": self.conv_net.parameters()},
+                ],
+                lr=self.lr,
+                weight_decay=self.weight_decay,
+            )
 
         return optimizer
 
