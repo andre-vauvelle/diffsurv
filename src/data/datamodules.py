@@ -147,7 +147,7 @@ class DataModuleRisk(pl.LightningDataModule):
         k_fold: Optional[tuple] = (1, 5),
         use_risk: bool = False,
         random_sample: bool = False,
-        batch_risk_tuple: Optional[tuple] = None,
+        batch_risk_tuple: Optional[Union[tuple, str]] = None,
     ):
         super().__init__()
         self.random_sample = random_sample
@@ -155,6 +155,9 @@ class DataModuleRisk(pl.LightningDataModule):
         self.k_fold = k_fold
         self.inc_censored_in_ties = inc_censored_in_ties
         if batch_risk_tuple is not None:  # wandb hack
+            if isinstance(batch_risk_tuple, str):
+                batch_risk_tuple: list[int] = [int(i) for i in batch_risk_tuple.split(",")]
+                assert len(batch_risk_tuple) == 2
             batch_size = batch_risk_tuple[0]
             risk_set_size = batch_risk_tuple[1]
         self.risk_set_size = risk_set_size
