@@ -31,13 +31,13 @@ trainer:
 #  limit_val_batches: 1
   log_every_n_steps: 200
   val_check_interval: 0.25
-  enable_checkpointing: True
+  enable_checkpointing: True  # remove for sweeps
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 data:
   wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.6:v0
-  batch_size: 128
-  risk_set_size: 4
+  batch_size: 4
+  risk_set_size: 32
   num_workers: 1
 model:
   lr: 0.0003 # from auto lr find

@@ -461,6 +461,9 @@ def _get_possible_permutation_matrix(
     :param inc_censored_in_ties: if we want to include censored events as possible permutations in ties with events
     :return:
     """
+    assert durations.dim() == 1
+    assert events.dim() == 1
+
     # Initialize the soft permutation matrix
     perm_matrix = torch.zeros(events.shape[0], events.shape[0], device=events.device)
 

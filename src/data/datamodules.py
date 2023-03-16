@@ -212,8 +212,8 @@ class DataModuleRisk(pl.LightningDataModule):
             data = torch.load(self.path)
             x_covar, y_times, censored_events = (
                 data["x_covar"],
-                data["y_times"],
-                data["censored_events"],
+                data["y_times"].flatten(),
+                data["censored_events"].flatten(),
             )
             if stage == "train":
                 dataset = CaseControlRiskDataset(

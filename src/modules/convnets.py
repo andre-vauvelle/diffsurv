@@ -33,7 +33,7 @@ class ConvModule(BaseModel):
                 self.conv_net.classifier.in_features, 1, bias=False
             )
         elif model == "small":
-            self.conv_net = SVHNConvNet(img_size=img_size)
+            self.conv_net = SVHNConvNet()
         elif model == "efficientnet":
             self.conv_net = efficientnet_b0(pretrained=True)
             self.conv_net.classifier = nn.Linear(
