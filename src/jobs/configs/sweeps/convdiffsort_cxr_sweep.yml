@@ -20,7 +20,7 @@ parameters:
   data.num_workers:
     value: -1
   trainer.strategy:
-    value: ddp
+    value: ddp_find_unused_parameters_false
   model.optimize_combined:
     value: False
   model.optimize_topk:

@@ -20,7 +20,7 @@ parameters:
   model.cph_method:
     value: ranked_list
   trainer.strategy:
-    value: ddp
+    value: ddp_find_unused_parameters_false
 command:
   - ${env}
   - python3

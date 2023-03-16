@@ -24,7 +24,7 @@ parameters:
   data.num_workers:
     value: -1
   trainer.strategy:
-    value: ddp
+    value: ddp_find_unused_parameters_false
   model.ignore_censoring:
     value: False
 command:
