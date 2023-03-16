@@ -1,19 +1,25 @@
 # wandb sweep
-name: conv_svhn_c0.6
+name: conv_svhn_c0.3_reverse
 program: scripts/conv.py
 method: grid
 metric:
   name: val/c_index/all
   goal: maximize
 parameters:
-  data.risk_set_size:
-    values: [64,128]  # [2,4,8,16,32]
+#  data.risk_set_size:
+#    values: [2,4,8,16,32]
+#  data.batch_size:
+#    value: 100
+  data.batch_risk_tuple:
+    values: ['25, 128', '100, 32', '400, 8', '1600, 2']
   seed_everything:
     values: [1,2,3,4,5]  # will act as trails
   model.cph_method:
     values: [ranked_list, breslow, efron]
-  data.batch_size:
-    value: 100
+  model.weight_decay:
+    value: 0.00001
+  model.lr:
+    value: 0.0001
   data.num_workers:
     value: -1
   trainer.strategy:
@@ -26,7 +32,7 @@ command:
   - "--config"
   - "jobs/configs/conv.yml"
   - "--data.wandb_artifact"
-  - cardiors/diffsurv/SVNH_beta1_cen0.6:v0
+  - cardiors/diffsurv/SVNH_beta1_cen0.3_reverse:v0
   - ${args}
 project: diffsurv
 entity: cardiors

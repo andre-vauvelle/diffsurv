@@ -35,12 +35,13 @@ trainer:
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
 data:
-  wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3:v0
-  batch_size: 128
-  risk_set_size: 2
+  wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3_reverse:v0
+  batch_size: 25
+  risk_set_size: 128
   num_workers: 1
 model:
-  lr: 0.0003 # from auto lr find
+  weight_decay: 0.00001
+  lr: 0.0001
   sorting_network: bitonic
   distribution: cauchy
   ignore_censoring: false
