@@ -379,7 +379,7 @@ class SortingRiskMixin(RiskMixin):
             self.valid_topk_risk.update(
                 logits.squeeze(-1),
                 torch.ones_like(label_multihot.squeeze(-1)),
-                batch["risk"].squeeze(-1).squeeze(-1),
+                -batch["risk"].squeeze(-1).squeeze(-1),
             )
 
     def test_step(self, batch, batch_idx):
