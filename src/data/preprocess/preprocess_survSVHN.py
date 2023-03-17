@@ -14,7 +14,7 @@ from definitions import DATA_DIR
 from omni.common import create_folder
 
 
-def time_function(numbers: torch.Tensor, beta):
+def time_function(numbers: torch.Tensor, beta, reverse=True):
     """
     Generates survival times from numbers with a sampling using beta distrubiont Beta(beta, beta) and exponential
     parametersization
@@ -26,6 +26,7 @@ def time_function(numbers: torch.Tensor, beta):
     log_numbers = np.log(numbers + 1)
     # pd.DataFrame(np.log(numbers+1)).hist(bins=100)
     BX = (log_numbers - log_numbers.float().mean()) / torch.std(log_numbers.float())
+    BX = BX * -1 if reverse else BX
     # pd.DataFrame(np.exp(BX)).hist(bins=100)
 
     num_samples = BX.shape[0]
@@ -42,9 +43,10 @@ def time_function(numbers: torch.Tensor, beta):
 
 def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_oracle=None):
     numbers = numbers[:10_000]
+    reversed = True
 
-    T500, BX = time_function(numbers, beta=500)
-    T1, BX = time_function(numbers, beta=1)
+    T500, BX = time_function(numbers, beta=500, reverse=reversed)
+    T1, BX = time_function(numbers, beta=1, reverse=reversed)
     lambda_exp_BX = (1 / 1) * np.exp(BX / 1)  # scale to mean 30 days
     lambda_exp_BX = lambda_exp_BX.flatten()
     T_oracle = -np.log(0.5) / (lambda_exp_BX)
@@ -55,7 +57,7 @@ def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_o
     axs[2].scatter(numbers, T_oracle, alpha=0.1, s=1, label="Oracle", c="r")
     axs[0].set_xlim([0.8, 100000])
     axs[0].set_ylim([0, 7.5])
-    axs[0].title.set_text("Beta=1 (Uniform)")
+    axs[0].title.set_text(f"Beta=1 (Uniform) {'reversed' if reversed else ''}")
     axs[1].title.set_text("Beta=500")
     axs[2].title.set_text("Oracle")
     axs[0].set_xscale("log")
@@ -147,7 +149,7 @@ def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_o
             results_store[k] = {"EM": EM, "EW": EW}
 
 
-def gen_survSVHN(beta=1, censored_proportion=0.6):
+def gen_survSVHN(beta=1, censored_proportion=0.6, reverse=True):
     """Generate synthetic survival times based on street view house numbers
     :param beta: beta distribution sampling parameter. if 1 then uniform sampling, if inf then samples the median
     :param censored_proportion: propotion of patients to be independently randomly censored Unif[0, true_event_time]
@@ -196,7 +198,7 @@ def gen_survSVHN(beta=1, censored_proportion=0.6):
     # max_numbers = 10000
     # numbers[numbers > max_numbers] = max_numbers
 
-    survival_times, BX = time_function(numbers, beta=500)
+    survival_times, BX = time_function(numbers, beta=500, reverse=reverse)
     censoring_times = np.random.uniform(0, survival_times, size=n)
     # Select proportion of the patients to be right-censored using censoring_times
     # Independent of covariates
@@ -205,11 +207,13 @@ def gen_survSVHN(beta=1, censored_proportion=0.6):
     y_times = survival_times.float()
     y_times[censoring_indices] = torch.Tensor(censoring_times).float()[censoring_indices]
 
-    # plt.scatter(numbers, y_times, s=1, alpha=0.1)
-    # plt.scatter(numbers, survival_times, s=1, alpha=0.1)
-    # ax = plt.gca()
-    # ax.set_xscale('log')
-    # plt.show()
+    plt.scatter(numbers, y_times, s=1, alpha=0.1)
+    plt.scatter(numbers, survival_times, s=1, alpha=0.1)
+    ax = plt.gca()
+    ax.set_xscale("log")
+    ax.set_xlabel("Number")
+    ax.set_ylabel("Time to event")
+    plt.show()
 
     censored_events = np.zeros(n, dtype=bool)
     censored_events[censoring_indices] = True
@@ -255,7 +259,9 @@ def gen_survSVHN(beta=1, censored_proportion=0.6):
 
     run = wandb.init(job_type="preprocess_survSVNH", project="diffsurv", entity="cardiors")
     artifact = wandb.Artifact(
-        f"SVNH_beta{str(beta)}_cen{str(censored_proportion)}", type="dataset", metadata=config
+        f"SVNH_beta{str(beta)}_cen{str(censored_proportion)}{'_reverse' if reverse else ''}",
+        type="dataset",
+        metadata=config,
     )
     artifact.add_dir(save_path)
     run.log_artifact(artifact)
@@ -265,4 +271,5 @@ if __name__ == "__main__":
     betas = [1, 500]
     censored_proportions = [0.3, 0.6]
     for beta, censored_proportion in itertools.product(betas, censored_proportions):
-        gen_survSVHN(beta=beta, censored_proportion=censored_proportion)
+        # gen_survSVHN(beta=beta, censored_proportion=censored_proportion, reverse=False)
+        gen_survSVHN(beta=beta, censored_proportion=censored_proportion, reverse=True)
