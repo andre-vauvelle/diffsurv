@@ -18,14 +18,15 @@ trainer:
         monitor: hp_metric
         filename: '{epoch}-{hp_metric:.4f}'
         mode: max
-#   - class_path: pytorch_lightning.callbacks.EarlyStopping
-#     init_args:
-#       patience: 80
-#       monitor: hp_metric
-#       min_delta: 0.001
-#       mode: max
-#       verbose: True
-#       check_finite: False
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        patience: 100
+        monitor: hp_metric
+        min_delta: 0.0000001
+        mode: max
+        verbose: True
+        check_finite: False
+        check_on_train_epoch_end: True
 #  check_val_every_n_epoch: 1
   max_steps: 100_000
 #  limit_val_batches: 1
