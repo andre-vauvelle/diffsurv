@@ -5,8 +5,8 @@
 #$ -l gpu=true
 #$ -j y
 #$ -N sweep_agent_array
-#$ -t 1-100
-#$ -tc 3
+#$ -t 1-24
+#$ -tc 10
 
 #$ -o /home/vauvelle/diffsurv/src/jobs/logs
 #$ -e /home/vauvelle/diffsurv/src/jobs/logs/errors

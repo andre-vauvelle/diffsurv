@@ -6,11 +6,12 @@ trainer:
         entity: cardiors
         log_model: True
         tags:
-          - conv
+          - mlp
           - risk
+          - diffsort
           - case-control-sampling
-          - cxr
-  #        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
+          - kkbox
+#        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
@@ -28,10 +29,9 @@ trainer:
         check_finite: False
         check_on_train_epoch_end: True
     - class_path: pytorch_lightning.callbacks.LearningRateMonitor
-#  check_val_every_n_epoch: 1
   max_steps: 100_000
+  limit_train_batches: 6000
   max_time: '00:18:00:00'
-  limit_train_batches: 2000
 #  limit_val_batches: 1
   log_every_n_steps: 100
   val_check_interval: 1.0
@@ -40,16 +40,20 @@ trainer:
   accumulate_grad_batches: 1
   precision: 16
 data:
-  batch_size: 4
+  wandb_artifact: cardiors/diffsurv/kkbox_v1:latest
+#  val_split: 0.2
+  batch_size: 16
   risk_set_size: 8
   num_workers: 1
 model:
-  model: efficientnet
-  lr: 0.0003 # from auto lr find
-  img_size: 224
-  cph_method: ranked_list
-  head_steps: 2000
-  lr_schedule: False
+  head_layers: 2
+  embedding_dim: 5
+  head_hidden_dim: 128
+  sorting_network: bitonic
+  distribution: cauchy
+  lr: 0.0001 # from auto lr find
+  only_covs: True
+  ignore_censoring: false
 
 #  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
 #  embedding_dim: 32
