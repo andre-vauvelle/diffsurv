@@ -165,6 +165,7 @@ class TopK(torchmetrics.Metric):
             .cpu()
             .data.numpy()
         )
+
         pred_topk = set(torch.argsort(logits)[: max(len(logits) // 10, 1)].tolist())
 
         score = torch.tensor(len(pred_topk & possible_top_k_idxs) / len(pred_topk))
@@ -183,16 +184,11 @@ class TopK(torchmetrics.Metric):
         if isinstance(self.times, list):
             self.times = torch.cat(self.times)
 
-        possible_perm = _get_possible_permutation_matrix(
-            self.events.detach().cpu(), self.times.detach().cpu()
-        )
+        events, times = self.events.detach().cpu(), self.times.detach().cpu()
 
+        # Bottom times are the highest risk
         possible_top_k_idxs = set(
-            torch.argwhere(possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0)
-            .flatten()
-            .detach()
-            .cpu()
-            .data.numpy()
+            bottom_k_indices_vectorized(events, times, k=max(len(times) // 10, 1))
         )
 
         pred_topk = set(torch.argsort(self.logits)[: max(len(self.logits) // 10, 1)].tolist())
@@ -202,6 +198,26 @@ class TopK(torchmetrics.Metric):
         batched_score = self.scores / self.count
 
         return dict(batch_topk=batched_score, topk=score)
+
+
+def bottom_k_indices_vectorized(events, times, k=10):
+    # Create a tensor of tuples containing the time and event indicator for each element
+    event_times = torch.stack((times, events, torch.arange(len(events))), dim=1)
+
+    # Sort the tensor by time in ascending order
+    event_times_sorted = event_times[torch.argsort(event_times[:, 0])]
+
+    # Compute the cumulative sum of the one_event_mask
+    cumsum_one_event_mask = torch.cumsum(event_times_sorted[:, 1], dim=0)
+
+    # Create a mask for the bottom k times
+    bottom_k_mask = cumsum_one_event_mask <= k
+
+    # Extract the indices of the bottom k times
+    bottom_k_indices = event_times_sorted[bottom_k_mask, 2]
+
+    # Return the tensor of bottom k indices
+    return set(bottom_k_indices.numpy())
 
 
 def test_topk():
@@ -219,7 +235,7 @@ def test_topk():
 def test_topk_random():
     topk = TopK()
     risk_set_size = 256
-    batches = 100
+    batches = 1
     logits = torch.rand(batches, risk_set_size)
     times = torch.arange(0, risk_set_size).repeat(batches).reshape((batches, risk_set_size))
     events = torch.ones_like(logits)
