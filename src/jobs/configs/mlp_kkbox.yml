@@ -1,0 +1,58 @@
+trainer:
+  logger:
+    - class_path: pytorch_lightning.loggers.WandbLogger
+      init_args:
+        project: diffsurv
+        entity: cardiors
+        log_model: True
+        tags:
+          - mlp
+          - risk
+          - diffsort
+          - case-control-sampling
+          - kkbox
+#        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        auto_insert_metric_name: False
+        monitor: hp_metric
+        filename: '{epoch}-{hp_metric:.4f}'
+        mode: max
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        patience: 20
+        monitor: hp_metric
+        min_delta: 0.0001
+        mode: max
+        verbose: True
+        check_finite: False
+        check_on_train_epoch_end: True
+    - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+  max_steps: 100_000
+  limit_train_batches: 6000
+  max_time: '00:18:00:00'
+#  limit_val_batches: 1
+  log_every_n_steps: 100
+  val_check_interval: 1.0
+  enable_checkpointing: True
+  num_sanity_val_steps: 0
+  accumulate_grad_batches: 1
+  precision: 16
+data:
+  wandb_artifact: cardiors/diffsurv/kkbox_v1:latest
+#  val_split: 0.2
+  batch_size: 16
+  risk_set_size: 8
+  num_workers: 1
+model:
+  head_layers: 2
+  embedding_dim: 5
+  head_hidden_dim: 128
+  lr: 0.0001 # from auto lr find
+  only_covs: True
+
+#  pretrained_embedding_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/embeddings/graph_full_211122_prone_32_edge_weights_2021-12-13_in_gnn.pt
+#  embedding_dim: 32
+
+#ckpt_path: /SAN/ihibiobank/denaxaslab/andre/ehrgraphs/models/checkpoints/diffsurv/wwtgf7oi/checkpoints/epoch=3-step=3878.ckpt
