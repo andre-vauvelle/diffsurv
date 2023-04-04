@@ -170,7 +170,7 @@ class CoxPHLoss(torch.nn.Module):
         if e.sum() > 0:
             loss = -lh.sub(log_cumsum_h).mul(e).sum().div(e.sum())
         else:
-            loss = -lh.sub(log_cumsum_h).mul(e).sum()  # would this not always be zero?
+            loss = -lh.sub(log_cumsum_h).mul(e).sum()
         return loss
 
     @staticmethod
