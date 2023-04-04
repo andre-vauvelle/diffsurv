@@ -1,6 +1,6 @@
 # wandb sweep
-name: diffsurv_kkbox
-program: scripts/mlpdiffsort.py
+name: cph_kkbox
+program: scripts/mlp.py
 method: grid
 metric:
   name: val/c_index/all

@@ -1,47 +1,37 @@
 # wandb sweep
-method: random
+name: mlpdiffsort_kkbox
 program: scripts/mlpdiffsort.py
+method: grid
 metric:
-  name: hp_metric
+  name: val/c_index/all
   goal: maximize
 parameters:
-  model.batch_norm:
-    value: False
+  data.batch_risk_tuple:
+    values: ['1, 128', '4, 32', '16, 8', '64, 2']
+  seed_everything:
+    #    value: 42
+    values: [1,2,3,4,5]  # will act as trails
+  model.weight_decay:
+    value: 0.00001
   model.lr:
-    distribution: log_uniform_values
-    min: 1e-4 # 0.0001
-    max: 3e-2
-  model.head_layers:
-    values: [1, 2, 3]
-  model.head_hidden_dim:
-    values: [64, 128, 256, 512, 1024]
-  model.hidden_dropout_prob:
-    min: 0.0
-    max: 0.6
-  data.batch_size:
-    values: [16, 32, 64, 84, 128]
-  data.risk_set_size:
-    values: [1, 4, 8, 32, 64]
-  model.steepness:
-    min: 10
-    max: 50
+    value: 0.0001
   model.sorting_network:
     values: [bitonic, odd_even]
-  trainer.max_epochs:
-    value: 10
-  trainer.val_check_interval:
-    value: 10
-  trainer.limit_train_batches:
-    value: 200
+  data.num_workers:
+    value: -1
+  trainer.strategy:
+    value: ddp_find_unused_parameters_false
+  model.optimize_combined:
+    value: False
+  model.optimize_topk:
+    value: False
 command:
   - ${env}
   - python3
   - ${program}
   - fit
   - "--config"
-  - "jobs/configs/mlpdiffsort.yaml"
-  - "--data.wandb_artifact"
-  - "cardiors/diffsurv/kkbox_v1.pt:latest"
+  - "jobs/configs/mlpdiffsort_kkbox.yml"
   - ${args}
 project: diffsurv
 entity: cardiors
