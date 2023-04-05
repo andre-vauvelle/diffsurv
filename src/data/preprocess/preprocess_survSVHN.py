@@ -14,7 +14,7 @@ from definitions import DATA_DIR
 from omni.common import create_folder
 
 
-def time_function(numbers: torch.Tensor, beta, reverse=True):
+def time_function(numbers: torch.Tensor, beta, reverse=True, num_buckets: int = 0):
     """
     Generates survival times from numbers with a sampling using beta distrubiont Beta(beta, beta) and exponential
     parametersization
@@ -28,6 +28,19 @@ def time_function(numbers: torch.Tensor, beta, reverse=True):
     BX = (log_numbers - log_numbers.float().mean()) / torch.std(log_numbers.float())
     BX = BX * -1 if reverse else BX
     # pd.DataFrame(np.exp(BX)).hist(bins=100)
+
+    if num_buckets:
+        # Bucketize the BX variable
+        df = pd.DataFrame(BX.numpy(), columns=["BX"])
+        bucket_labels = range(1, num_buckets + 1)
+        df["bucket"] = pd.qcut(df["BX"], q=num_buckets, labels=bucket_labels)
+        unique_bucket_values = df.groupby("bucket")["BX"].mean().values
+
+        # Replace BX values with bucket means
+        BX_bucketized = torch.tensor(
+            df["bucket"].apply(lambda x: unique_bucket_values[x - 1]).values, dtype=torch.float64
+        )
+        BX = BX_bucketized
 
     num_samples = BX.shape[0]
     lambda_exp_BX = (1 / 1) * np.exp(BX / 1)  # scale to mean 30 days
@@ -45,8 +58,8 @@ def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_o
     numbers = numbers[:10_000]
     reversed = True
 
-    T500, BX = time_function(numbers, beta=500, reverse=reversed)
-    T1, BX = time_function(numbers, beta=1, reverse=reversed)
+    T500, BX = time_function(numbers, beta=500, reverse=reversed, num_buckets=0)
+    T1, BX = time_function(numbers, beta=1, reverse=reversed, num_buckets=0)
     lambda_exp_BX = (1 / 1) * np.exp(BX / 1)  # scale to mean 30 days
     lambda_exp_BX = lambda_exp_BX.flatten()
     T_oracle = -np.log(0.5) / (lambda_exp_BX)
@@ -92,6 +105,7 @@ def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_o
     axs[0].set_ylabel("Simulated Survival Rank")
     axs[1].set_xlabel("Door Number")
     # axs[2].set_yscale('log')
+    plt.show()
 
     plt.scatter(numbers, lambda_exp_BX, s=1, c="r", alpha=0.1)
     plt.scatter(log_numbers, lambda_exp_BX, s=1, c="r", alpha=0.1)
@@ -149,12 +163,14 @@ def plot_time(numbers=None, lambda_exp_BX=None, log_numbers=None, T=None, calc_o
             results_store[k] = {"EM": EM, "EW": EW}
 
 
-def gen_survSVHN(beta=1, censored_proportion=0.6, reverse=True):
+def gen_survSVHN(
+    beta=1, censored_proportion=0.6, reverse=True, num_buckets: int = 0, save_xcovar: bool = False
+):
     """Generate synthetic survival times based on street view house numbers
     :param beta: beta distribution sampling parameter. if 1 then uniform sampling, if inf then samples the median
     :param censored_proportion: propotion of patients to be independently randomly censored Unif[0, true_event_time]
     """
-    save_path = os.path.join(DATA_DIR, "synthetic", "SVNH")
+    save_path = os.path.join(DATA_DIR, "synthetic", "SVHN")
 
     split_list = {
         "train": [
@@ -198,7 +214,7 @@ def gen_survSVHN(beta=1, censored_proportion=0.6, reverse=True):
     # max_numbers = 10000
     # numbers[numbers > max_numbers] = max_numbers
 
-    survival_times, BX = time_function(numbers, beta=500, reverse=reverse)
+    survival_times, BX = time_function(numbers, beta=beta, reverse=reverse, num_buckets=num_buckets)
     censoring_times = np.random.uniform(0, survival_times, size=n)
     # Select proportion of the patients to be right-censored using censoring_times
     # Independent of covariates
@@ -231,18 +247,21 @@ def gen_survSVHN(beta=1, censored_proportion=0.6, reverse=True):
             images = data_test[0]
 
         data = {
-            "x_covar": images,
+            # "x_covar": images,
             "y_times": y_times[idx == 1].float().unsqueeze(-1),
             "censored_events": torch.Tensor(censored_events[idx == 1]).long().unsqueeze(-1),
             "risk": BX[idx == 1].float().unsqueeze(-1),
             "numbers": numbers[idx == 1].float().unsqueeze(-1),
             "y_times_uncensored": survival_times[idx == 1].unsqueeze(-1),
         }
+        if save_xcovar:
+            data["x_covar"] = images
+
         name = f"{s}.pt"
         create_folder(save_path)
 
         torch.save(data, os.path.join(save_path, name))
-        print(f"Saved SVNH dataset to: {os.path.join(save_path, name)}")
+        print(f"Saved SVHN dataset to: {os.path.join(save_path, name)}")
 
     config = {
         "name": name,
@@ -255,11 +274,12 @@ def gen_survSVHN(beta=1, censored_proportion=0.6, reverse=True):
         "output_dim": 1,
         "beta": beta,
         "setting": "synthetic",
+        "num_buckets": num_buckets,
     }
 
-    run = wandb.init(job_type="preprocess_survSVNH", project="diffsurv", entity="cardiors")
+    run = wandb.init(job_type="preprocess_survSVHN", project="diffsurv", entity="cardiors")
     artifact = wandb.Artifact(
-        f"SVNH_beta{str(beta)}_cen{str(censored_proportion)}{'_reverse' if reverse else ''}",
+        f"SVHN_buckets{str(num_buckets)}_beta{str(beta)}_cen{str(censored_proportion)}{'_reverse' if reverse else ''}",
         type="dataset",
         metadata=config,
     )
@@ -268,8 +288,18 @@ def gen_survSVHN(beta=1, censored_proportion=0.6, reverse=True):
 
 
 if __name__ == "__main__":
-    betas = [1, 500]
-    censored_proportions = [0.3, 0.6]
-    for beta, censored_proportion in itertools.product(betas, censored_proportions):
+    num_buckets_options = [0, 2, 3, 5, 10, 100]
+    censored_proportions = [
+        0.3,
+    ]
+    betas = [1, 100, 500]
+    for beta, num_buckets, censored_proportion in itertools.product(
+        betas, num_buckets_options, censored_proportions
+    ):
         # gen_survSVHN(beta=beta, censored_proportion=censored_proportion, reverse=False)
-        gen_survSVHN(beta=beta, censored_proportion=censored_proportion, reverse=True)
+        gen_survSVHN(
+            beta=beta,
+            censored_proportion=censored_proportion,
+            reverse=True,
+            num_buckets=num_buckets,
+        )

@@ -197,7 +197,7 @@ class DataModuleRisk(pl.LightningDataModule):
 
     def get_dataloader(self, stage: Literal["train", "val", "test"]):
         if self.wandb_artifact and (
-            "kkbox_v1:" in self.wandb_artifact or "SVNH" in self.wandb_artifact
+            "kkbox_v1:" in self.wandb_artifact or "SVHN" in self.wandb_artifact
         ):
             # Pre-split provided
             if stage == "train":
@@ -213,11 +213,23 @@ class DataModuleRisk(pl.LightningDataModule):
                 self.path = os.path.join(self.wandb_dir, wandb_path)
                 shuffle = False
             data = torch.load(self.path)
-            x_covar, y_times, censored_events = (
-                data["x_covar"],
-                data["y_times"].flatten(),
-                data["censored_events"].flatten(),
-            )
+            if "x_covar" in data.keys():
+                x_covar, y_times, censored_events = (
+                    data["x_covar"],
+                    data["y_times"].flatten(),
+                    data["censored_events"].flatten(),
+                )
+            else:
+                # artifact only has labels to save memory
+                assert "SVHN" in self.wandb_dir
+                y_times, censored_events = (
+                    data["y_times"].flatten(),
+                    data["censored_events"].flatten(),
+                )
+                data_train = torch.load(
+                    os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_train.p")
+                )
+                x_covar = data_train[0]
             if stage == "train":
                 dataset = CaseControlRiskDataset(
                     self.controls_per_case,
