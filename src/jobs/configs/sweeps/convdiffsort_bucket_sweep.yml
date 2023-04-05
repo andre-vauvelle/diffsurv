@@ -33,14 +33,20 @@ parameters:
   data.wandb_artifact:
     values:
       [
-        'cardiors/diffsurv/SVHN_buckets0_beta1_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets2_beta1_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets10_beta1_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets100_beta1_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets0_beta100_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets2_beta100_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets10_beta100_cen0.3_reverse:latest',
-        'cardiors/diffsurv/SVHN_buckets100_beta100_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets0_beta1_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets2_beta1_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets10_beta1_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets100_beta1_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets0_beta100_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets2_beta100_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets10_beta100_cen0.3_reverse:latest',
+#        'cardiors/diffsurv/SVHN_buckets100_beta100_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets0_beta500_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets2_beta500_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets3_beta500_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets5_beta500_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets10_beta500_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets100_beta500_cen0.3_reverse:latest',
       ]
 command:
   - ${env}

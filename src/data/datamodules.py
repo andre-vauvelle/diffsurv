@@ -226,8 +226,9 @@ class DataModuleRisk(pl.LightningDataModule):
                     data["y_times"].flatten(),
                     data["censored_events"].flatten(),
                 )
+
                 data_train = torch.load(
-                    os.path.join(DATA_DIR, "data-svhn", "svhn-multi-digit-3x64x64_train.p")
+                    os.path.join(DATA_DIR, "data-svhn", f"svhn-multi-digit-3x64x64_{stage}.p")
                 )
                 x_covar = data_train[0]
             if stage == "train":
