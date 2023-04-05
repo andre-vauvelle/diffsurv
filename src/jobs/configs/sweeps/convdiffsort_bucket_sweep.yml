@@ -1,0 +1,54 @@
+# wandb sweep
+name: diffsort_svhn_c0.3_bucket_beta
+program: scripts/convdiffsort.py
+method: grid
+metric:
+  name: val/c_index/all
+  goal: maximize
+parameters:
+  model.sorting_network:
+    values: [odd_even, bitonic]
+#  data.risk_set_size:
+#    values: [2,4,8,16,32]
+#    values: [64,128]
+#  data.batch_size:
+#    value: 100
+  data.batch_risk_tuple:
+#    values: ['8, 128', '32, 32', '128, 8', '512, 2']
+    value: '32, 32'
+#    value: '128, 8'
+  model.weight_decay:
+    value: 0.00001
+  model.lr:
+    value: 0.0001
+#    values: [1.00000000e-03, 3.16227766e-04, 1.00000000e-04, 3.16227766e-05, 1.00000000e-05]
+  seed_everything:
+    values: [1,2,3] # will act as trails
+  data.num_workers:
+    value: -1
+  trainer.strategy:
+    value: ddp_find_unused_parameters_false
+  model.ignore_censoring:
+    value: False
+  data.wandb_artifact:
+    values:
+      [
+        'cardiors/diffsurv/SVHN_buckets0_beta1_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets2_beta1_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets10_beta1_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets100_beta1_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets0_beta100_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets2_beta100_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets10_beta100_cen0.3_reverse:latest',
+        'cardiors/diffsurv/SVHN_buckets100_beta100_cen0.3_reverse:latest',
+      ]
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - fit
+  - "--config"
+  - "jobs/configs/convdiffsort.yml"
+  - ${args}
+project: diffsurv
+entity: cardiors

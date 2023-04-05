@@ -37,8 +37,8 @@ trainer:
   accumulate_grad_batches: 1
 data:
   wandb_artifact: cardiors/diffsurv/SVNH_beta1_cen0.3_reverse:v0
-  batch_size: 25
-  risk_set_size: 128
+  batch_size: 16
+  risk_set_size: 16
   num_workers: 1
 model:
   weight_decay: 0.00001
