@@ -190,9 +190,16 @@ for dataset in datasets:
         cph.fit(train_df, duration_col="time", event_col="event")
 
         train_x = train_df.drop(columns=["event", "time"])
-        train_y = train_df[["event", "time"]]
         test_x = test_df.drop(columns=["event", "time"])
-        test_y = test_df[["event", "time"]]
+        # Convert train_y and val_y to structured arrays
+        train_y = np.array(
+            list(zip(train_df["event"].astype(bool), train_df["time"])),
+            dtype=[("event", np.bool_), ("time", np.float64)],
+        )
+        test_y= np.array(
+            list(zip(test_df["event"].astype(bool), test_df["time"])),
+            dtype=[("event", np.bool_), ("time", np.float64)],
+        )
 
         c_index = cph.score(test_df, scoring_method="concordance_index")
         cph_c_indexes.append(c_index)
