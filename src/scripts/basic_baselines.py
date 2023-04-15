@@ -122,7 +122,7 @@ for dataset in datasets:
             columns=list(range(X_val.shape[1])) + ["event", "time"],
         )
         train_x = train_df.drop(columns=["event", "time"])
-        train_y = train_x[["event", "time"]]
+        train_y = train_df[["event", "time"]]
         val_x = val_df.drop(columns=["event", "time"])
         val_y = val_df[["event", "time"]]
 
