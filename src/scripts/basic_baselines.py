@@ -122,9 +122,16 @@ for dataset in datasets:
             columns=list(range(X_val.shape[1])) + ["event", "time"],
         )
         train_x = train_df.drop(columns=["event", "time"])
-        train_y = train_df[["event", "time"]]
         val_x = val_df.drop(columns=["event", "time"])
-        val_y = val_df[["event", "time"]]
+        # Convert train_y and val_y to structured arrays
+        train_y = np.array(
+            list(zip(train_df["event"].astype(bool), train_df["time"])),
+            dtype=[("event", np.bool_), ("time", np.float64)],
+        )
+        val_y = np.array(
+            list(zip(val_df["event"].astype(bool), val_df["time"])),
+            dtype=[("event", np.bool_), ("time", np.float64)],
+        )
 
         # hyperparameter tuning for cox proportional hazards model
         for penalizer in tqdm(
