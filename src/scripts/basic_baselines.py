@@ -8,12 +8,12 @@ from tqdm import tqdm
 import wandb
 
 from lifelines import CoxPHFitter
-from pysurvival.models.survival_forest import RandomSurvivalForestModel
-from pysurvival.utils.metrics import concordance_index
+from sksurv.ensemble import RandomSurvivalForest
 from sklearn.model_selection import KFold, train_test_split
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", None)
+RANDOM_STATE = 42
 
 
 parser = argparse.ArgumentParser()
@@ -38,9 +38,9 @@ results_dir = args.results_dir
 # Define hyperparameter search space for each model
 cph_hyperparams = {"penalizer": [0.01, 0.1, 1, 10]}
 trees_hyperparams = {
-    "num_trees": [250, 500],
+    "n_estimators": [250, 500],
     "max_depth": [3, 5, 10],
-    "min_node_size": [10, 20, 50],
+    "min_samples_leaf": [10, 20, 50],
 }
 
 # Initialize wandb
@@ -113,60 +113,59 @@ for dataset in datasets:
             random_state=42,
         )
 
+        train_df = pd.DataFrame(
+            np.column_stack((X_train, E_train, T_train)),
+            columns=list(range(X_train.shape[1])) + ["event", "time"],
+        )
+        val_df = pd.DataFrame(
+            np.column_stack((X_val, E_val, T_val)),
+            columns=list(range(X_val.shape[1])) + ["event", "time"],
+        )
+        train_x = train_df.drop(columns=["event", "time"])
+        train_y = train_x[["event", "time"]]
+        val_x = val_df.drop(columns=["event", "time"])
+        val_y = val_df[["event", "time"]]
+
         # hyperparameter tuning for cox proportional hazards model
         for penalizer in tqdm(
             cph_hyperparams["penalizer"], desc="CPH hyperparams", ncols=100
         ):
-            train_df = pd.DataFrame(
-                np.column_stack((X_train, E_train, T_train)),
-                columns=list(range(X_train.shape[1])) + ["event", "time"],
-            )
-            val_df = pd.DataFrame(
-                np.column_stack((X_val, E_val, T_val)),
-                columns=list(range(X_val.shape[1])) + ["event", "time"],
-            )
-
             cph = CoxPHFitter(penalizer=penalizer)
             cph.fit(train_df, duration_col="time", event_col="event")
-
-            val_x = val_df.drop(columns=["event", "time"])
-            val_y = val_df[["event", "time"]]
-
             c_index = cph.score(val_df, scoring_method="concordance_index")
             if c_index > best_cph_score:
                 best_cph_score = c_index
                 best_cph_params = {"penalizer": penalizer}
 
         # Hyperparameter tuning for Survival Trees model
-        for num_trees, max_depth, min_node_size in tqdm(
+        for n_estimators, max_depth, min_samples_leaf in tqdm(
             itertools.product(
-                trees_hyperparams["num_trees"],
+                trees_hyperparams["n_estimators"],
                 trees_hyperparams["max_depth"],
-                trees_hyperparams["min_node_size"],
+                trees_hyperparams["min_samples_leaf"],
             ),
             desc="Trees hyperparams",
             ncols=100,
-            total=len(trees_hyperparams["num_trees"])
+            total=len(trees_hyperparams["n_estimators"])
             * len(trees_hyperparams["max_depth"])
-            * len(trees_hyperparams["min_node_size"]),
+            * len(trees_hyperparams["min_samples_leaf"]),
         ):
 
-            trees = RandomSurvivalForestModel(num_trees=num_trees)
-            trees.fit(
-                X=X_train,
-                T=T_train,
-                E=E_train,
+            trees = RandomSurvivalForest(
+                n_estimators=n_estimators,
                 max_depth=max_depth,
-                min_node_size=min_node_size,
+                min_samples_leaf=min_samples_leaf,
+                random_state=RANDOM_STATE,
             )
+            trees.fit(train_x, train_y)
 
-            c_index = concordance_index(trees, X_val, T_val, E_val)
+            c_index = trees.score(val_x, val_y)
             if c_index > best_trees_score:
                 best_trees_score = c_index
                 best_trees_params = {
-                    "num_trees": num_trees,
+                    "n_estimators": n_estimators,
                     "max_depth": max_depth,
-                    "min_node_size": min_node_size,
+                    "min_samples_leaf": min_samples_leaf,
                 }
 
         # Train and evaluate the models with the best hyperparameters on the outer fold
@@ -183,6 +182,8 @@ for dataset in datasets:
         cph = CoxPHFitter(**best_cph_params)
         cph.fit(train_df, duration_col="time", event_col="event")
 
+        train_x = train_df.drop(columns=["event", "time"])
+        train_y = train_df[["event", "time"]]
         test_x = test_df.drop(columns=["event", "time"])
         test_y = test_df[["event", "time"]]
 
@@ -190,16 +191,15 @@ for dataset in datasets:
         cph_c_indexes.append(c_index)
 
         # Survival Trees
-        trees = RandomSurvivalForestModel(num_trees=best_trees_params["num_trees"])
-        trees.fit(
-            X=X_outer_train,
-            T=T_outer_train,
-            E=E_outer_train,
-            max_depth=best_trees_params["max_depth"],
-            min_node_size=best_trees_params["min_node_size"],
+        trees = RandomSurvivalForest(
+            n_estimators=best_trees_params['n_estimators'],
+            max_depth=best_trees_params['max_depth'],
+            min_samples_leaf=best_trees_params['min_samples_leaf'],
+            random_state=RANDOM_STATE,
         )
+        trees.fit(train_x, train_y)
 
-        c_index = concordance_index(trees, X_test, T_test, E_test)
+        c_index = trees.score(test_x, test_y)
         trees_c_indexes.append(c_index)
 
         best_cph_params_list.append(best_cph_params)
