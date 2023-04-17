@@ -99,12 +99,20 @@ class DatasetRisk(Dataset):
         future_label_times = self.y_times[index]
         censorings = self.censored_events[index]
 
-        if censorings.dim != 2:
-            censorings = censorings.unsqueeze(-1)
-        if future_label_multihot.dim != 2:
-            future_label_multihot = future_label_multihot.unsqueeze(-1)
-        if future_label_times.dim != 2:
-            future_label_times = future_label_times.unsqueeze(-1)
+        if censorings.dim() != 1:
+            raise ValueError(
+                f"censorings must have a dimension of 1, but got dim {censorings.dim()}"
+            )
+        if future_label_multihot.dim() != 1:
+            raise ValueError(
+                "future_label_multihot must have a dimension of 1, but got dim"
+                f" {future_label_multihot.dim()}"
+            )
+        if future_label_times.dim() != 1:
+            raise ValueError(
+                "future_label_times must have a dimension of 1, but got dim"
+                f" {future_label_times.dim()}"
+            )
 
         exclusions = torch.zeros_like(censorings)
 
@@ -121,7 +129,7 @@ class DatasetRisk(Dataset):
         if self.risk is not None:
             risk = self.risk[index]
             if not isinstance(risk, np.ndarray):
-                risk = np.array(risk).reshape(-1, 1)
+                risk = np.array(risk)
             output.update({"risk": risk})
 
         return output

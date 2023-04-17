@@ -288,7 +288,8 @@ def gen_survSVHN(
 
 
 if __name__ == "__main__":
-    num_buckets_options = [0, 2, 3, 5, 10, 100]
+    # num_buckets_options = [0, 2, 3, 5, 10, 100]
+    num_buckets_options = [20, 50]
     censored_proportions = [
         0.3,
     ]

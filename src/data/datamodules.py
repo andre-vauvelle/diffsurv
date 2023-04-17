@@ -1,11 +1,12 @@
 import os
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torchvision.transforms as transforms
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS
+from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 import wandb
@@ -164,7 +165,9 @@ class DataModuleRisk(pl.LightningDataModule):
         self.batch_size = batch_size
         self.controls_per_case = risk_set_size - 1  # one is a case...
         self.wandb_artifact = wandb_artifact
-        self.val_split = val_split
+        self.val_split = (
+            val_split  # set val split to 0.0 if you want to train on both training and val datasets
+        )
         self.use_risk = use_risk
         self.num_workers = os.cpu_count() - 2 if num_workers == -1 else num_workers
         self.return_perm_mat = return_perm_mat
@@ -196,6 +199,7 @@ class DataModuleRisk(pl.LightningDataModule):
         self.save_hyperparameters()
 
     def get_dataloader(self, stage: Literal["train", "val", "test"]):
+        # These have predefined splits
         if self.wandb_artifact and (
             "kkbox_v1:" in self.wandb_artifact or "SVHN" in self.wandb_artifact
         ):
@@ -263,21 +267,34 @@ class DataModuleRisk(pl.LightningDataModule):
             else:
                 risk = None
             n_patients = x_covar.shape[0]
-            if stage == "train":
+
+            def get_dataset(stage, val_split=0.2):
                 if not self.k_fold:
-                    n_training_patients = (
-                        int(n_patients * (1 - self.val_split)) if self.val_split else n_patients
-                    )
-                    dataset = CaseControlRiskDataset(
-                        self.controls_per_case,
-                        x_covar[:n_training_patients],
-                        y_times[:n_training_patients],
-                        censored_events[:n_training_patients],
-                        risk[:n_training_patients] if risk is not None else None,
-                        return_perm_mat=self.return_perm_mat,
-                        inc_censored_in_ties=self.inc_censored_in_ties,
-                        random_sample=self.random_sample,
-                    )
+                    n_training_patients = int(n_patients * (1 - val_split))
+                    n_val_patients = int(n_patients * val_split)
+
+                    if stage == "train":
+                        dataset = CaseControlRiskDataset(
+                            self.controls_per_case,
+                            x_covar[:n_training_patients],
+                            y_times[:n_training_patients],
+                            censored_events[:n_training_patients],
+                            risk[:n_training_patients] if risk is not None else None,
+                            return_perm_mat=self.return_perm_mat,
+                            inc_censored_in_ties=self.inc_censored_in_ties,
+                            random_sample=self.random_sample,
+                        )
+                    elif stage == "val":
+                        dataset = DatasetRisk(
+                            x_covar[n_training_patients : n_training_patients + n_val_patients],
+                            y_times[n_training_patients : n_training_patients + n_val_patients],
+                            censored_events[
+                                n_training_patients : n_training_patients + n_val_patients
+                            ],
+                            risk[n_training_patients : n_training_patients + n_val_patients]
+                            if risk is not None
+                            else None,
+                        )
                 else:
                     idx = set(range(n_patients))
                     kth_fold, total_folds = self.k_fold
@@ -285,27 +302,41 @@ class DataModuleRisk(pl.LightningDataModule):
                     remove_idx = set(range(shift, shift + int(n_patients / total_folds)))
                     fold_idx = list(idx - remove_idx)
 
-                    dataset = CaseControlRiskDataset(
-                        self.controls_per_case,
-                        x_covar[fold_idx],
-                        y_times[fold_idx],
-                        censored_events[fold_idx],
-                        risk[fold_idx] if risk is not None else None,
-                        return_perm_mat=self.return_perm_mat,
-                        inc_censored_in_ties=self.inc_censored_in_ties,
-                        random_sample=self.random_sample,
+                    train_idx, val_idx = train_test_split(
+                        fold_idx, test_size=val_split, random_state=42
                     )
-                shuffle = True
-            elif stage == "val" or stage == "test":
+
+                    if stage == "train":
+                        dataset = CaseControlRiskDataset(
+                            self.controls_per_case,
+                            x_covar[train_idx],
+                            y_times[train_idx],
+                            censored_events[train_idx],
+                            risk[train_idx] if risk is not None else None,
+                            return_perm_mat=self.return_perm_mat,
+                            inc_censored_in_ties=self.inc_censored_in_ties,
+                            random_sample=self.random_sample,
+                        )
+                    elif stage == "val":
+                        dataset = DatasetRisk(
+                            x_covar[val_idx],
+                            y_times[val_idx],
+                            censored_events[val_idx],
+                            risk[val_idx] if risk is not None else None,
+                        )
+                return dataset
+
+            if stage == "train" or stage == "val":
+                dataset = get_dataset(stage, val_split=self.val_split)
+                shuffle = stage == "train"
+            elif stage == "test":
                 if not self.k_fold:
-                    n_validation_patients = (
-                        int(n_patients * self.val_split) if self.val_split else n_patients
-                    )
+                    n_test_patients = int(n_patients * self.val_split)
                     dataset = DatasetRisk(
-                        x_covar[-n_validation_patients:],
-                        y_times[-n_validation_patients:],
-                        censored_events[-n_validation_patients:],
-                        risk[-n_validation_patients:] if risk is not None else None,
+                        x_covar[-n_test_patients:],
+                        y_times[-n_test_patients:],
+                        censored_events[-n_test_patients:],
+                        risk[-n_test_patients:] if risk is not None else None,
                     )
                 else:
                     kth_fold, total_folds = self.k_fold
@@ -318,10 +349,9 @@ class DataModuleRisk(pl.LightningDataModule):
                         censored_events[fold_idx],
                         risk[fold_idx] if risk is not None else None,
                     )
-
                 shuffle = False
             else:
-                raise Exception("Stage must be either 'train' or 'val' or 'test' ")
+                raise Exception("Stage must be either 'train' or 'val' or 'test'")
 
         # Validation must be not have casecontrol sampling (Otherwise not all patients included)
         # if self.controls_per_case is None or stage == "val":
