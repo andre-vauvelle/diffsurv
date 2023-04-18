@@ -11,32 +11,32 @@ trainer:
           - diffsort
           - case-control-sampling
 #        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
-  callbacks:
-    - class_path: pytorch_lightning.callbacks.EarlyStopping
-      init_args:
-        patience: 10
-        monitor: val/c_index/all
-        min_delta: 0.000
-        mode: max
-        verbose: True
-        check_finite: False
-        check_on_train_epoch_end: True
-  max_epochs: 100
-  check_val_every_n_epoch: 1
+#  callbacks:
+#    - class_path: pytorch_lightning.callbacks.EarlyStopping
+#      init_args:
+#        patience: 10
+#        monitor: val/c_index/all
+#        min_delta: 0.000
+#        mode: max
+#        verbose: True
+#        check_finite: False
+#        check_on_train_epoch_end: True
+  max_epochs: 15
+#  check_val_every_n_epoch: 1
   log_every_n_steps: 1
   enable_checkpointing: False
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
+  limit_val_batches: 0.0
 data:
   wandb_artifact: cardiors/diffsurv/metabric.pt:latest
-  batch_size: 128
-  risk_set_size: 30
+  batch_risk_tuple: '16, 8'
   num_workers: 6
+  val_split: 0.0
 model:
   head_layers: 1
   embedding_dim: 5
-  batch_norm: False
-  head_hidden_dim: 128
-  lr: 0.0001
+  head_hidden_dim: 256
+  lr: 0.005320988288175008
+  weight_decay: 0.00002008409107498849
   only_covs: True
-  hidden_dropout_prob: 0.0
