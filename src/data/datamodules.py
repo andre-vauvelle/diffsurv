@@ -319,7 +319,6 @@ class DataModuleRisk(pl.LightningDataModule):
                             stratify=censored_events[train_idx],
                         )
                     else:
-                        train_idx = fold_idx
                         if stage == "val":
                             raise ValueError(f"Cannot make val with val_split={val_split}")
 
