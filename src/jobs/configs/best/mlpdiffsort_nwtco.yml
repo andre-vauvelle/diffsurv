@@ -21,7 +21,7 @@ trainer:
 #        verbose: True
 #        check_finite: False
 #        check_on_train_epoch_end: True
-  max_epochs: 15
+  max_epochs: 9
 #  check_val_every_n_epoch: 1
   log_every_n_steps: 1
   enable_checkpointing: False
@@ -37,8 +37,8 @@ model:
   head_layers: 2
   embedding_dim: 5
   head_hidden_dim: 256
-  lr: 0.0029582320154529357
-  weight_decay: 0.000020837301147653676
+  lr: 0.010150446974632844
+  weight_decay: 0.000571286780601832
   only_covs: True
   hidden_dropout_prob: 0.1
   sorting_network: bitonic
