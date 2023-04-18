@@ -1,12 +1,13 @@
 import os
 from typing import Literal, Optional, Union
 
+import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torchvision.transforms as transforms
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import DataLoader
 
 import wandb
@@ -296,15 +297,26 @@ class DataModuleRisk(pl.LightningDataModule):
                             else None,
                         )
                 else:
-                    idx = set(range(n_patients))
+                    n_patients = len(censored_events)
                     kth_fold, total_folds = self.k_fold
-                    shift = int(kth_fold * (n_patients / total_folds))
-                    remove_idx = set(range(shift, shift + int(n_patients / total_folds)))
-                    fold_idx = list(idx - remove_idx)
+                    stratified_kf = StratifiedKFold(
+                        n_splits=total_folds, shuffle=True, random_state=42
+                    )
+
+                    train_idx = None
+                    # Get the indices for the kth fold
+                    for idx, (train_idx, val_idx) in enumerate(
+                        stratified_kf.split(np.zeros(n_patients), censored_events)
+                    ):
+                        if idx + 1 == kth_fold:
+                            break
 
                     if val_split:
                         train_idx, val_idx = train_test_split(
-                            fold_idx, test_size=val_split, random_state=42
+                            train_idx,
+                            test_size=val_split,
+                            random_state=42,
+                            stratify=censored_events[train_idx],
                         )
                     else:
                         train_idx = fold_idx
