@@ -12,12 +12,6 @@ trainer:
           - case-control-sampling
 #        save_dir: /SAN/ihibiobank/denaxaslab/andre/diffsurv/results
   callbacks:
-    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
-      init_args:
-        auto_insert_metric_name: False
-        monitor: hp_metric
-        filename: '{epoch}-{hp_metric:.2f}'
-        mode: max
     - class_path: pytorch_lightning.callbacks.EarlyStopping
       init_args:
         patience: 20
