@@ -5,16 +5,19 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+from pytorch_lightning import seed_everything
 
 from definitions import RESULTS_DIR
 from scripts.mlp import mlp_cli_main
 from scripts.mlpdiffsort import diffsort_cli_main
 
 parser = argparse.ArgumentParser(description="Run K Folds of training and validation for a model")
-parser.add_argument("-k", "--kfolds", type=int)
+parser.add_argument("-k", "--kfolds", type=int, default=5)
 parser.add_argument("-c", "--config", type=str)
-parser.add_argument("-m", "--model", type=str)
+parser.add_argument("-m", "--model", type=str, default="diffsort")
 parser.add_argument("-d", "--results_dir", type=str)
+
+seed_everything(seed=42)
 
 args = parser.parse_args()
 
@@ -46,7 +49,7 @@ for k in range(args.kfolds):
 
     cli = model_cli(args=configuration, run=False)
     cli.trainer.fit(cli.model, cli.datamodule)
-    metrics = cli.trainer.validate(cli.model, cli.datamodule)
+    metrics = cli.trainer.test(cli.model, cli.datamodule)
     metrics_store.append(metrics[0])
 
 df = pd.DataFrame.from_dict(metrics_store)

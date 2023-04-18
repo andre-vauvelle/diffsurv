@@ -302,9 +302,14 @@ class DataModuleRisk(pl.LightningDataModule):
                     remove_idx = set(range(shift, shift + int(n_patients / total_folds)))
                     fold_idx = list(idx - remove_idx)
 
-                    train_idx, val_idx = train_test_split(
-                        fold_idx, test_size=val_split, random_state=42
-                    )
+                    if val_split:
+                        train_idx, val_idx = train_test_split(
+                            fold_idx, test_size=val_split, random_state=42
+                        )
+                    else:
+                        train_idx = fold_idx
+                        if stage == "val":
+                            raise ValueError(f"Cannot make val with val_split={val_split}")
 
                     if stage == "train":
                         dataset = CaseControlRiskDataset(
