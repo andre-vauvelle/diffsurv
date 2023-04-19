@@ -1,6 +1,6 @@
 data:
   wandb_artifact: cardiors/diffsurv/flchain.pt:latest
-  batch_size: "32, 8"
+  batch_risk_tuple: "32, 8"
   num_workers: -1
 model:
   lr: 0.006665978901138189
