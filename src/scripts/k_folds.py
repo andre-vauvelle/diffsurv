@@ -13,11 +13,13 @@ from scripts.mlpdiffsort import diffsort_cli_main
 
 parser = argparse.ArgumentParser(description="Run K Folds of training and validation for a model")
 parser.add_argument("-k", "--kfolds", type=int, default=5)
-parser.add_argument("-c", "--config", action="append", type=str, required=True)
+parser.add_argument("-c", "--config", type=str)
 parser.add_argument("-m", "--model", type=str, default="diffsort")
 parser.add_argument("-d", "--results_dir", type=str)
 
-seed_everything(seed=43)
+seed_everything(seed=42)
+
+import yaml
 
 
 def load_yaml_file(file_path):
@@ -52,16 +54,11 @@ elif args.model == "mlp":
 else:
     raise NotImplementedError("model must be one of the implmented {'mlp', 'diffsort'}")
 
-# Load and combine all configuration files
-combined_configuration = {}
-for config_file in args.config:
-    config_data = load_yaml_file(config_file)
-    combined_configuration = combine_dicts(combined_configuration, config_data)
-
-configuration = combined_configuration
-
 metrics_store = []
 for k in range(args.kfolds):
+    with open(args.config) as file:
+        configuration = yaml.safe_load(file)
+
     configuration["data"]["k_fold"] = (k, args.kfolds)
 
     cli = model_cli(args=configuration, run=False)
