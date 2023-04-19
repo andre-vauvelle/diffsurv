@@ -1,17 +1,11 @@
 #!/bin/bash -l
-#$ -l tmem=32G
-#$ -l h_rt=160:0:0
+#$ -l tmem=30G
+#$ -l h_rt=120:0:0
 #$ -S /bin/bash
-#$ -l gpu=true
 #$ -j y
-#$ -N sweep_agent_array
-#$ -t 1-9
-#$ -tc 5
+#$ -N submit_nogpu
 
 #$ -o /home/vauvelle/diffsurv/src/jobs/logs
-#$ -e /home/vauvelle/diffsurv/src/jobs/logs/errors
-
-#,gpu_type=!gtx1080ti
 
 hostname
 date

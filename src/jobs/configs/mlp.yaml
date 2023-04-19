@@ -15,7 +15,7 @@ trainer:
       init_args:
         patience: 20
         monitor: hp_metric
-        min_delta: 0.002
+        min_delta: 0.00001
         mode: max
         verbose: True
         check_finite: False
@@ -23,7 +23,7 @@ trainer:
   max_epochs: 15
   check_val_every_n_epoch: 1
   log_every_n_steps: 10
-  val_check_interval: 0.2
+  val_check_interval: 0.5
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
@@ -39,13 +39,12 @@ data:
 #  wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.99.pt:latest
 #  wandb_artifact: cardiors/diffsurv/pysurv_square_mean_0.99.pt:latest
   val_split: 0.2
-  batch_size: 128
-  risk_set_size: 32
-  num_workers: 1
+  batch_risk_tuple: 32, 8
+  num_workers: -1
 model:
-  head_layers: 2
+  head_layers: 1
   embedding_dim: 5
-  head_hidden_dim: 128
+  head_hidden_dim: 64
   lr: 0.001 # from auto lr find
   only_covs: True
   cov_size: 3
