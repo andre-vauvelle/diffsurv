@@ -33,4 +33,4 @@ model:
   sorting_network: bitonic
   batch_norm: True
   ignore_censoring: false
-seed_everything: 43
+seed_everything: 42

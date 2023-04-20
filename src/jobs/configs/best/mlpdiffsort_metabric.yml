@@ -20,17 +20,17 @@ trainer:
 data:
   wandb_artifact: cardiors/diffsurv/metabric.pt:latest
   val_split: 0.0
-  batch_risk_tuple: 1, 256
+  batch_risk_tuple: 4, 64
   num_workers: -1
 model:
-  lr: 0.003318464471498672
-  weight_decay: 0.004618884015027523
+  lr: 0.01523688419334652
+  weight_decay: 0.00516693059754531
   only_covs: True
   head_layers: 1
   embedding_dim: 5
   head_hidden_dim: 64
   hidden_dropout_prob: 0.1
-  sorting_network: bitonic
+  sorting_network: odd_even
   batch_norm: True
   ignore_censoring: false
-seed_everything: 43
+seed_everything: 42
