@@ -269,7 +269,7 @@ class DataModuleRisk(pl.LightningDataModule):
                 risk = None
             n_patients = x_covar.shape[0]
 
-            def get_dataset(stage, val_split=0.2):
+            def get_dataset(stage: str, n_patients: int, val_split=0.2):
                 if not self.k_fold:
                     n_training_patients = int(n_patients * (1 - val_split))
                     n_val_patients = int(n_patients * val_split)
@@ -343,7 +343,7 @@ class DataModuleRisk(pl.LightningDataModule):
                 return dataset
 
             if stage == "train" or stage == "val":
-                dataset = get_dataset(stage, val_split=self.val_split)
+                dataset = get_dataset(stage, n_patients=n_patients, val_split=self.val_split)
                 shuffle = stage == "train"
             elif stage == "test":
                 if not self.k_fold:

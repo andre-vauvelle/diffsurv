@@ -95,9 +95,9 @@ class DatasetRisk(Dataset):
         elif covariates.dim() == 3:
             covariates = Image.fromarray(np.transpose(covariates.numpy(), (1, 2, 0)))
             covariates = self.transform(covariates)
-        future_label_multihot = 1 - self.censored_events[index]
-        future_label_times = self.y_times[index]
-        censorings = self.censored_events[index]
+        future_label_multihot = 1 - self.censored_events[index].flatten()
+        future_label_times = self.y_times[index].flatten()
+        censorings = self.censored_events[index].flatten()
 
         if censorings.dim() != 1:
             raise ValueError(

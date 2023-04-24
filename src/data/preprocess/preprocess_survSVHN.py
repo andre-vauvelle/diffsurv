@@ -32,8 +32,12 @@ def time_function(numbers: torch.Tensor, beta, reverse=True, num_buckets: int = 
     if num_buckets:
         # Bucketize the BX variable
         df = pd.DataFrame(BX.numpy(), columns=["BX"])
-        bucket_labels = range(1, num_buckets + 1)
-        df["bucket"] = pd.qcut(df["BX"], q=num_buckets, labels=bucket_labels)
+        # First, apply qcut without labels to get unique quantiles
+        unique_quantiles = np.unique(pd.qcut(df["BX"], q=num_buckets, duplicates="drop"))
+        # Create bucket_labels based on the length of unique_quantiles
+        bucket_labels = range(1, len(unique_quantiles) + 1)
+        # Now, apply qcut again with the new bucket_labels
+        df["bucket"] = pd.qcut(df["BX"], q=num_buckets, labels=bucket_labels, duplicates="drop")
         unique_bucket_values = df.groupby("bucket")["BX"].mean().values
 
         # Replace BX values with bucket means
@@ -229,6 +233,7 @@ def gen_survSVHN(
     ax.set_xscale("log")
     ax.set_xlabel("Number")
     ax.set_ylabel("Time to event")
+    ax.set_title(f"Buckets: {num_buckets}")
     plt.show()
 
     censored_events = np.zeros(n, dtype=bool)
@@ -289,11 +294,16 @@ def gen_survSVHN(
 
 if __name__ == "__main__":
     # num_buckets_options = [0, 2, 3, 5, 10, 100]
-    num_buckets_options = [20, 50]
+    # num_buckets_options = [20, 50]
+    num_buckets_options = [
+        128,
+    ]
     censored_proportions = [
         0.3,
     ]
-    betas = [1, 100, 500]
+    betas = [
+        500,
+    ]
     for beta, num_buckets, censored_proportion in itertools.product(
         betas, num_buckets_options, censored_proportions
     ):
