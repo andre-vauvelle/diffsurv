@@ -1,6 +1,12 @@
 import torch
+from packaging import version
+import pytorch_lightning
 from pytorch_lightning.cli import ArgsType
-from pytorch_lightning.utilities.cli import LightningCLI
+
+if version.parse(pytorch_lightning.__version__) >= version.parse("1.7.0"):
+    from pytorch_lightning.cli import LightningCLI
+else:
+    from pytorch_lightning.utilities.cli import LightningCLI
 
 from data.datamodules import DataModuleRisk
 from modules.mlp import MultilayerDiffsort, MultilayerRisk

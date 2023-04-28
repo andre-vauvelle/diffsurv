@@ -299,6 +299,9 @@ class SortingRiskMixin(RiskMixin):
         self.optimize_topk = optimize_topk or optimize_combined
         self.optimize_combined = optimize_combined
 
+        print(f"Optimize topk: {optimize_topk}")
+        print(f"Optimize combined: {optimize_combined}")
+
     def sorting_step(self, logits, perm_ground_truth, events):
         lh = logits
 
@@ -645,6 +648,7 @@ def get_top_k_loss(perm_ground_truth, perm_prediction, eps=torch.tensor(0.0001))
         #     perm_prediction[~possible_top_k_idxs][:, risk_set_size // 10 :].sum(axis=1)
         / (risk_set_size * batch_size)
     )
+
     return top_k_loss
 
 

@@ -170,7 +170,7 @@ class DataModuleRisk(pl.LightningDataModule):
             val_split  # set val split to 0.0 if you want to train on both training and val datasets
         )
         self.use_risk = use_risk
-        self.num_workers = os.cpu_count() - 2 if num_workers == -1 else num_workers
+        self.num_workers = min(32, os.cpu_count() - 2) if num_workers == -1 else num_workers
         self.return_perm_mat = return_perm_mat
         if wandb_artifact is not None:
             api = wandb.Api(overrides={"project": "diffsurv", "entity": "cardiors"})

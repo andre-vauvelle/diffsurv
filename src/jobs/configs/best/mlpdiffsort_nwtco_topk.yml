@@ -16,14 +16,15 @@ trainer:
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
+  limit_val_batches: 0.0
 data:
-  wandb_artifact: cardiors/diffsurv/flchain.pt:latest
-  val_split: 0.2
-  batch_risk_tuple: 32, 8
+  wandb_artifact: cardiors/diffsurv/nwtco.pt:latest
+  val_split: 0.0
+  batch_risk_tuple: 1, 256
   num_workers: -1
 model:
-  lr: 0.004343696258007962
-  weight_decay: 5.2546218078873754e-05
+  lr: 0.0031750698376063692
+  weight_decay: 0.03379015106092023
   only_covs: True
   head_layers: 1
   embedding_dim: 5
@@ -32,4 +33,6 @@ model:
   sorting_network: bitonic
   batch_norm: True
   ignore_censoring: false
+  optimize_topk: True
+  optimize_combined: False
 seed_everything: 42

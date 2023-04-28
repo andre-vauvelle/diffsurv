@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import os
 import sys
@@ -6,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 from pytorch_lightning import seed_everything
+import wandb
 
 from definitions import RESULTS_DIR
 from scripts.mlp import mlp_cli_main
@@ -16,6 +19,7 @@ parser.add_argument("-k", "--kfolds", type=int, default=5)
 parser.add_argument("-c", "--config", type=str)
 parser.add_argument("-m", "--model", type=str, default="diffsort")
 parser.add_argument("-d", "--results_dir", type=str)
+parser.add_argument("-n", "--results_name", type=str)
 
 seed_everything(seed=42)
 
@@ -35,7 +39,7 @@ def combine_dicts(dict1, dict2):
 
 args = parser.parse_args()
 
-RESULTS_NAME = "kfold_results.csv"
+RESULTS_NAME = f"{args.results_name}.csv"
 
 if args.results_dir is None:
     results_path = os.path.join(RESULTS_DIR, args.model, RESULTS_NAME)
@@ -46,6 +50,7 @@ else:
     results_path = os.path.join(results_dir, RESULTS_NAME)
 
 sys.argv = [sys.argv[0]]  # clear argv to manually pass arguments to cli_main
+
 
 if args.model == "diffsort":
     model_cli = diffsort_cli_main
@@ -65,6 +70,8 @@ for k in range(args.kfolds):
     cli.trainer.fit(cli.model, cli.datamodule)
     metrics = cli.trainer.test(cli.model, cli.datamodule)
     metrics_store.append(metrics[0])
+
+    wandb.finish()
 
 df = pd.DataFrame.from_dict(metrics_store)
 df.to_csv(results_path)

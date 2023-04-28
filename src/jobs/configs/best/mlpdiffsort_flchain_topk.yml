@@ -19,7 +19,7 @@ trainer:
 data:
   wandb_artifact: cardiors/diffsurv/flchain.pt:latest
   val_split: 0.2
-  batch_risk_tuple: 32, 8
+  batch_risk_tuple: 8, 100
   num_workers: -1
 model:
   lr: 0.004343696258007962
@@ -32,4 +32,6 @@ model:
   sorting_network: bitonic
   batch_norm: True
   ignore_censoring: false
+  optimize_topk: True
+  optimize_combined: False
 seed_everything: 42
