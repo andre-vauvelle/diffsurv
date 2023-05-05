@@ -97,7 +97,7 @@ class CoxPHLoss(torch.nn.Module):
     def __init__(
         self,
         weightings=None,
-        method: Literal["breslow", "efron", "ranked_list"] = "efron",
+        method: Literal["breslow", "efron", "ranked_list", "ranked_list_topk"] = "efron",
     ):
         super().__init__()
         self.method = method
@@ -134,10 +134,12 @@ class CoxPHLoss(torch.nn.Module):
                     loss = self._breslow_loss(lh, d, e, eps)
                 elif self.method == "ranked_list":
                     loss = self._loss_ranked_list(lh, d, e, eps)
+                elif self.method == "ranked_list_topk":
+                    loss = self._loss_ranked_list_topk(lh, d, e, eps)
                 else:
                     raise ValueError(
                         f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
-                        ' "breslow"]'
+                        ' "breslow", "ranked_list_topk"]'
                     )
                 losses.append(loss)
 
@@ -163,6 +165,32 @@ class CoxPHLoss(torch.nn.Module):
         # sort:
         idx = d.sort(descending=True, dim=0)[1]
         e = e[idx].squeeze(-1)
+
+        lh = lh[idx].squeeze(-1)
+        # calculate loss:
+        gamma = lh.max()
+        log_cumsum_h = lh.sub(gamma).exp().cumsum(0).add(eps).log().add(gamma)
+        if e.sum() > 0:
+            loss = -lh.sub(log_cumsum_h).mul(e).sum().div(e.sum())
+        else:
+            loss = -lh.sub(log_cumsum_h).mul(e).sum()
+        return loss
+
+    @staticmethod
+    def _loss_ranked_list_topk(lh, d, e, eps=1e-7):
+        from modules.tasks import _get_possible_permutation_matrix
+
+        possible_perm = _get_possible_permutation_matrix(e.bool(), d)
+        possible_top_k_idxs = torch.argwhere(
+            possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0
+        ).flatten()
+
+        idx = d.sort(descending=True, dim=0)[1]
+
+        e = torch.zeros_like(e)
+        e[possible_top_k_idxs] = True
+        e = e[idx].squeeze(-1)
+
         lh = lh[idx].squeeze(-1)
         # calculate loss:
         gamma = lh.max()

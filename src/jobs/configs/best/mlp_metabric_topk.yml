@@ -1,37 +1,38 @@
 trainer:
   logger:
-    - class_path: pytorch_lightning.loggers.WandbLogger
+    - class_path: models.loggers.CustomWandbLogger
       init_args:
         project: diffsurv
         entity: cardiors
-        log_model: True
         tags:
           - mlp
+          - synthetic
           - risk
-          - diffsort
           - case-control-sampling
   max_epochs: 15
-  val_check_interval: 0.5
+  check_val_every_n_epoch: 1
   log_every_n_steps: 10
+  val_check_interval: 0.5
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
+  default_root_dir: .
+  limit_val_batches: 0.0
+#  precision: 16
 data:
-  wandb_artifact: cardiors/diffsurv/flchain.pt:latest
+  wandb_artifact: cardiors/diffsurv/metabric.pt:latest
+  batch_risk_tuple: "8, 100"
   val_split: 0.0
-  batch_risk_tuple: 8, 100
   num_workers: -1
 model:
-  lr: 0.004343696258007962
-  weight_decay: 5.2546218078873754e-05
-  only_covs: True
+  lr: 0.006479995128858282
+  weight_decay: 0.0038927824386519663
+  cph_method: ranked_list_topk
   head_layers: 1
   embedding_dim: 5
   head_hidden_dim: 64
+  only_covs: True
+  cov_size: 3
   hidden_dropout_prob: 0.1
-  sorting_network: bitonic
   batch_norm: True
-  ignore_censoring: false
-  optimize_topk: True
-  optimize_combined: False
 seed_everything: 42

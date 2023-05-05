@@ -18,7 +18,7 @@ trainer:
   accumulate_grad_batches: 1
 data:
   wandb_artifact: cardiors/diffsurv/flchain.pt:latest
-  val_split: 0.2
+  val_split: 0.0
   batch_risk_tuple: 32, 8
   num_workers: -1
 model:
