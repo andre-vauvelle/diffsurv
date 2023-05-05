@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --mem=128GB
 #SBATCH --gres=gpu:1
-#SBATCH --time=1:00:00
+#SBATCH --time=4:00:00
 
 
 SOURCE_DIR='/home/wildb/dev/projects/diffsurv/src'
