@@ -28,6 +28,7 @@ model:
   lr: 0.0004051723506099132
   weight_decay: 0.00005338782262702786
   cph_method: ranked_list_topk_unbiased
+  topk: 10
   head_layers: 1
   embedding_dim: 5
   head_hidden_dim: 64

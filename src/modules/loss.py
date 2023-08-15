@@ -96,10 +96,12 @@ class CustomBCEWithLogitsLoss(torch.nn.BCEWithLogitsLoss):
 class CoxPHLoss(torch.nn.Module):
     def __init__(
         self,
+        k,
         weightings=None,
         method: Literal["breslow", "efron", "ranked_list", "ranked_list_topk"] = "efron",
     ):
         super().__init__()
+        self.k = k
         self.method = method
         if weightings is not None:
             self.register_buffer("weightings", weightings)
@@ -135,9 +137,9 @@ class CoxPHLoss(torch.nn.Module):
                 elif self.method == "ranked_list":
                     loss = self._loss_ranked_list(lh, d, e, eps)
                 elif self.method == "ranked_list_topk":
-                    loss = self._loss_ranked_list_topk(lh, d, e, eps)
+                    loss = self._loss_ranked_list_topk(lh, d, e, self.k, eps)
                 elif self.method == "ranked_list_topk_unbiased":
-                    loss = self._loss_ranked_list_topk_unbiased(lh, d, e, eps)
+                    loss = self._loss_ranked_list_topk_unbiased(lh, d, e, self.k, eps)
                 else:
                     raise ValueError(
                         f'Unknown method: {self.method}, choose one of ["efron", "ranked_list",'
@@ -179,12 +181,13 @@ class CoxPHLoss(torch.nn.Module):
         return loss
 
     @staticmethod
-    def _loss_ranked_list_topk(lh, d, e, eps=1e-7):
+    def _loss_ranked_list_topk(lh, d, e, k, eps=1e-7):
         from modules.tasks import _get_possible_permutation_matrix
 
         possible_perm = _get_possible_permutation_matrix(e.bool(), d)
+        top_ind = round(len(possible_perm) * (1 - ((100 - k) / 100)))
         possible_top_k_idxs = torch.argwhere(
-            possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0
+            possible_perm[:, : top_ind].sum(axis=-1) > 0
         ).flatten()
 
         idx = d.sort(descending=True, dim=0)[1]
@@ -204,12 +207,13 @@ class CoxPHLoss(torch.nn.Module):
         return loss
 
     @staticmethod
-    def _loss_ranked_list_topk_unbiased(lh, d, e, eps=1e-7):
+    def _loss_ranked_list_topk_unbiased(lh, d, e, k, eps=1e-7):
         from modules.tasks import _get_possible_permutation_matrix
 
         possible_perm = _get_possible_permutation_matrix(e.bool(), d)
+        top_ind = round(len(possible_perm) * (1 - ((100 - k) / 100)))
         possible_top_k_idxs = torch.argwhere(
-            possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0
+            possible_perm[:, : k].sum(axis=-1) > 0
         ).flatten()
 
         idx = d.sort(descending=True, dim=0)[1]

@@ -73,7 +73,7 @@ class MultilayerBase(BaseModel):
         self.output_dim = output_dim
 
         # TODO: consider moving to mixin
-        metrics = MetricCollection([Precision(compute_on_step=False, average="micro", task='binary')])
+        metrics = MetricCollection([])# Precision(compute_on_step=False, average="micro", task='binary')])
         self.valid_metrics = metrics.clone(prefix="val/")
         self.save_hyperparameters()
 

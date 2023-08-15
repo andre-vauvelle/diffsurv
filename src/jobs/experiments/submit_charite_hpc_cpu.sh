@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH --job-name=diffsurv
-#SBATCH --partition=gpu
+#SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --mem=128GB
-#SBATCH --gres=gpu:1
 #SBATCH --time=4:00:00
+
 
 SOURCE_DIR='/home/wildb/dev/projects/diffsurv/src'
 export PYTHONPATH=$PYTHONPATH:$SOURCE_DIR
@@ -16,6 +16,7 @@ cd $SOURCE_DIR || exit
 
 source ~/.bashrc
 conda activate /home/wildb/envs/diffsurv/
+# conda activate /sc-projects/sc-proj-ukb-cvd/environments/phenomenal/
 
 echo Using command:
 echo $@

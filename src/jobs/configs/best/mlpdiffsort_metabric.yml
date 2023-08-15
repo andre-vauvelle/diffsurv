@@ -33,4 +33,5 @@ model:
   sorting_network: odd_even
   batch_norm: True
   ignore_censoring: false
+  norm_risk: False
 seed_everything: 42

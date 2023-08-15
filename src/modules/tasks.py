@@ -30,10 +30,15 @@ class RiskMixin(pl.LightningModule):
         sorter_size: int = 128,
         log_weights=False,
         cph_method: str = "efron",
+        topk: Optional[int] = None,
         hp_metric_str: str = "val/c_index/all",
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        print(f'topk: {topk}')
+        assert topk is not None
+
         self.log_weights = log_weights
         self.label_vocab = label_vocab
         self.grouping_labels = grouping_labels
@@ -41,6 +46,7 @@ class RiskMixin(pl.LightningModule):
         self.loss_str = loss_str
         self.sorter_size = sorter_size
         self.hp_metric_str = hp_metric_str
+        self.topk = topk
 
         c_index_metric_names = list(self.label_vocab["token2idx"].keys())
         c_index_metrics = MetricCollection(
@@ -49,7 +55,7 @@ class RiskMixin(pl.LightningModule):
         self.valid_cindex = c_index_metrics.clone(prefix="val/")
         self.test_cindex = c_index_metrics.clone(prefix="test/")
 
-        metrics = MetricCollection([TopK()])
+        metrics = MetricCollection([TopK(self.topk)])
         self.valid_topk = metrics.clone(prefix="val/")
         self.test_topk = metrics.clone(prefix="test/")
 
@@ -68,12 +74,12 @@ class RiskMixin(pl.LightningModule):
             self.valid_em_risk = metrics.clone(prefix="val/", postfix="_risk")
             self.test_em_risk = metrics.clone(prefix="test/", postfix="_risk")
 
-            metrics = MetricCollection([TopK()])
+            metrics = MetricCollection([TopK(self.topk)])
             self.valid_topk_risk = metrics.clone(prefix="val/", postfix="_risk")
             self.test_topk_risk = metrics.clone(prefix="test/", postfix="_risk")
 
         if loss_str == "cox":
-            self.loss_func = CoxPHLoss(method=cph_method)
+            self.loss_func = CoxPHLoss(method=cph_method, k=self.topk)
         elif loss_str == "ranking":
             self.loss_func = RankingLoss()
         elif loss_str == "binary":
@@ -270,13 +276,17 @@ class SortingRiskMixin(RiskMixin):
         distribution="cauchy",
         sorter_size: int = 128,
         ignore_censoring: bool = True,
-        norm_risk: bool = False,
+        norm_risk: Optional[bool] = None,
         optimize_topk: bool = False,
         optimize_combined: bool = False,
+        topk: Optional[int] = None,
         *args,
         **kwargs,
     ):
-        super().__init__(sorter_size=sorter_size, *args, **kwargs)
+        super().__init__(sorter_size=sorter_size, topk=topk, *args, **kwargs)
+        assert topk is not None
+        assert norm_risk is not None
+
         self.sorter_size = sorter_size
         if steepness is None:
             if sorting_network == "odd_even":
@@ -298,9 +308,12 @@ class SortingRiskMixin(RiskMixin):
         self.steepness = steepness
         self.optimize_topk = optimize_topk or optimize_combined
         self.optimize_combined = optimize_combined
+        self.topk = topk
 
         print(f"Optimize topk: {optimize_topk}")
         print(f"Optimize combined: {optimize_combined}")
+        print(f'Norm risk: {norm_risk}')
+        print(f'Topk: {topk}')
 
     def sorting_step(self, logits, perm_ground_truth, events):
         lh = logits
@@ -320,7 +333,7 @@ class SortingRiskMixin(RiskMixin):
 
         top_k_loss = 0.0
         if self.optimize_topk:
-            top_k_loss = get_top_k_loss(perm_ground_truth, perm_prediction)
+            top_k_loss = get_top_k_loss(perm_ground_truth, perm_prediction, k=self.topk)
             if not self.optimize_combined:
                 return top_k_loss, lh, perm_prediction, perm_ground_truth
 
@@ -632,16 +645,18 @@ def test_ties_inc_get_possible_permutation_matrix():
     assert torch.allclose(required_perm_matrix, perm_matrix)
 
 
-def get_top_k_loss(perm_ground_truth, perm_prediction, eps=torch.tensor(0.0001)):
+def get_top_k_loss(perm_ground_truth, perm_prediction, k, eps=torch.tensor(0.0001)):
     batch_size, risk_set_size = perm_ground_truth.shape[:2]
 
+    top_ind = round(risk_set_size * (1 - ((100 - k) / 100)))
+
     # inshape: batch x starting ranks x sorted ranks
-    possible_top_k_idxs = perm_ground_truth[:, :, : risk_set_size // 10].sum(axis=2) > 0
+    possible_top_k_idxs = perm_ground_truth[:, :, : top_ind].sum(axis=2) > 0
     # outshape: batch x risk_setsize, indicies for each batch showing which are in topk
     top_k_loss = (
         # Probabilites of correctly permuting into top k
         -torch.log(
-            perm_prediction[possible_top_k_idxs][:, : risk_set_size // 10].sum(axis=1) + eps
+            perm_prediction[possible_top_k_idxs][:, : top_ind].sum(axis=1) + eps
         ).sum()
         # Probabilites of correctly permuting into not top k
         # - torch.log(

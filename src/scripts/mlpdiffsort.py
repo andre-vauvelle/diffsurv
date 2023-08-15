@@ -43,6 +43,7 @@ class DiffsortLightningCLI(LightningCLI):
 
 
 def diffsort_cli_main(args: ArgsType = None, run=True):
+    print(args)
     cli = DiffsortLightningCLI(
         MultilayerDiffsort,
         DataModuleRisk,

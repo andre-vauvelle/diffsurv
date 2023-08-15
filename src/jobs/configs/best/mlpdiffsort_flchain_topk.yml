@@ -16,6 +16,7 @@ trainer:
   enable_checkpointing: True
   num_sanity_val_steps: 0
   accumulate_grad_batches: 1
+  limit_val_batches: 0.0
 data:
   wandb_artifact: cardiors/diffsurv/flchain.pt:latest
   val_split: 0.0
@@ -34,4 +35,5 @@ model:
   ignore_censoring: false
   optimize_topk: True
   optimize_combined: False
+  norm_risk: False
 seed_everything: 42

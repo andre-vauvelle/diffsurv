@@ -52,12 +52,14 @@ def sorted_list_concordance_index(events, time, predictions):
 
 
 class ExactMatch(torchmetrics.Metric):
+    full_state_update: bool = False
+
     """
     :param size: size of the set on which to calc exact match and element wise match
     """
 
     def __init__(self, size: int):
-        super().__init__(full_state_update=False)
+        super().__init__()
         self.size = size
         self.add_state("exact_match", default=torch.tensor(0), dist_reduce_fx="sum")
         self.add_state("element_wise", default=torch.tensor(0), dist_reduce_fx="sum")
@@ -91,8 +93,11 @@ class ExactMatch(torchmetrics.Metric):
 
 
 class CIndex(torchmetrics.Metric):
+    full_state_update: bool = True
+
     def __init__(self, dist_sync_on_step=False, method="sorted_list"):
-        super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+
         if method == "loop":
             self.cindex_fn = loop_cindex
         elif method == "sorted_list":
@@ -129,15 +134,17 @@ class CIndex(torchmetrics.Metric):
 
 class TopK(torchmetrics.Metric):
     """TopK metric
-    Currently only implented for top 10 percentile performance,
-
-    If risk set size is <10 then percentile won't be ~10%
+    If risk set size is <k then percentile won't be ~k%
 
     High logits, high times, low risk. Warning CPH must be *-1 as loss uses inverse relation with logit and risk.
     """
+    full_state_update: bool = True
 
-    def __init__(self, dist_sync_on_step=False):
-        super().__init__(dist_sync_on_step=dist_sync_on_step, full_state_update=True)
+    def __init__(self, k, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+
+        self.k = k
+        print(f'Using top {k} metric')
 
         self.add_state("scores", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("count", default=torch.tensor(0.0), dist_reduce_fx="sum")
@@ -158,15 +165,18 @@ class TopK(torchmetrics.Metric):
 
         possible_perm = _get_possible_permutation_matrix(events, times)
 
+        top_ind = round(len(possible_perm) * (1 - ((100 - self.k) / 100)))
+
         possible_top_k_idxs = set(
-            torch.argwhere(possible_perm[:, : max(len(possible_perm) // 10, 1)].sum(axis=-1) > 0)
+            torch.argwhere(possible_perm[:, :top_ind].sum(axis=-1) > 0)
             .flatten()
             .detach()
             .cpu()
             .data.numpy()
         )
 
-        pred_topk = set(torch.argsort(logits)[: max(len(logits) // 10, 1)].tolist())
+        top_ind = round(len(logits) * (1 - ((100 - self.k) / 100)))
+        pred_topk = set(torch.argsort(logits)[:top_ind].tolist())
 
         score = torch.tensor(len(pred_topk & possible_top_k_idxs) / len(pred_topk))
 
@@ -187,11 +197,15 @@ class TopK(torchmetrics.Metric):
         events, times = self.events.detach().cpu(), self.times.detach().cpu()
 
         # Bottom times are the highest risk
+        top_ind = round(len(times) * (1 - ((100 - self.k) / 100)))
         possible_top_k_idxs = set(
-            bottom_k_indices_vectorized(events, times, k=max(len(times) // 10, 1))
+            bottom_k_indices_vectorized(events, times, k=top_ind)
+                                        #max(len(times) // 10, 1))
         )
-
-        pred_topk = set(torch.argsort(self.logits)[: max(len(self.logits) // 10, 1)].tolist())
+        print('possible_top_k_idxs', len(possible_top_k_idxs))
+        top_ind = round(len(self.logits) * (1 - ((100 - self.k) / 100)))
+        pred_topk = set(torch.argsort(self.logits)[: top_ind].tolist())
+        print('pred_topk', len(pred_topk))
 
         score = len(pred_topk & possible_top_k_idxs) / len(pred_topk)
 
@@ -200,7 +214,7 @@ class TopK(torchmetrics.Metric):
         return dict(batch_topk=batched_score, topk=score)
 
 
-def bottom_k_indices_vectorized(events, times, k=10):
+def bottom_k_indices_vectorized(events, times, k):
     # Create a tensor of tuples containing the time and event indicator for each element
     event_times = torch.stack((times, events, torch.arange(len(events))), dim=1)
 

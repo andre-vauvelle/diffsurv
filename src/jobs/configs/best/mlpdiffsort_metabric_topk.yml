@@ -35,4 +35,5 @@ model:
   ignore_censoring: false
   optimize_topk: True
   optimize_combined: False
+  norm_risk: False
 seed_everything: 42

@@ -20,6 +20,7 @@ parser.add_argument("-c", "--config", type=str)
 parser.add_argument("-m", "--model", type=str, default="diffsort")
 parser.add_argument("-d", "--results_dir", type=str)
 parser.add_argument("-n", "--results_name", type=str)
+parser.add_argument("-t", "--topk", type=int)
 
 seed_everything(seed=42)
 
@@ -39,7 +40,7 @@ def combine_dicts(dict1, dict2):
 
 args = parser.parse_args()
 
-RESULTS_NAME = f"{args.results_name}.csv"
+RESULTS_NAME = f"{args.results_name}_{args.topk}.csv"
 
 if args.results_dir is None:
     results_path = os.path.join(RESULTS_DIR, args.model, RESULTS_NAME)
@@ -65,6 +66,7 @@ for k in range(args.kfolds):
         configuration = yaml.safe_load(file)
 
     configuration["data"]["k_fold"] = (k, args.kfolds)
+    configuration["model"]["topk"] = args.topk
 
     cli = model_cli(args=configuration, run=False)
     cli.trainer.fit(cli.model, cli.datamodule)
@@ -74,4 +76,5 @@ for k in range(args.kfolds):
     wandb.finish()
 
 df = pd.DataFrame.from_dict(metrics_store)
+df['k'] = args.topk
 df.to_csv(results_path)
