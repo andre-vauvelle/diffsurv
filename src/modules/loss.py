@@ -213,7 +213,7 @@ class CoxPHLoss(torch.nn.Module):
         possible_perm = _get_possible_permutation_matrix(e.bool(), d)
         top_ind = round(len(possible_perm) * (1 - ((100 - k) / 100)))
         possible_top_k_idxs = torch.argwhere(
-            possible_perm[:, : k].sum(axis=-1) > 0
+            possible_perm[:, : top_ind].sum(axis=-1) > 0
         ).flatten()
 
         idx = d.sort(descending=True, dim=0)[1]
