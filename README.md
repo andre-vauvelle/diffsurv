@@ -34,6 +34,3 @@ python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsor
 ```
 
 To extract results for the predict_dataloader and a specified checkpoint. Also saved an artifact.
-
-### Wandb
-[wandb project](https://wandb.ai/cardiors/diffsurv)
