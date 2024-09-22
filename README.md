@@ -1,5 +1,5 @@
 <h1 align='center'>Diffsurv: Differentiable sorting for censored time-to-event data. <br> (NeurIPS 2023)<br>
-    [<a href="(https://proceedings.neurips.cc/paper_files/paper/2023/file/d1a25d7e93f06cb422b3a74a0aa3bf3f-Paper-Conference.pdf">paper</a>] </h1>
+    [<a href="https://proceedings.neurips.cc/paper_files/paper/2023/file/d1a25d7e93f06cb422b3a74a0aa3bf3f-Paper-Conference.pdf">paper</a>] </h1>
 
 ## Abstract
 
