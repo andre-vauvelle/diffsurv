@@ -36,7 +36,7 @@ wandb agent <sweep-id>
 ## Extract results
 Ensure that the OnTrainEndResults callback is on. This will automatically save an wandb artifact with a parquet of results, logits, event times, risk and covariates.
 
-If you've a model already trained you can run something like:
+If you've a model already trained you can run:
 ```{bash}
 python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsort_synthetic.yaml --ckpt_path <path/to/checkpoints>/checkpoints/epoch=15-step=12800.ckpt
 ```
