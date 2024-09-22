@@ -9,17 +9,6 @@ Survival analysis is a crucial semi-supervised task in machine learning with sig
 **TLDR**; Diffsurv is a novel method that extends differentiable sorting to handle partial orderings, a key challenge in real-world applications like survival analysis. It predicts possible permutations, accommodating uncertainty from censored samples.
 
 
-## Citation
-```{latex}
-@article{vauvelle2024differentiable,
-  title={Differentiable sorting for censored time-to-event data.},
-  author={Vauvelle, Andre and Wild, Benjamin and Eils, Roland and Denaxas, Spiros},
-  journal={Advances in Neural Information Processing Systems},
-  volume={36},
-  year={2024}
-}
-```
-
 ## Install
 ```{bash}
 conda create -n diffsurv python=3.8.5
@@ -54,3 +43,17 @@ python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsor
 ```
 
 To extract results for the predict_dataloader and a specified checkpoint. Also saved an artifact.
+
+-----
+
+## Citation
+```bibtex
+@article{vauvelle2024differentiable,
+  title={Differentiable sorting for censored time-to-event data.},
+  author={Vauvelle, Andre and Wild, Benjamin and Eils, Roland and Denaxas, Spiros},
+  journal={Advances in Neural Information Processing Systems},
+  volume={36},
+  year={2024}
+}
+```
+
