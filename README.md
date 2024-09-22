@@ -30,7 +30,7 @@ Ensure that the OnTrainEndResults callback is on. This will automatically save a
 
 If you've a model already trained you can run something like:
 ```{bash}
-python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsort_synthetic.yaml --ckpt_path /Users/andre/Documents/UCL/diffsurv/results/mlpdiffsort_synthetic/checkpoints/epoch=15-step=12800.ckpt
+python scripts/mlpdiffsort_synthetic.py predict --config jobs/configs/mlpdiffsort_synthetic.yaml --ckpt_path <path/to/checkpoints>/checkpoints/epoch=15-step=12800.ckpt
 ```
 
 To extract results for the predict_dataloader and a specified checkpoint. Also saved an artifact.
